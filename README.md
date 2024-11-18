@@ -30,7 +30,7 @@ This project is a React-based dashboard application built with TypeScript, Redux
 
 1.  Clone the repository:
     ```bash
-    git clone <repository-url>
+    git clone https://github.com/ghrcdaac/CUE-Dashboard.git
     ```
 2.  Navigate to the project directory:
     ```bash   
