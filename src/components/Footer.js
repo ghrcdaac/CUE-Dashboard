@@ -7,8 +7,8 @@ export default function Footer() {
   return (
     <Box
       sx={{
-        bgcolor: '#004d40',
-        color: '#d7ccc8',
+        bgcolor: '#2275aa',
+        color: '#f0f0f0',
         p: 0.2,
         display: 'flex',
         justifyContent: 'center',
@@ -24,30 +24,21 @@ export default function Footer() {
 
 </Typography>
 
-      <Link href="#" color="inherit">
-        NASA Official:
-      </Link>
-      <Link href="#" color="inherit">
-        Aaron Kaulfus
-      </Link>
-      <Link href="#" color="inherit">
-        Web Privacy Policy
-      </Link>
-      <Link href="#" color="inherit">
-        Data & Information Policy
-      </Link>
-      <Link href="#" color="inherit">
-        Communications Policy
-      </Link>
-      <Link href="#" color="inherit">
-        Freedom of Information Act
-      </Link>
-      <Link href="#" color="inherit">
-        USA.gov
-      </Link>
-      <Link href="#" color="inherit">
-        User Guide
-      </Link>
+<Typography variant="body2"> 
+        NASA Official: Doug Newman 
+      </Typography>
+
+      <Typography variant="body2">
+         <Link href="https://www.nasa.gov/foia/" color="inherit" target="_blank" rel="noopener"> FOIA</Link> 
+      </Typography>
+
+      <Typography variant="body2">
+         <Link href="https://www.nasa.gov/privacy/" color="inherit" target="_blank" rel="noopener">NASA Privacy Policy</Link>
+      </Typography>
+
+      <Typography variant="body2">
+         <Link href="https://USA.gov" color="inherit" target="_blank" rel="noopener"> USA.gov</Link>
+      </Typography>
     </Box>
   );
 }
