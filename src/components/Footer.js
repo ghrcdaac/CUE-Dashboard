@@ -7,14 +7,14 @@ export default function Footer() {
   return (
     <Box
       sx={{
-        bgcolor: '#2275aa',
+        bgcolor: '#19577F',
         color: '#f0f0f0',
         p: 0.2,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: 2,
+        gap: 10,
       }}
     >
 
