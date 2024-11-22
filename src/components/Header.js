@@ -7,16 +7,12 @@ import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import MenuIcon from "@mui/icons-material/Menu";
 import { Link } from "react-router-dom";
-import Divider from "@mui/material/Divider";
+import Divider from "@mui/material/Divider"; 
 
-export default function Header({
-    isDrawerOpen,
-    toggleDrawer,
-    selectedMenu,
-    onMenuClick, // Make sure onMenuClick is passed as a prop
-  }) {
+
+export default function Header({ isDrawerOpen, toggleDrawer, selectedMenu }) {
   return (
-    <Box sx={{ flexGrow: 1 }}>
+    <Box >
       <AppBar position="static" sx={{ height: "150px" }}>
         <Toolbar
           sx={{
@@ -26,8 +22,15 @@ export default function Header({
             flexDirection: "column",
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "flex-start" }}>
-            <IconButton
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center", 
+              width: "100%",
+              mb: 1,
+            }}
+          >
+            {/* <IconButton
               size="large"
               edge="start"
               color="inherit"
@@ -36,10 +39,10 @@ export default function Header({
               onClick={toggleDrawer}
             >
               <MenuIcon />
-            </IconButton>
+            </IconButton> */}
             <img src="/nasa_logo.png" alt="NASA Logo" height="60" />
-            <Box sx={{ display: "flex", alignItems: "flex-start", ml: 2 }}>
-              <Box sx={{ mr: 4 }}>
+            <Box sx={{ display: "flex", alignItems: "center", ml: 2 }}> {/* Changed to 'center' */}
+              <Box sx={{ mr: 5 }}>
                 <Typography variant="h4" sx={{ fontWeight: "bold" }}>
                   CUE
                 </Typography>
@@ -102,15 +105,31 @@ export default function Header({
                 </Link>
               </Box>
             </Box>
+            <Box
+            sx={{
+              display: "flex",
+              justifyContent: "flex-end", // Align the Login button to the right
+              width: "100%",
+            }}
+          >
             <Button color="inherit">Login</Button>
           </Box>
-          <Divider sx={{ my: 2, width: "100%",  }} />
-          <Typography variant="h6" sx={{ fontWeight: "bold", textAlign: "left", ml: 7 }}>
+          </Box>
+
+          <Divider sx={{ my: 1, width: "100%"}} />
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: "bold",
+              textAlign: "left",
+              ml: 11,
+          
+            }}
+          >
             {selectedMenu}
           </Typography>
-          
         </Toolbar>
-      </AppBar>
+      </AppBar> 
     </Box>
   );
 }
