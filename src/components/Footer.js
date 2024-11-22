@@ -19,7 +19,7 @@ export default function Footer() {
     >
 
  <Typography variant="body2" sx={{  fontWeight: 'bold', backgroundColor: '#d7ccc8', p: '3px', borderRadius: '4px', color: 'black', }}> 
- <span style={{ margin: '4px' }}>v0.0.3</span>
+ <span style={{ margin: '4px' }}>v0.0.4</span>
 
 
 </Typography>
