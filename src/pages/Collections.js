@@ -20,7 +20,7 @@ export default function Collections({ setSelectedMenu }) {
                 Collection 1
               </Typography>
               <Typography variant="h6" sx={{ color: "primary.main" }}>
-                Description of Collection 1
+                Collection 1
               </Typography>
             </CardContent>
           </Card>
@@ -32,7 +32,7 @@ export default function Collections({ setSelectedMenu }) {
                 Collection 2
               </Typography>
               <Typography variant="h6" sx={{ color: "primary.main" }}>
-                Description of Collection 2
+                Collection 2
               </Typography>
             </CardContent>
           </Card>

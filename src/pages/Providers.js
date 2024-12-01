@@ -20,7 +20,7 @@ export default function Providers({ setSelectedMenu }) {
                 Provider A
               </Typography>
               <Typography variant="h6" sx={{ color: "primary.main" }}>
-                Information about Provider A
+                Provider A
               </Typography>
             </CardContent>
           </Card>
