@@ -41,7 +41,6 @@ export default function DAAC({ setSelectedMenu }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
@@ -73,7 +72,7 @@ export default function DAAC({ setSelectedMenu }) {
           setRows(data);
       } catch (error) {
           console.error("Error fetching data:", error);
-          setError(error.message);
+          toast.error(`Error fetching data: ${error.message}`);
       } finally {
           setLoading(false);
       }
@@ -304,7 +303,7 @@ export default function DAAC({ setSelectedMenu }) {
             overflow: "hidden",
         }}
     >
-        {error && <Typography color="error">Error: {error}</Typography>}
+        {/* {error && <Typography color="error">Error: {error}</Typography>} */}
         {loading && <Typography>Loading...</Typography>}
 
         <Grid2 container spacing={2} direction="column">
@@ -331,7 +330,17 @@ export default function DAAC({ setSelectedMenu }) {
                                 </Button>
                                 <Button
                                     variant="contained"
-                                    style={{ backgroundColor: '#1565C0  ', color: 'white', marginLeft: '10px' }}
+                                    sx={{
+                                        backgroundColor: selected.length !== 1 ? 'grey.400' : '#1565C0', // Change to your desired disabled color
+                                        color: selected.length !== 1 ? 'grey.600' : 'white', // Change to your desired disabled text color
+                                        marginLeft: '10px',
+                                        '&:hover': {
+                                            backgroundColor: selected.length !== 1 ? 'grey.400' : 'primary.dark', // Change to your desired disabled hover color
+                                        },
+                                        '&.Mui-disabled': {
+                                            color: 'grey.600',
+                                        }
+                                    }}
                                     onClick={handleEditClick}
                                     disabled={selected.length !== 1}
                                     startIcon={<EditIcon />}
@@ -340,7 +349,17 @@ export default function DAAC({ setSelectedMenu }) {
                                 </Button>
                                 <Button
                                     variant="contained"
-                                    style={{ backgroundColor: '#B71C1C  ', color: 'white', marginLeft: '10px' }}
+                                    sx={{
+                                        backgroundColor: selected.length === 0 ? 'grey.400' : '#B71C1C', // Change to your desired disabled color
+                                        color: selected.length === 0 ? 'grey.600' : 'white', // Change to your desired disabled text color
+                                        marginLeft: '10px',
+                                        '&:hover': {
+                                            backgroundColor: selected.length === 0 ? 'grey.400' : 'error.dark', // Change to your desired disabled hover color
+                                        },
+                                        '&.Mui-disabled': {
+                                            color: 'grey.600',
+                                        }
+                                    }}
                                     onClick={handleDeleteClick}
                                     disabled={selected.length === 0}
                                     startIcon={<DeleteIcon />}
