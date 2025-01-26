@@ -34,7 +34,7 @@ function App() {
   return (
     <Provider store={store}>
       <ThemeProvider theme={theme}>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <div style={{ display: "flex", minHeight: "100vh" }}>
             <SideNav selectedMenu={selectedMenu} />
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>

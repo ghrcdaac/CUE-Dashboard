@@ -8,12 +8,10 @@ import ListItemText from "@mui/material/ListItemText";
 import InboxIcon from "@mui/icons-material/MoveToInbox";
 import MailIcon from "@mui/icons-material/Mail";
 import Box from "@mui/material/Box";
-import IconButton from "@mui/material/IconButton";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import { useNavigate } from "react-router-dom";
 
 export default function SideNav({ isDrawerOpen, toggleDrawer, selectedMenu }) {
-  const navigate = useNavigate();
+ 
 
   const list = () => (
 <Box

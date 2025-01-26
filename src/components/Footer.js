@@ -2,6 +2,7 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
+import { config } from '../config';
 
 export default function Footer() {
   return (
@@ -19,7 +20,7 @@ export default function Footer() {
     >
 
  <Typography variant="body2" sx={{  fontWeight: 'bold', backgroundColor: '#d7ccc8', p: '3px', borderRadius: '4px', color: 'black', }}> 
- <span style={{ margin: '4px' }}>v0.0.5</span>
+ <span style={{ margin: '4px' }}>v{config.version}</span>
 
 
 </Typography>
