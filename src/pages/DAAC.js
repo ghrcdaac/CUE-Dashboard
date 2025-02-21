@@ -32,8 +32,11 @@ import {
 import { fetchNgroups } from "../api/ngroup";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import useMenuSelection from '../hooks/useMenuSelection';
 
-export default function DAAC({ setSelectedMenu }) {
+
+export default function DAAC() {
+  useMenuSelection("DAAC");
   const [rows, setRows] = useState([]);
   const [ngroups, setNgroups] = useState({});
   const [ngroupOptions, setNgroupOptions] = useState([]);
@@ -59,10 +62,10 @@ export default function DAAC({ setSelectedMenu }) {
   });
 
   useEffect(() => {
-      setSelectedMenu("DAAC");
+     
       fetchData();
       fetchNgroupOptions();
-  }, [setSelectedMenu]);
+  }, []);
 
   const fetchData = async () => {
       setLoading(true);
@@ -303,7 +306,7 @@ export default function DAAC({ setSelectedMenu }) {
             overflow: "hidden",
         }}
     >
-        {/* {error && <Typography color="error">Error: {error}</Typography>} */}
+       
         {loading && <Typography>Loading...</Typography>}
 
         <Grid2 container spacing={2} direction="column">
@@ -331,11 +334,11 @@ export default function DAAC({ setSelectedMenu }) {
                                 <Button
                                     variant="contained"
                                     sx={{
-                                        backgroundColor: selected.length !== 1 ? 'grey.400' : '#1565C0', // Change to your desired disabled color
-                                        color: selected.length !== 1 ? 'grey.600' : 'white', // Change to your desired disabled text color
+                                        backgroundColor: selected.length !== 1 ? 'grey.400' : '#1565C0', 
+                                        color: selected.length !== 1 ? 'grey.600' : 'white', 
                                         marginLeft: '10px',
                                         '&:hover': {
-                                            backgroundColor: selected.length !== 1 ? 'grey.400' : 'primary.dark', // Change to your desired disabled hover color
+                                            backgroundColor: selected.length !== 1 ? 'grey.400' : 'primary.dark', 
                                         },
                                         '&.Mui-disabled': {
                                             color: 'grey.600',
@@ -350,11 +353,11 @@ export default function DAAC({ setSelectedMenu }) {
                                 <Button
                                     variant="contained"
                                     sx={{
-                                        backgroundColor: selected.length === 0 ? 'grey.400' : '#B71C1C', // Change to your desired disabled color
-                                        color: selected.length === 0 ? 'grey.600' : 'white', // Change to your desired disabled text color
+                                        backgroundColor: selected.length === 0 ? 'grey.400' : '#B71C1C',
+                                        color: selected.length === 0 ? 'grey.600' : 'white', 
                                         marginLeft: '10px',
                                         '&:hover': {
-                                            backgroundColor: selected.length === 0 ? 'grey.400' : 'error.dark', // Change to your desired disabled hover color
+                                            backgroundColor: selected.length === 0 ? 'grey.400' : 'error.dark', 
                                         },
                                         '&.Mui-disabled': {
                                             color: 'grey.600',

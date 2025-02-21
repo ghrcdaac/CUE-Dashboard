@@ -6,6 +6,7 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import { Link } from "react-router-dom";
 import Divider from "@mui/material/Divider"; 
+import { Link as RouterLink } from "react-router-dom";
 
 
 export default function Header({ isDrawerOpen, toggleDrawer, selectedMenu }) {
@@ -110,7 +111,7 @@ export default function Header({ isDrawerOpen, toggleDrawer, selectedMenu }) {
               width: "100%",
             }}
           >
-            <Button color="inherit">Login</Button>
+            <Button color="inherit" component={RouterLink} to="/login">Login</Button>
           </Box>
           </Box>
 

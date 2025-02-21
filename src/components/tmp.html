@@ -1,0 +1,21 @@
+<Box
+                sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    // justifyContent: 'center',  REMOVED - content is now top-aligned
+                    height: '100vh',  // Use height, not minHeight
+                    width: '100vw',   // Full viewport width
+                    overflow: 'hidden', // Prevent scrolling
+                    backgroundColor: 'primary.main',
+                    color: 'white',
+                    padding: '5px', // Reduced padding
+                }}
+            >
+                {/* Logo and Title Container */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4, paddingTop: 10 }}>
+                    <img src="/nasa_logo.png" alt="NASA Logo" className="nasa-logo" />
+                    <Typography variant="h5" component="h2" sx={{ mt: 1 }}>
+                        Cloud Upload Environment
+                    </Typography>
+                </Box>

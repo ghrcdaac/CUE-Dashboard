@@ -1,0 +1,32 @@
+/* Prevents scrolling and fixes the layout */
+html, body {
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    margin: 0;
+    font-family: 'Source Sans Pro', sans-serif;
+    background-color: #f0f0f0;
+}
+
+/* Adjust logo size */
+.nasa-logo {
+    width: 150px;
+    height: auto;
+    margin-bottom: 20px;
+}
+
+/* Autofill styling fix */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    -webkit-transition: background-color 5000s ease-in-out 0s;
+    transition: background-color 5000s ease-in-out 0s;
+    -webkit-text-fill-color: #353538 !important;
+}
+
+input:-moz-autofill,
+input:-moz-autofill-preview {
+    transition: background-color 5000s ease-in-out 0s;
+    -webkit-text-fill-color: #353538 !important;
+}

@@ -4,12 +4,10 @@ import Grid2 from "@mui/material/Grid2";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
+import useMenuSelection from '../hooks/useMenuSelection';
 
-export default function Providers({ setSelectedMenu }) {
-  React.useEffect(() => {
-    setSelectedMenu("Providers");
-  }, [setSelectedMenu]);
-
+export default function Providers() {
+  useMenuSelection("Providers");
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>
       <Grid2 container spacing={3}>
