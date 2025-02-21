@@ -12,15 +12,14 @@ import Paper from '@mui/material/Paper';
 import './LoginPage.css';
 import { useDispatch } from 'react-redux';
 import { loginSuccess, setChallengeName, setUser } from '../app/reducers/authSlice';
-import { useNavigate } from 'react-router-dom';
-import { Link as RouterLink } from "react-router-dom"; // Import Link
-
+import { useNavigate, Link as RouterLink } from 'react-router-dom'; // Import useNavigate and rename Link
 
 // Import Cognito SDK
 import { CognitoUserPool, CognitoUser, AuthenticationDetails } from 'amazon-cognito-identity-js';
 import { config } from '../config'; // Import config
-import { toast, ToastContainer } from 'react-toastify'; // Import toast  AND ToastContainer
+import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
 
 const theme = createTheme({
     palette: {
@@ -41,19 +40,16 @@ function LoginPage() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [loginError, setLoginError] = useState(''); // State for login error
     const passwordRef = useRef(null);
-    const dispatch = useDispatch(); // Get the dispatch function
-    const navigate = useNavigate(); // Get the navigate function
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
 
     const handleLogin = async (event) => {
         event.preventDefault();
+        setLoginError(''); // Clear any previous errors
 
-        // *** Replace this with your actual Cognito SRP login logic ***
         try {
-            // 1. Initiate Auth (SRP) - This is a placeholder!
-            //    You'll need to use the AWS SDK for JavaScript v3 here.
-            //    This is just example code and will NOT work as is.
-
             const authenticationData = {
                 Username: username,
                 Password: password,
@@ -61,54 +57,42 @@ function LoginPage() {
             const authenticationDetails = new AuthenticationDetails(authenticationData);
 
             const userData = {
-                Username: username, // Use the entered username
-                Pool: userPool,
+                Username: username,
+                Pool: userPool
             };
             const cognitoUser = new CognitoUser(userData);
-            console.log("cognitoUser:", cognitoUser);
 
-              return new Promise((resolve, reject) => {
+            await new Promise((resolve, reject) => { // Use a promise for cleaner async handling
                 cognitoUser.authenticateUser(authenticationDetails, {
                     onSuccess: (result) => {
-                        //console.log("Login Success:", result);
+                        console.log(result);
                         const accessToken = result.getAccessToken().getJwtToken();
-                        const idToken = result.getIdToken().getJwtToken(); // Often useful
                         const refreshToken = result.getRefreshToken().getToken();
 
-                        // Dispatch Redux action to update state
                         dispatch(loginSuccess({ accessToken, refreshToken, username }));
-                        navigate('/'); // Redirect to home page on success
-                        toast.success("Login successful!");
+                        navigate('/'); // Redirect on success
                         resolve(); // Resolve the promise
                     },
                     onFailure: (err) => {
-                        // Login failed
-                        console.error("Login error:", err);
-                        toast.error(`Login failed: ${err.message || 'Unknown error'}`); // Use toast for errors
-                        reject(err)
+                        // Set the error message for inline display
+                        setLoginError(err.message || 'An unknown error occurred.');
+                        reject(err); // Reject the promise
                     },
                     newPasswordRequired: (userAttributes, requiredAttributes) => {
-                         // User was signed in by an admin and must provide new
-                        // password and required attributes, if any, to complete
-                        // authentication.
-
-                        // the api doesn't accept this field back
                         delete userAttributes.email_verified;
                         dispatch(setChallengeName('NEW_PASSWORD_REQUIRED'));
-                        dispatch(setUser(cognitoUser)) //set the cognito user in the state
-                        // Get these values from the user;  setAttribute expects an array of attributes
-                       navigate('/change-password', { state: { username: username } });//pass the username
-                       resolve(); // Resolve here
+                        dispatch(setUser(cognitoUser));
+                        navigate('/change-password', { state: { username: username } });
+                        resolve();
                     }
                 });
             });
 
         } catch (error) {
-            console.error("Login error:", error);
-            toast.error(`Login failed: ${error.message}`); // Use the error message
+            console.error("Login error:", error); // Log full error for debugging
+            setLoginError(error.message || 'An unexpected error occurred.'); // Set error state
         }
     };
-
      useEffect(() => {
       const handleAutoFill = () => {
         if (passwordRef.current && passwordRef.current.matches(':-webkit-autofill')) {
@@ -131,7 +115,6 @@ function LoginPage() {
         return () => observer.disconnect();
     }, [password]);
 
-
     return (
         <ThemeProvider theme={theme}>
             {/* Outer Box for background color and centering */}
@@ -153,7 +136,7 @@ function LoginPage() {
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
-                        mb: 4, // Margin bottom to separate from form
+                        mb: 4,
                     }}
                 >
                     <img src="/nasa_logo.png" alt="NASA Logo" className="nasa-logo" />
@@ -176,7 +159,7 @@ function LoginPage() {
                             autoFocus
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            InputLabelProps={{
+                           InputLabelProps={{
                                 style: { color: theme.palette.primary.main },
                             }}
                             sx={{
@@ -227,21 +210,29 @@ function LoginPage() {
                         >
                             Sign In
                         </Button>
+
+                        {/* Display error message */}
+                        {loginError && (
+                            <Typography color="error" align="center" sx={{ mb: 2 }}>
+                                {loginError}
+                            </Typography>
+                        )}
+
                         <Grid container justifyContent="space-between">
-                        <Grid item>
-                            <Link component={RouterLink} to="/forgot-password" variant="body2" sx={{ color: theme.palette.primary.main }}>
-                                Forgot password?
-                            </Link>
-                        </Grid>
                             <Grid item>
-                                 <Link href="#" variant="body2" sx={{color: theme.palette.primary.main}}>
+                                 <Link component={RouterLink} to="/forgot-password" variant="body2" sx={{color: theme.palette.primary.main}}>
+                                    Forgot password?
+                                </Link>
+                            </Grid>
+                            <Grid item>
+                                <Link href="#" variant="body2" sx={{color: theme.palette.primary.main}}>
                                     New User? Create Account
                                 </Link>
                             </Grid>
                         </Grid>
                     </Box>
                 </Paper>
-                <ToastContainer position="top-center" />
+            <ToastContainer position="top-center" />
             </Box>
         </ThemeProvider>
     );

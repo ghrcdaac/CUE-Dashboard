@@ -14,7 +14,6 @@ import DAAC from "./pages/DAAC";
 import LoginPage from "./components/LoginPage";
 import ChangePassword from "./components/ChangePassword"; // Import ChangePassword
 import ForgotPassword from "./components/ForgotPassword";     // Import ForgotPassword
-import ConfirmForgotPassword from "./components/ConfirmForgotPassword"; // Import ConfirmForgotPassword
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { useSelector } from 'react-redux';
 
@@ -72,7 +71,7 @@ function App() {
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/change-password" element={challengeName === 'NEW_PASSWORD_REQUIRED' ? <ChangePassword /> : <Navigate to="/" />} />
                          <Route path="/forgot-password" element={<ForgotPassword />} />
-                        <Route path="/confirm-forgot-password" element={<ConfirmForgotPassword />} />
+                        
                     </Routes>
                 </BrowserRouter>
             </ThemeProvider>

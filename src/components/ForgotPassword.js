@@ -5,18 +5,21 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import Paper from '@mui/material/Paper';
+import { useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth'; // Import useAuth
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css'; // Make sure to import the CSS!
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
-
+import { toast, ToastContainer } from 'react-toastify'; // Import ToastContainer
+import 'react-toastify/dist/ReactToastify.css';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 
 const theme = createTheme({
-    palette: {
-        primary: {
-            main: "#19577F",
-        },
+  palette: {
+    primary: {
+      main: "#19577F",
     },
+  },
 });
 
 function ForgotPassword() {
@@ -27,24 +30,56 @@ function ForgotPassword() {
     const [error, setError] = useState('');
     const [resetRequested, setResetRequested] = useState(false); // Track request status
     const [message, setMessage] = useState('');
-    const { forgotPassword, confirmForgotPassword } = useAuth(); // Get functions from useAuth
-    const navigate = useNavigate(); // Add useNavigate hook
+     const { forgotPassword, confirmForgotPassword } = useAuth(); // Get functions from useAuth
+    const navigate = useNavigate();
 
+    // Validation states
+    const [hasUpperCase, setHasUpperCase] = useState(false);
+    const [hasLowerCase, setHasLowerCase] = useState(false);
+    const [hasNumber, setHasNumber] = useState(false);
+    const [hasMinLength, setHasMinLength] = useState(false);
+    const [passwordsMatch, setPasswordsMatch] = useState(null); // null, true, or false
+    const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+
+    const validatePassword = (password) => {
+        setHasUpperCase(/[A-Z]/.test(password));
+        setHasLowerCase(/[a-z]/.test(password));
+        setHasNumber(/[0-9]/.test(password));
+        setHasMinLength(password.length >= 8);
+    };
+
+     const handleNewPasswordChange = (e) => {
+        const password = e.target.value;
+        setNewPassword(password);
+        validatePassword(password); // Validate on every change
+        // Also check if passwords match whenever newPassword changes:
+        setPasswordsMatch(password === confirmPassword);
+    };
+
+    // Add an onChange handler for confirmPassword:
+    const handleConfirmPasswordChange = (e) => {
+         const confirmVal = e.target.value;
+        setConfirmPassword(confirmVal);
+        setPasswordsMatch(newPassword === confirmVal); // Check for match
+
+    };
     const handleForgotPassword = async (event) => {
         event.preventDefault();
         setError('');
         setMessage('');
 
         try {
-            await forgotPassword(username);
+            const result = await forgotPassword(username);
+            console.log("Forgot password request successful:", result);
             setResetRequested(true); // Show the confirmation form
             toast.success("Password reset code sent. Check your email.");
-
         } catch (err) {
             setError(err.message || 'An error occurred.');
-            toast.error(error);
+            toast.error(error); // Use toast for errors
         }
     };
+
+
 
     const handleConfirmForgotPassword = async (event) => {
         event.preventDefault();
@@ -54,38 +89,31 @@ function ForgotPassword() {
             setError('Passwords do not match.');
             return;
         }
-
-       // Basic password validation (customize to match your Cognito policy)
-        if (newPassword.length < 8) {
-            setError('Password must be at least 8 characters long.');
+       if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasMinLength) {
+            setError('Password does not meet all requirements.');
             return;
-        }
-        if (!/[A-Z]/.test(newPassword)) {
-          setError("Password must contain at least one uppercase character");
-          return;
-        }
-        if (!/[a-z]/.test(newPassword)) {
-          setError("Password must contain at least one lowercase character");
-          return;
-        }
-        if (!/[0-9]/.test(newPassword)) {
-          setError("Password must contain at least one number");
-          return;
         }
 
         try {
             await confirmForgotPassword(username, confirmationCode, newPassword);
-            toast.success("Password reset successfully!  You can now login.");
-            navigate('/login'); // Redirect to login page
-        } catch (err) {
-            setError(err.message || 'An error occurred while confirming the password.');
-            toast.error(error);
+                setSuccessDialogOpen(true);
+             toast.success("Password reset successfully! Please log in.");
+            // navigate('/login'); // Redirect to login page
 
+        } catch (err) {
+             setError(err.message || 'An error occurred while confirming the password.');
+            toast.error(error);
         }
     };
 
-    return (
-      <ThemeProvider theme={theme}>
+    const handleCloseSuccessDialog = () => {
+        setSuccessDialogOpen(false);
+        navigate('/login'); // Navigate to login after closing dialog
+    };
+
+
+  return (
+    <ThemeProvider theme={theme}>
         <Box
             sx={{
                 display: 'flex',
@@ -116,7 +144,7 @@ function ForgotPassword() {
                     Forgot Password
                 </Typography>
                 {error && <Typography color="error" align="center" sx={{ mb: 2 }}>{error}</Typography>}
-                {message && <Typography align="center" sx={{ mb: 2, color: 'primary.main' }}>{message}</Typography>}
+                {message && <Typography  align="center" sx={{ mb: 2, color: 'primary.main' }}>{message}</Typography>}
 
                 {!resetRequested ? (
                     <Box component="form" noValidate onSubmit={handleForgotPassword} sx={{ width: '100%' }}>
@@ -131,10 +159,10 @@ function ForgotPassword() {
                             autoFocus
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                             InputLabelProps={{
+                            InputLabelProps={{
                                 style: { color: theme.palette.primary.main },
-                                }}
-                                sx={{
+                            }}
+                            sx={{
                                 "& .MuiOutlinedInput-root": {
                                     "& fieldset": { borderColor: theme.palette.primary.main },
                                     "&:hover fieldset": { borderColor: theme.palette.primary.main },
@@ -154,6 +182,7 @@ function ForgotPassword() {
                     </Box>
                 ) : (
                     <Box component="form" noValidate onSubmit={handleConfirmForgotPassword} sx={{ width: '100%' }}>
+                        
                         <TextField
                             margin="normal"
                             required
@@ -184,8 +213,8 @@ function ForgotPassword() {
                             type="password"
                             id="new-password"
                             value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                             InputLabelProps={{
+                            onChange={handleNewPasswordChange}
+                            InputLabelProps={{
                                 style: { color: theme.palette.primary.main },
                             }}
                             sx={{
@@ -205,8 +234,8 @@ function ForgotPassword() {
                             type="password"
                             id="confirm-password"
                             value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                             InputLabelProps={{
+                            onChange={handleConfirmPasswordChange}
+                            InputLabelProps={{
                                 style: { color: theme.palette.primary.main },
                             }}
                             sx={{
@@ -217,6 +246,27 @@ function ForgotPassword() {
                                 }
                             }}
                         />
+
+                        {/* Validation Messages */}
+                        <Box sx={{ mt: 1, mb: 2 }}>
+                            <Typography variant="body2" color={hasMinLength ? "success.main" : "error.main"}>
+                                {hasMinLength ? '✓' : '✕'} At least 8 characters
+                            </Typography>
+                            <Typography variant="body2" color={hasUpperCase ? "success.main" : "error.main"}>
+                                {hasUpperCase ? '✓' : '✕'} At least one uppercase letter
+                            </Typography>
+                            <Typography variant="body2" color={hasLowerCase ? "success.main" : "error.main"}>
+                               {hasLowerCase ? '✓' : '✕'} At least one lowercase letter
+                            </Typography>
+                            <Typography variant="body2" color={hasNumber ? "success.main" : "error.main"}>
+                                {hasNumber ? '✓' : '✕'} At least one number
+                            </Typography>
+                            {/* Passwords Match Indicator */}
+                            <Typography variant="body2" color={passwordsMatch === true ? 'success.main' : (passwordsMatch === false ? 'error.main' : 'error.main')}>
+                                {passwordsMatch === true ? '✓ Passwords match' : (passwordsMatch === false ? '✕ Passwords do not match' : '✕ Passwords do not match')}
+                            </Typography>
+                        </Box>
+
                         <Button
                             type="submit"
                             fullWidth
@@ -224,14 +274,28 @@ function ForgotPassword() {
                             color="primary"
                             sx={{ mt: 3, mb: 2 }}
                         >
-                            Confirm New Password
+                            Confirm Password
                         </Button>
                     </Box>
                 )}
-                 <ToastContainer position="top-center" />
+                <ToastContainer position="top-center" />
             </Paper>
+            <Dialog
+            open={successDialogOpen}
+            onClose={handleCloseSuccessDialog}
+        >
+            <DialogTitle>Success</DialogTitle>
+            <DialogContent>
+                <Typography>Your password has been successfully reset. You can now log in.</Typography>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={handleCloseSuccessDialog} color="primary">
+                    OK
+                </Button>
+            </DialogActions>
+        </Dialog>
         </Box>
-        </ThemeProvider>
+      </ThemeProvider>
     );
 }
 
