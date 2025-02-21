@@ -8,11 +8,11 @@ import store from './app/store';       // Import your store
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <React.StrictMode>
+  // <React.StrictMode>
     <Provider store={store}> {/* Wrap App with Provider */}
       <App />
     </Provider>
-  </React.StrictMode>
+ // {/* </React.StrictMode> */}
 );
 
 reportWebVitals();

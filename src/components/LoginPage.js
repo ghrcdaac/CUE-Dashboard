@@ -11,15 +11,14 @@ import { createTheme, ThemeProvider } from '@mui/material/styles';
 import Paper from '@mui/material/Paper';
 import './LoginPage.css';
 import { useDispatch } from 'react-redux';
-import { loginSuccess, setChallengeName, setUser } from '../app/reducers/authSlice';
+import { setChallengeName, setUser } from '../app/reducers/authSlice';
 import { useNavigate, Link as RouterLink } from 'react-router-dom'; // Import useNavigate and rename Link
-
+import useAuth from '../hooks/useAuth';
 // Import Cognito SDK
 import { CognitoUserPool, CognitoUser, AuthenticationDetails } from 'amazon-cognito-identity-js';
 import { config } from '../config'; // Import config
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-
+import { toast } from 'react-toastify';
+//import 'react-toastify/dist/ReactToastify.css'; -- No need to add in individual component
 
 const theme = createTheme({
     palette: {
@@ -40,59 +39,27 @@ function LoginPage() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [loginError, setLoginError] = useState(''); // State for login error
+     const [loginError, setLoginError] = useState(''); // State for login error
     const passwordRef = useRef(null);
-    const dispatch = useDispatch();
+    //const dispatch = useDispatch(); // Get the dispatch function - NO LONGER NEEDED HERE
+    //const navigate = useNavigate(); // Get the navigate function - NO LONGER NEEDED HERE
+    const { login } = useAuth(); // Use the useAuth hook!  Get login function.
     const navigate = useNavigate();
 
     const handleLogin = async (event) => {
         event.preventDefault();
-        setLoginError(''); // Clear any previous errors
+        setLoginError(''); // Clear previous errors
 
         try {
-            const authenticationData = {
-                Username: username,
-                Password: password,
-            };
-            const authenticationDetails = new AuthenticationDetails(authenticationData);
-
-            const userData = {
-                Username: username,
-                Pool: userPool
-            };
-            const cognitoUser = new CognitoUser(userData);
-
-            await new Promise((resolve, reject) => { // Use a promise for cleaner async handling
-                cognitoUser.authenticateUser(authenticationDetails, {
-                    onSuccess: (result) => {
-                        console.log(result);
-                        const accessToken = result.getAccessToken().getJwtToken();
-                        const refreshToken = result.getRefreshToken().getToken();
-
-                        dispatch(loginSuccess({ accessToken, refreshToken, username }));
-                        navigate('/'); // Redirect on success
-                        resolve(); // Resolve the promise
-                    },
-                    onFailure: (err) => {
-                        // Set the error message for inline display
-                        setLoginError(err.message || 'An unknown error occurred.');
-                        reject(err); // Reject the promise
-                    },
-                    newPasswordRequired: (userAttributes, requiredAttributes) => {
-                        delete userAttributes.email_verified;
-                        dispatch(setChallengeName('NEW_PASSWORD_REQUIRED'));
-                        dispatch(setUser(cognitoUser));
-                        navigate('/change-password', { state: { username: username } });
-                        resolve();
-                    }
-                });
-            });
-
+            // Call the 'login' function from useAuth, passing username/password
+            await login(username, password, navigate); // Pass navigate!
+            // Success handling is now done within the `login` function (Redux, redirect)
         } catch (error) {
-            console.error("Login error:", error); // Log full error for debugging
+            console.error("Login error:", error); // Log the error
             setLoginError(error.message || 'An unexpected error occurred.'); // Set error state
         }
     };
+
      useEffect(() => {
       const handleAutoFill = () => {
         if (passwordRef.current && passwordRef.current.matches(':-webkit-autofill')) {
@@ -114,6 +81,7 @@ function LoginPage() {
         // Clean up the observer on unmount. VERY IMPORTANT!
         return () => observer.disconnect();
     }, [password]);
+
 
     return (
         <ThemeProvider theme={theme}>
@@ -159,7 +127,7 @@ function LoginPage() {
                             autoFocus
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                           InputLabelProps={{
+                            InputLabelProps={{
                                 style: { color: theme.palette.primary.main },
                             }}
                             sx={{
@@ -176,7 +144,8 @@ function LoginPage() {
                             fullWidth
                             name="password"
                             label="Password"
-                            type={showPassword ? 'text' : 'password'}
+                            type={showPassword ? 'text'
+                                : 'password'}
                             id="password"
                             autoComplete="current-password"
                             value={password}
@@ -210,14 +179,12 @@ function LoginPage() {
                         >
                             Sign In
                         </Button>
-
-                        {/* Display error message */}
+                         {/* Display error message */}
                         {loginError && (
                             <Typography color="error" align="center" sx={{ mb: 2 }}>
                                 {loginError}
                             </Typography>
                         )}
-
                         <Grid container justifyContent="space-between">
                             <Grid item>
                                  <Link component={RouterLink} to="/forgot-password" variant="body2" sx={{color: theme.palette.primary.main}}>
@@ -232,7 +199,6 @@ function LoginPage() {
                         </Grid>
                     </Box>
                 </Paper>
-            <ToastContainer position="top-center" />
             </Box>
         </ThemeProvider>
     );

@@ -19,3 +19,41 @@
                         Cloud Upload Environment
                     </Typography>
                 </Box>
+
+
+                <Typography variant="body2" color={passwordsMatch === true ? 'success.main' : (passwordsMatch === false ? 'error.main' : 'error.main')}>
+                    {passwordsMatch === true ? '✓ Passwords match' : (passwordsMatch === false ? '✕ Passwords do not match' : '✕ Passwords do not match')}
+                </Typography>
+
+
+
+
+
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+
+const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+
+setSuccessDialogOpen(true);
+
+const handleCloseSuccessDialog = () => {
+    setSuccessDialogOpen(false);
+    navigate('/login'); // Navigate to login after closing dialog
+};
+
+<Dialog
+open={successDialogOpen}
+onClose={handleCloseSuccessDialog}
+>
+<DialogTitle>Success</DialogTitle>
+<DialogContent>
+    <Typography>Your password has been successfully reset. You can now log in.</Typography>
+</DialogContent>
+<DialogActions>
+    <Button onClick={handleCloseSuccessDialog} color="primary">
+        OK
+    </Button>
+</DialogActions>
+</Dialog>

@@ -5,7 +5,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import Paper from '@mui/material/Paper';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import useAuth from '../hooks/useAuth'; // Import useAuth
 import { toast, ToastContainer } from 'react-toastify'; // Import ToastContainer
 import 'react-toastify/dist/ReactToastify.css';
@@ -15,11 +15,11 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 
 const theme = createTheme({
-  palette: {
-    primary: {
-      main: "#19577F",
+    palette: {
+        primary: {
+            main: "#19577F",
+        },
     },
-  },
 });
 
 function ForgotPassword() {
@@ -30,8 +30,9 @@ function ForgotPassword() {
     const [error, setError] = useState('');
     const [resetRequested, setResetRequested] = useState(false); // Track request status
     const [message, setMessage] = useState('');
-     const { forgotPassword, confirmForgotPassword } = useAuth(); // Get functions from useAuth
-    const navigate = useNavigate();
+    const { forgotPassword, confirmForgotPassword } = useAuth(); // Get functions from useAuth
+    const navigate = useNavigate(); // Use useNavigate hook
+    const [successDialogOpen, setSuccessDialogOpen] = useState(false);
 
     // Validation states
     const [hasUpperCase, setHasUpperCase] = useState(false);
@@ -39,7 +40,7 @@ function ForgotPassword() {
     const [hasNumber, setHasNumber] = useState(false);
     const [hasMinLength, setHasMinLength] = useState(false);
     const [passwordsMatch, setPasswordsMatch] = useState(null); // null, true, or false
-    const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+
 
     const validatePassword = (password) => {
         setHasUpperCase(/[A-Z]/.test(password));
@@ -58,7 +59,7 @@ function ForgotPassword() {
 
     // Add an onChange handler for confirmPassword:
     const handleConfirmPasswordChange = (e) => {
-         const confirmVal = e.target.value;
+        const confirmVal = e.target.value;
         setConfirmPassword(confirmVal);
         setPasswordsMatch(newPassword === confirmVal); // Check for match
 
@@ -72,7 +73,9 @@ function ForgotPassword() {
             const result = await forgotPassword(username);
             console.log("Forgot password request successful:", result);
             setResetRequested(true); // Show the confirmation form
-            toast.success("Password reset code sent. Check your email.");
+           // toast.success("Password reset code sent. Check your email."); //removed toast
+           setMessage("Password reset code sent. Check your email."); // Set success message
+
         } catch (err) {
             setError(err.message || 'An error occurred.');
             toast.error(error); // Use toast for errors
@@ -96,8 +99,8 @@ function ForgotPassword() {
 
         try {
             await confirmForgotPassword(username, confirmationCode, newPassword);
-                setSuccessDialogOpen(true);
-             toast.success("Password reset successfully! Please log in.");
+            setSuccessDialogOpen(true);
+            //toast.success("Password reset successfully! Please log in."); //removed toast
             // navigate('/login'); // Redirect to login page
 
         } catch (err) {
@@ -110,7 +113,7 @@ function ForgotPassword() {
         setSuccessDialogOpen(false);
         navigate('/login'); // Navigate to login after closing dialog
     };
-
+    
 
   return (
     <ThemeProvider theme={theme}>
@@ -182,7 +185,6 @@ function ForgotPassword() {
                     </Box>
                 ) : (
                     <Box component="form" noValidate onSubmit={handleConfirmForgotPassword} sx={{ width: '100%' }}>
-                        
                         <TextField
                             margin="normal"
                             required
@@ -263,8 +265,8 @@ function ForgotPassword() {
                             </Typography>
                             {/* Passwords Match Indicator */}
                             <Typography variant="body2" color={passwordsMatch === true ? 'success.main' : (passwordsMatch === false ? 'error.main' : 'error.main')}>
-                                {passwordsMatch === true ? '✓ Passwords match' : (passwordsMatch === false ? '✕ Passwords do not match' : '✕ Passwords do not match')}
-                            </Typography>
+                             {passwordsMatch === true ? '✓ Passwords match' : (passwordsMatch === false ? '✕ Passwords do not match' : '✕ Passwords do not match')}
+                         </Typography>
                         </Box>
 
                         <Button
@@ -278,22 +280,22 @@ function ForgotPassword() {
                         </Button>
                     </Box>
                 )}
-                <ToastContainer position="top-center" />
             </Paper>
             <Dialog
-            open={successDialogOpen}
-            onClose={handleCloseSuccessDialog}
-        >
-            <DialogTitle>Success</DialogTitle>
-            <DialogContent>
-                <Typography>Your password has been successfully reset. You can now log in.</Typography>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={handleCloseSuccessDialog} color="primary">
-                    OK
-                </Button>
-            </DialogActions>
-        </Dialog>
+                    open={successDialogOpen}
+                    onClose={handleCloseSuccessDialog}
+                    >
+                    <DialogTitle>Success</DialogTitle>
+                    <DialogContent>
+                        <Typography>Your password has been successfully reset. You can now log in.</Typography>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={handleCloseSuccessDialog} color="primary">
+                            OK
+                        </Button>
+                    </DialogActions>
+            </Dialog>
+              <ToastContainer position="top-center" />
         </Box>
       </ThemeProvider>
     );
