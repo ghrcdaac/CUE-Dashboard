@@ -62,7 +62,7 @@ function App() {
     // Call initializeAuth *once* on app load
     useEffect(() => {
          initializeAuth(); // remove navigate
-    }, [initializeAuth]);
+    }, []);
 
 
   return (

@@ -2,79 +2,81 @@ import React, { useState, useEffect } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Paper, Button, Typography, Checkbox, TablePagination, Dialog, DialogTitle,
-    DialogContent, DialogActions, TextField, IconButton, Box, Card, CardContent,
-} from '@mui/material'; // Import everything in one line
+    DialogContent, DialogActions, TextField, IconButton, Box, Card, CardContent
+} from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+//import AddIcon from '@mui/icons-material/Add'; // Not using Add yet
 import Autocomplete from "@mui/material/Autocomplete";
 import { fetchCueUsers, updateCueUser, deleteCueUser } from '../api/cueUser';
-import { fetchNgroups } from "../api/ngroup";  // Don't need getNgroupById (yet)
+import { fetchNgroups } from "../api/ngroup";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import useMenuSelection from '../hooks/useMenuSelection';
+import useAuth from '../hooks/useAuth'; // Import useAuth
 
-function Users() { // Correct component name (uppercase U)
+
+function Users() {
     useMenuSelection("Users");
-
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [selected, setSelected] = useState([]);  // Array of selected user IDs
+    const [selected, setSelected] = useState([]);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
-    const [ngroups, setNgroups] = useState({}); // Store ngroup short names, keyed by ID
-    const [ngroupOptions, setNgroupOptions] = useState([]); // For Autocomplete options
+    const [ngroups, setNgroups] = useState({});
+    const [ngroupOptions, setNgroupOptions] = useState([]);
     const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-    const [editUser, setEditUser] = useState(null); // Store the user being edited
+    const [editUser, setEditUser] = useState(null);
     const [openEditDialog, setOpenEditDialog] = useState(false);
 
-    const fetchNgroupOptions = async () => {
+    const { accessToken } = useAuth(); // Get accessToken
+
+     const fetchNgroupOptions = async () => {
         try {
-            const groups = await fetchNgroups();
+            const groups = await fetchNgroups(accessToken); //Pass token
             setNgroupOptions(groups);
+
         } catch (error) {
             console.error("Error fetching ngroup options:", error);
             toast.error(`Error fetching ngroup options: ${error.message}`); // Show error
         }
     };
-
-     const fetchNgroupData = async () => {  //Separate function to get names
+    const fetchNgroupData = async () => {
         try {
-            const groups = await fetchNgroups();
+            const groups = await fetchNgroups(accessToken); //Pass token
             const ngroupMap = {};
             groups.forEach(group => {
                 ngroupMap[group.id] = group.short_name;
             });
             setNgroups(ngroupMap);
-            //console.log(ngroupMap);
         } catch (error) {
             console.error("Error fetching ngroup data:", error);
-            toast.error(`Error fetching ngroup names: ${error.message}`); // Show error
-
+            toast.error(`Error fetching ngroup names: ${error.message}`);
         }
     };
 
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            // Replace 'YOUR_JWT_TOKEN' with the actual token!
-            const usersData = await fetchCueUsers("YOUR_JWT_TOKEN");
+            const usersData = await fetchCueUsers(accessToken);  // Pass accessToken
             setUsers(usersData);
         } catch (error) {
-            setError(error.message); // Keep for potential internal use
-            toast.error(`Error fetching users: ${error.message}`);
+            setError(error.message);
+            toast.error(error.message);
         } finally {
             setLoading(false);
         }
     };
 
-    // Fetch users and group options *once* on component mount:
-    useEffect(() => {
-        fetchUsers();
-        fetchNgroupOptions();
-    }, []);
 
     useEffect(() => {
+      fetchUsers();
+      fetchNgroupOptions();
+    }, [accessToken]); //  Depend on accessToken
+
+
+   useEffect(() => {
         fetchNgroupData();
     }, [users]);
 
@@ -112,89 +114,91 @@ function Users() { // Correct component name (uppercase U)
 
     const handleChangeRowsPerPage = (event) => {
         setRowsPerPage(parseInt(event.target.value, 10));
-        setPage(0);  // Reset to the first page
+        setPage(0);
     };
 
-    const handleEditClick = (user) => {
-        // Pre-populate ngroup_id with the *short name*, for correct display in Autocomplete
-        setEditUser({ ...user, ngroup_id: ngroups[user.ngroup_id] || "" });
-        setOpenEditDialog(true);
+   const handleEditClick = (user) => {
+    setEditUser({ ...user, ngroup_id: ngroups[user.ngroup_id] || "" }); //Pre-populate ngroup
+    setOpenEditDialog(true);
     };
-
     const handleNgroupAutocompleteChange = (event, value, formType) => {
-         if (formType === "edit") {
-          if(value)
-            setEditUser({ ...editUser, ngroup_id: value }); //removed the shortname
-          else
-            setEditUser({ ...editUser, ngroup_id: "" });
-        }
-    };
+            //  console.log("handleNgroupAutocompleteChange", event, value, formType)
+            if (formType === "add") {
+                //setNewEgress({ ...newEgress, ngroup_id: value });
+            } else if (formType === "edit") {
+              if(value)
+                setEditUser({ ...editUser, ngroup_id: value }); //removed the shortname
+              else
+                setEditUser({ ...editUser, ngroup_id: "" });
+            }
+        };
 
     const handleCloseEditDialog = () => {
         setOpenEditDialog(false);
-        setEditUser(null); // Clear editUser when closing
+        setEditUser(null);
     };
 
     const handleUpdateUser = async () => {
-        try {
-            // Find the ngroup object that matches the entered short_name
-           let selectedNgroup = null;
-           if(editUser.ngroup_id){
-              selectedNgroup = ngroupOptions.find(
-                (ngroup) =>  ngroup.short_name === editUser.ngroup_id
-            );
-                if (!selectedNgroup) {
-                    toast.error("Invalid ngroup selected.");
-                    return;
-                }
-            }
-
-            // Perform the update, sending the *ID* to the API
-            const updatedUser = await updateCueUser(editUser.id, {
-                ...editUser,
-                ngroup_id: selectedNgroup ? selectedNgroup.id : null, // Use the ID
-            }, "YOUR_JWT_TOKEN");  // Replace with actual token
-
-            setUsers(users.map((user) => (user.id === editUser.id ? updatedUser : user)));
-            setOpenEditDialog(false);
-            toast.success("User updated successfully!");
-            fetchNgroupData();
-        } catch (error) {
-            toast.error(`Error updating user: ${error.message}`);
+    try {
+        // Find the ngroup object that matches the entered short_name
+        let selectedNgroup = null;
+        if(editUser.ngroup_id){
+          selectedNgroup = ngroupOptions.find(
+            (ngroup) =>  ngroup.short_name === editUser.ngroup_id
+        );
+        if (!selectedNgroup) {
+            toast.error("Invalid ngroup selected.");
+            return;
         }
-    };
+        }
+
+        // Perform the update with the correct ngroup_id.  Pass accessToken.
+        const updatedUser = await updateCueUser(editUser.id, {
+            ...editUser,
+            ngroup_id: selectedNgroup ? selectedNgroup.id : null,
+        }, accessToken);
+
+        setUsers(users.map((user) => (user.id === editUser.id ? updatedUser : user)));
+        setOpenEditDialog(false);
+        toast.success("User updated successfully!");
+        fetchNgroupData(); // Refresh ngroup data
+    } catch (error) {
+        toast.error(`Error updating user: ${error.message}`);
+    }
+};
 
     const handleDeleteClick = () => {
         if (selected.length === 0) {
             toast.error("Please select at least one user to delete.");
             return;
         }
-        setOpenDeleteDialog(true); // Open confirmation dialog
+        setOpenDeleteDialog(true);
     };
 
-    const handleConfirmDelete = async () => {
-        try {
-            await Promise.all(selected.map(userId => deleteCueUser(userId, "YOUR_JWT_TOKEN"))); // Replace
-            setUsers(users.filter(user => !selected.includes(user.id)));
-            setSelected([]);
-            toast.success("Users deleted successfully!");
-        } catch (error) {
-            toast.error(`Error deleting users: ${error.message}`);
-        } finally {
-            setOpenDeleteDialog(false); // Close dialog
-        }
-    };
+   const handleConfirmDelete = async () => {
+    try {
+      // Pass accessToken to deleteCueUser
+      await Promise.all(selected.map(userId => deleteCueUser(userId, accessToken)));
+      setUsers(users.filter(user => !selected.includes(user.id)));
+      setSelected([]);
+      toast.success("Users deleted successfully!");
+    } catch (error) {
+      toast.error(`Error deleting users: ${error.message}`);
+    } finally {
+      setOpenDeleteDialog(false);
+    }
+  };
 
     const handleCloseDeleteDialog = () => {
         setOpenDeleteDialog(false);
     };
 
+
     const isSelected = (id) => selected.indexOf(id) !== -1;
 
-    // Calculate visibleRows *after* users and ngroups are populated
     const visibleRows = React.useMemo(
         () => users.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
-        [users, page, rowsPerPage] // Correct dependencies
+        [users, page, rowsPerPage]
     );
 
     return (
@@ -204,8 +208,9 @@ function Users() { // Correct component name (uppercase U)
             </Typography>
 
             {loading && <Typography>Loading users...</Typography>}
+            {error && <Typography color="error">Error: {error}</Typography>}
 
-            <Card sx={{ marginBottom: 2 }}>
+            <Card sx={{marginBottom: 2}}>
                 <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                         <Typography variant="h5">Users</Typography>
@@ -214,7 +219,7 @@ function Users() { // Correct component name (uppercase U)
                             <Button
                                 variant="contained"
                                 color="primary"
-                                onClick={() => handleEditClick(users.find(user => user.id === selected[0]))} // Pass user
+                                onClick={() => handleEditClick(users.find(user => selected.includes(user.id)))}
                                 disabled={selected.length !== 1}
                                 startIcon={<EditIcon />}
                                 sx={{ mr: 1 }}
@@ -236,7 +241,7 @@ function Users() { // Correct component name (uppercase U)
                         <Table sx={{ minWidth: 650 }} aria-label="simple table" stickyHeader>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell padding="checkbox" sx={{ bgcolor: "#E5E8EB", color: "black " }}>
+                                     <TableCell padding="checkbox" sx={{ bgcolor: "#E5E8EB", color: "black " }}>
                                         <Checkbox
                                             indeterminate={selected.length > 0 && selected.length < users.length}
                                             checked={users.length > 0 && selected.length === users.length}
@@ -247,29 +252,28 @@ function Users() { // Correct component name (uppercase U)
                                     <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>Email</TableCell>
                                     <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>CUE Username</TableCell>
                                     <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>Registered</TableCell>
-                                    <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>Group</TableCell>
+                                     <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>Group</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {visibleRows.map((user) => {
-                                    const isItemSelected = isSelected(user.id);
+                                     const isItemSelected = isSelected(user.id);
                                     return (
-                                        <TableRow key={user.id} hover onClick={(event) => handleClick(event, user.id)}
-                                                  role="checkbox"
-                                                  aria-checked={isItemSelected}
-                                                  tabIndex={-1}
-                                                  selected={isItemSelected}>
-                                            <TableCell padding="checkbox">
-                                                <Checkbox checked={isItemSelected} />
-                                            </TableCell>
-                                            <TableCell>{user.name}</TableCell>
-                                            <TableCell>{user.email}</TableCell>
-                                            <TableCell>{user.cueusername}</TableCell>
-                                            <TableCell>{user.registered}</TableCell>
-                                            <TableCell>{ngroups[user.ngroup_id] || "Loading..."}</TableCell>
-                                        </TableRow>
-                                    );
-                                })}
+                                    <TableRow key={user.id} hover onClick={(event) => handleClick(event, user.id)}
+                                    role="checkbox"
+                                    aria-checked={isItemSelected}
+                                    tabIndex={-1}
+                                     selected={isItemSelected}>
+                                        <TableCell padding="checkbox">
+                                            <Checkbox checked={isItemSelected} />
+                                        </TableCell>
+                                        <TableCell>{user.name}</TableCell>
+                                        <TableCell>{user.email}</TableCell>
+                                        <TableCell>{user.cueusername}</TableCell>
+                                        <TableCell>{user.registered}</TableCell>
+                                        <TableCell>{ngroups[user.ngroup_id] || "Test Group"}</TableCell>
+                                    </TableRow>
+                                );})}
                             </TableBody>
                         </Table>
                     </TableContainer>
@@ -285,9 +289,7 @@ function Users() { // Correct component name (uppercase U)
                 </CardContent>
             </Card>
 
-
             <ToastContainer position="top-center" />
-
              {/* Edit User Dialog */}
             <Dialog open={openEditDialog} onClose={handleCloseEditDialog}>
                 <DialogTitle>Edit User</DialogTitle>
@@ -345,7 +347,7 @@ function Users() { // Correct component name (uppercase U)
             </Dialog>
 
             {/* Delete Confirmation Dialog */}
-             <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
+            <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
                 <DialogTitle>Confirm Delete</DialogTitle>
                 <DialogContent>
                     Are you sure you want to delete the selected user(s)?
@@ -355,8 +357,10 @@ function Users() { // Correct component name (uppercase U)
                     <Button onClick={handleConfirmDelete} color="error">Delete</Button>
                 </DialogActions>
             </Dialog>
-        </Box>
-    );
-}
 
-export default Users; // Correct export
+        </Box>
+
+    );
+
+}
+export default Users;

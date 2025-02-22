@@ -148,6 +148,8 @@ function useAuth() {
             throw error; // Re-throw the error to be caught by the caller
         }
     },[user])
+    
+    
     const refreshAccessToken = useCallback(async (navigate) => {
         // Get refresh token from Redux state - CORRECT
         const refreshTokenValue = localStorage.getItem('refreshToken');; // Use a different variable name!
@@ -211,7 +213,7 @@ function useAuth() {
     }, [isAuthenticated, accessToken, dispatch, refreshAccessToken]);
 
 
-     const initializeAuth = useCallback(async (navigate) => { // Add navigate here
+     const initializeAuth = useCallback(async () => { // Remove navigate here
         const storedUsername = localStorage.getItem('CUE_username');
         const storedRefreshToken = localStorage.getItem('refreshToken');//get refresh token from local storage
         console.log("initializeAuth: refreshToken from localstorage:", storedRefreshToken); // LOG THIS
@@ -230,9 +232,9 @@ function useAuth() {
                     if (err) {
                         console.error("Error getting user session:", err);
                          dispatch(logoutSuccess());
-                        if(navigate){ //check if navigate is a function
-                            navigate('/login');
-                        }
+                        // if(navigate){ //check if navigate is a function -- removed navigate
+                        //     navigate('/login');
+                        // }
                         return; // Stop execution if there's an error
                     }
 
@@ -242,9 +244,9 @@ function useAuth() {
                         if (err) {
                             console.error("initializeAuth: Refresh token error:", err);
                              dispatch(logoutSuccess());
-                            if(navigate){
-                                navigate('/login'); // And here
-                            }
+                            // if(navigate){
+                            //     navigate('/login'); // And here
+                            // }
                             return; // Stop execution
                         }
 
@@ -261,9 +263,9 @@ function useAuth() {
             } catch (error) {
                 console.error("Error initializing auth:", error);
                 dispatch(logoutSuccess()); // Logout on error.  This is important.
-                if(navigate){
-                    navigate('/login');
-                }
+                // if(navigate){
+                //     navigate('/login');
+                // }
 
             }
         }
@@ -275,11 +277,10 @@ function useAuth() {
     }, [dispatch]); // removed auth.refreshToken
      useEffect(() => {
         initializeAuth();
-    }, [initializeAuth]);
+    }, [initializeAuth]); // Depend on initializeAuth function ONLY
 
 
-
-  return { isAuthenticated, accessToken, login, logout, username, challengeName, forgotPassword, confirmForgotPassword, changePassword, initializeAuth, refreshAccessToken }; // no navigate here
+    return { isAuthenticated, accessToken, login, logout, username, challengeName, forgotPassword, confirmForgotPassword, changePassword, initializeAuth, refreshAccessToken }; // no navigate here
 }
 
 export default useAuth;
