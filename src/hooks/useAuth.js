@@ -2,9 +2,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import { loginSuccess, logoutSuccess, setChallengeName, setUser, setAccessToken } from '../app/reducers/authSlice';
 import { CognitoUserPool, CognitoUser, AuthenticationDetails, CognitoRefreshToken } from 'amazon-cognito-identity-js';
 import { config } from '../config';
-//import { useNavigate } from 'react-router-dom'; // REMOVE useNavigate from here
 import { jwtDecode } from 'jwt-decode';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react'; // Import useCallback
 
 const poolData = {
     UserPoolId: config.cognitoUserPoolId,
@@ -16,9 +15,10 @@ const userPool = new CognitoUserPool(poolData);
 function useAuth() {
     const dispatch = useDispatch();
     const auth = useSelector(state => state.auth);
-    const { isAuthenticated, accessToken, refreshToken, username, challengeName, user } = auth;  // Include refreshToken
-    let refreshTimeout = null;
+    const { isAuthenticated, accessToken, refreshToken, username, challengeName, user } = auth;
+    let refreshTimeout = null; //keep the timeout outside
 
+    // Use useCallback for ALL your functions that are used as dependencies
     const login = useCallback(async (username, password, navigate) => {
         const authenticationData = {
             Username: username,
@@ -36,12 +36,18 @@ function useAuth() {
             cognitoUser.authenticateUser(authenticationDetails, {
                 onSuccess: (result) => {
                     const accessToken = result.getAccessToken().getJwtToken();
-                    const idToken = result.getIdToken().getJwtToken(); // Often useful
+                    const idToken = result.getIdToken().getJwtToken();
                     const refreshToken = result.getRefreshToken().getToken();
+                    const decodedAccessToken = jwtDecode(accessToken); // Decode access token
+                    const expirationTime = decodedAccessToken.exp; // Get expiration time (in seconds)
 
-                    // Store username in localStorage *and* dispatch to Redux
+                    // Store username and tokens in localStorage with "CUE_" prefix
                     localStorage.setItem('CUE_username', username);
-                    localStorage.setItem('refreshToken', refreshToken); //Store in localstorage
+                    localStorage.setItem('CUE_refreshToken', refreshToken);
+                    localStorage.setItem('CUE_accessToken', accessToken);
+                    localStorage.setItem('CUE_accessTokenExpiration', expirationTime);
+
+
                     dispatch(loginSuccess({ accessToken, refreshToken, username }));
                     navigate('/');
                     resolve();
@@ -53,8 +59,7 @@ function useAuth() {
                 },
                 newPasswordRequired: (userAttributes, requiredAttributes) => {
                     delete userAttributes.email_verified;
-                    //storing in local storage
-                    localStorage.setItem('CUE_username', username);
+                    localStorage.setItem('CUE_username', username); // Store username
                     dispatch(setChallengeName('NEW_PASSWORD_REQUIRED'));
                     dispatch(setUser(cognitoUser))
                     navigate('/change-password', { state: { username: username } });
@@ -66,7 +71,7 @@ function useAuth() {
         console.error("Login error:", error);
         throw error;
         }
-    },[dispatch]);
+    },[dispatch]); // Correct dependency
 
 
     const logout = useCallback((navigate) => {
@@ -76,10 +81,10 @@ function useAuth() {
         }
         dispatch(logoutSuccess());
         navigate('/login');
-         // Clear refresh token cookie.  IMPORTANT!
-        //Cookies.remove('refreshToken', { path: '/', secure: true, sameSite: 'strict' }); -- Removed cookie
-         localStorage.removeItem('CUE_username'); // Clear username
-         localStorage.removeItem('refreshToken');
+        localStorage.removeItem('CUE_username'); // Clear username
+        localStorage.removeItem('CUE_refreshToken'); // Clear refresh token
+        localStorage.removeItem('CUE_accessToken'); // Clear access token
+        localStorage.removeItem('CUE_accessTokenExpiration'); // Clear expiration
 
     },[dispatch]);
 
@@ -148,13 +153,14 @@ function useAuth() {
             throw error; // Re-throw the error to be caught by the caller
         }
     },[user])
-    
-    
-    const refreshAccessToken = useCallback(async (navigate) => {
-        // Get refresh token from Redux state - CORRECT
-        const refreshTokenValue = localStorage.getItem('refreshToken');; // Use a different variable name!
 
-        if (!refreshTokenValue) {
+   const refreshAccessToken = useCallback(async () => {
+        // Get refresh token from LOCAL STORAGE - CORRECT
+        const storedRefreshToken = localStorage.getItem('CUE_refreshToken');
+
+        console.log("refreshAccessToken called. refreshToken:", storedRefreshToken);
+
+        if (!storedRefreshToken) {
             console.log("No refresh token found in local storage.");
             return;
         }
@@ -165,119 +171,136 @@ function useAuth() {
             return;
         }
 
-        const cognitoRefreshToken = new CognitoRefreshToken({ RefreshToken: refreshTokenValue });
+        const cognitoRefreshToken = new CognitoRefreshToken({ RefreshToken: storedRefreshToken });
 
-        return new Promise((resolve, reject) => {
+        try {
+            const session = await new Promise((resolve, reject) => {
+                cognitoUser.refreshSession(cognitoRefreshToken, (err, session) => {
+                    if (err) {
+                        console.error("Error refreshing token:", err);
+                        dispatch(logoutSuccess()); // Log out on refresh failure
+                        // No navigation here. Let calling component handle it
+                        reject(err); // REJECT the promise
+                        return;
+                    }
+
+                    console.log("Token refresh successful:", session);
+                    const newAccessToken = session.getAccessToken().getJwtToken();
+                    const newRefreshToken = session.getRefreshToken().getToken(); // Get new refresh token.
+                    const expirationTime = session.getAccessToken().getExp();
+                    console.log("New access token:", newAccessToken);
+                     // Store the new refresh token and expiration time
+                    localStorage.setItem('CUE_accessToken', newAccessToken);
+                    localStorage.setItem('CUE_refreshToken', newRefreshToken);
+                    localStorage.setItem('CUE_accessTokenExpiration', expirationTime);
+                    dispatch(setAccessToken(newAccessToken)); // Update Redux
+                    resolve(session); // RESOLVE the promise
+                });
+            });
+        }
+        catch (error){
+             console.error("refreshAccessToken: Error:", error);
+            dispatch(logoutSuccess()); // Logout on error
+        }
+
+    }, [dispatch]); // Correct dependencies
+
+
+    useEffect(() => {
+        let timeoutId;
+        if (isAuthenticated && accessToken) {
+            console.log("Setting up refresh timeout. accessToken:", accessToken);
+            const decodedToken = jwtDecode(accessToken);
+            console.log("Decoded token:", decodedToken);
+            const expirationTime = decodedToken.exp * 1000; // Convert to milliseconds.
+            const currentTime = Date.now();
+            let timeoutTime = expirationTime - currentTime - 300000; // 5 minutes (300000ms) before expiry
+
+            if (timeoutTime < 0) {
+                timeoutTime = 0;  // Refresh immediately if already expired.
+            }
+            console.log(`Refresh timeout set for ${timeoutTime}ms`);
+
+            timeoutId = setTimeout(() => {
+
+                refreshAccessToken().catch(error => { // Now correctly using a promise
+                    console.error("Failed to refresh token:", error);
+                    dispatch(logoutSuccess());
+                    // No navigate here - let calling component handle it
+                });
+            }, timeoutTime);
+             return () => {if (timeoutId) clearTimeout(timeoutId)}; // Cleanup on unmount/logout
+        }
+         else {
+            console.log("Not authenticated or no access token.  Not setting refresh timeout.");
+        }
+        // removed navigate
+    }, [isAuthenticated, accessToken, dispatch, refreshAccessToken]); // Correct dependencies!
+
+    const initializeAuth = useCallback(async () => {
+    const storedUsername = localStorage.getItem('CUE_username');
+    const storedRefreshToken = localStorage.getItem('CUE_refreshToken'); // CORRECT KEY
+    const storedExpiration = localStorage.getItem('CUE_accessTokenExpiration');
+
+    console.log("initializeAuth: refreshToken from localStorage:", storedRefreshToken);
+    console.log("initializeAuth: username from localStorage:", storedUsername);
+
+    if (storedUsername && storedRefreshToken && storedExpiration) {
+        const now = Math.floor(Date.now() / 1000); // Current time in seconds
+
+        if (parseInt(storedExpiration, 10) > now) {
+            // Token is still valid, set access token in Redux
+            console.log("initializeAuth: Access token still valid. Setting from localStorage.");
+            const accessToken = localStorage.getItem('CUE_accessToken');
+            dispatch(loginSuccess({ accessToken, refreshToken: storedRefreshToken, username: storedUsername }));
+            return; // Exit early, we're already logged in
+        }
+
+        console.log("initializeAuth: Found username and refresh token. Attempting refresh.");
+        try {
+            const cognitoUser = new CognitoUser({
+                Username: storedUsername,
+                Pool: userPool
+            });
+
+            // No need to call getSession explicitly; refreshSession handles it.
+            const cognitoRefreshToken = new CognitoRefreshToken({ RefreshToken: storedRefreshToken });
             cognitoUser.refreshSession(cognitoRefreshToken, (err, session) => {
                 if (err) {
-                    console.error("Error refreshing token:", err);
+                    console.error("initializeAuth: Refresh token error:", err);
                     dispatch(logoutSuccess());
-                    if(navigate){
-                        navigate('/login');
-                    }
-                    reject(err);
+                    // navigate('/login'); -- NO, handled by caller
                     return;
                 }
 
                 const newAccessToken = session.getAccessToken().getJwtToken();
-                // Dispatch an action to update the access token in Redux
-                localStorage.setItem('refreshToken', session.getRefreshToken().getToken()); // Update local storage
-                dispatch(setAccessToken(newAccessToken));
-                resolve();
+                const newRefreshToken = session.getRefreshToken().getToken(); // Get new refresh token
+                const expirationTime = session.getAccessToken().getExp();
+
+                console.log("initializeAuth: New access token:", newAccessToken);
+
+                // Store the new tokens and expiration time
+                localStorage.setItem('CUE_accessToken', newAccessToken);
+                localStorage.setItem('refreshToken', newRefreshToken); //update to local storage
+                localStorage.setItem('CUE_accessTokenExpiration', expirationTime);
+
+
+                // Dispatch loginSuccess with stored username and new tokens
+                dispatch(loginSuccess({ accessToken: newAccessToken, refreshToken: newRefreshToken, username: storedUsername }));
             });
-        });
-    }, [auth.refreshToken, dispatch]);
-
-
-   useEffect(() => {
-        let timeoutId;
-        if (isAuthenticated && accessToken) {
-            const decodedToken = jwtDecode(accessToken);
-            const expirationTime = decodedToken.exp * 1000;
-            const currentTime = Date.now();
-            let timeoutTime = expirationTime - currentTime - 300000;
-
-            if (timeoutTime < 0) {
-                timeoutTime = 0;
-            }
-
-            timeoutId = setTimeout(() => {
-              refreshAccessToken().catch(error => { // refreshToken now returns a promise
-                    console.error("Failed to refresh token:", error);
-                    dispatch(logoutSuccess());
-                });
-            }, timeoutTime);
-
-            return () => {if (timeoutId) clearTimeout(timeoutId)}; // Cleanup on unmount/logout
+        } catch (error) {
+            console.error("initializeAuth: Error during refresh attempt:", error);
+            dispatch(logoutSuccess()); // Logout on error
         }
-    }, [isAuthenticated, accessToken, dispatch, refreshAccessToken]);
+    } else {
+        console.log("initializeAuth: No username/refresh token found. User is not logged in.");
+        dispatch(logoutSuccess()); // Ensure consistent state
+    }
+}, [dispatch]); // Correct dependencies
 
-
-     const initializeAuth = useCallback(async () => { // Remove navigate here
-        const storedUsername = localStorage.getItem('CUE_username');
-        const storedRefreshToken = localStorage.getItem('refreshToken');//get refresh token from local storage
-        console.log("initializeAuth: refreshToken from localstorage:", storedRefreshToken); // LOG THIS
-        console.log("initializeAuth: username from localStorage:", storedUsername);
-
-        if (storedUsername && storedRefreshToken) { // Check for BOTH
-            console.log("initializeAuth: Found username and refresh token. Attempting refresh.");
-            try {
-                const cognitoUser = new CognitoUser({
-                    Username: storedUsername, // Use stored username
-                    Pool: userPool
-                });
-
-                 // Get the current user's session data
-                cognitoUser.getSession((err, session) => {
-                    if (err) {
-                        console.error("Error getting user session:", err);
-                         dispatch(logoutSuccess());
-                        // if(navigate){ //check if navigate is a function -- removed navigate
-                        //     navigate('/login');
-                        // }
-                        return; // Stop execution if there's an error
-                    }
-
-                   // const currentUsername = cognitoUser.username;  // NO LONGER NEEDED - use storedUsername
-                    const cognitoRefreshToken = new CognitoRefreshToken({ RefreshToken: storedRefreshToken });
-                      cognitoUser.refreshSession(cognitoRefreshToken, (err, session) => {
-                        if (err) {
-                            console.error("initializeAuth: Refresh token error:", err);
-                             dispatch(logoutSuccess());
-                            // if(navigate){
-                            //     navigate('/login'); // And here
-                            // }
-                            return; // Stop execution
-                        }
-
-                        const newAccessToken = session.getAccessToken().getJwtToken();
-                        const newRefreshToken = session.getRefreshToken().getToken(); // Get new refresh token
-                        localStorage.setItem('refreshToken', newRefreshToken); // update refresh token
-                        //console.log("initializeAuth: New access token:", newAccessToken);
-
-                        // Dispatch loginSuccess with the *retrieved* username, new tokens
-                        dispatch(loginSuccess({ accessToken: newAccessToken, refreshToken: newRefreshToken , username: storedUsername }));
-                    });
-                });
-
-            } catch (error) {
-                console.error("Error initializing auth:", error);
-                dispatch(logoutSuccess()); // Logout on error.  This is important.
-                // if(navigate){
-                //     navigate('/login');
-                // }
-
-            }
-        }
-         else {
-            // No refresh token, user is not logged in.
-            console.log("initializeAuth: No username/refresh token found. User is not logged in.");
-            dispatch(logoutSuccess());  // Ensure consistent state - important!
-        }
-    }, [dispatch]); // removed auth.refreshToken
-     useEffect(() => {
-        initializeAuth();
-    }, [initializeAuth]); // Depend on initializeAuth function ONLY
+useEffect(() => {
+    initializeAuth();
+}, [initializeAuth]); // Depend ONLY on initializeAuth
 
 
     return { isAuthenticated, accessToken, login, logout, username, challengeName, forgotPassword, confirmForgotPassword, changePassword, initializeAuth, refreshAccessToken }; // no navigate here
