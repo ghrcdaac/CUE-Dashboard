@@ -1,0 +1,86 @@
+.auth-container {
+    height: 100vh;
+    background-color: #19577F; /* Your primary color */
+    padding: 20px;
+    overflow-y: visible;     /* Enable vertical scrolling for the entire container */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.auth-form-container {
+    background-color: white;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 600px;    /* Initial max-width */
+    transition: max-width 0.5s ease, max-height 0.5s ease;
+    /* overflow-y: auto;  <-- REMOVE THIS */
+    margin-top: 20px;
+}
+
+.auth-container.expanded .auth-form-container {
+    max-width: 800px;
+    /* max-height: 800px; (Optional) */
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* VERY IMPORTANT: Make the form fill its container */
+    overflow-y: visible; /* Add overflow-y: auto HERE */
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 1rem;
+}
+
+.form-group textarea {
+    height: 150px;
+    resize: vertical;
+}
+
+.auth-button {
+    background-color: #0052cc; /* Or use your theme */
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.auth-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.error-message {
+    color: red;
+    margin-top: 5px;
+    font-size: 14px;
+}
+
+.input-error {
+    border-color: red;
+}

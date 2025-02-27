@@ -19,6 +19,7 @@ import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { useSelector } from 'react-redux'; // Import useSelector
 import Profile from './pages/Profile'; // Import
 import useAuth from "./hooks/useAuth"; // Import the useAuth hook
+import SignupPage from './components/SignupPage';
 //import { useNavigate } from 'react-router-dom'; // Import useNavigate --Removed
 
 const theme = createTheme({
@@ -83,6 +84,7 @@ function App() {
             {/* LoginPage is OUTSIDE the Layout */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/change-password" element={challengeName === 'NEW_PASSWORD_REQUIRED' ? <ChangePassword /> : <Navigate to="/login" />} />
+            <Route path="/signup" element={<SignupPage />} />
              <Route path="/forgot-password" element={<ForgotPassword />} />
           </Routes>
         </BrowserRouter>

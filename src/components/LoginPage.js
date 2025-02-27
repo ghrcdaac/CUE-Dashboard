@@ -18,6 +18,7 @@ import useAuth from '../hooks/useAuth';
 import { CognitoUserPool, CognitoUser, AuthenticationDetails } from 'amazon-cognito-identity-js';
 import { config } from '../config'; // Import config
 import { toast } from 'react-toastify';
+import { Grid2 } from '@mui/material';
 //import 'react-toastify/dist/ReactToastify.css'; -- No need to add in individual component
 
 const theme = createTheme({
@@ -95,7 +96,7 @@ function LoginPage() {
                     minHeight: '100vh',
                     backgroundColor: 'primary.main',
                     color: 'white',
-                    padding: '20px',
+                    // padding: '20px',
                 }}
             >
                 {/* Logo and Title */}
@@ -186,18 +187,18 @@ function LoginPage() {
                                 {loginError}
                             </Typography>
                         )}
-                        <Grid container justifyContent="space-between">
-                            <Grid item>
+                        <Grid2 container justifyContent="space-between">
+                            <Grid2 item>
                                  <Link component={RouterLink} to="/forgot-password" variant="body2" sx={{color: theme.palette.primary.main}}>
                                     Forgot password?
                                 </Link>
-                            </Grid>
-                            <Grid item>
-                                <Link href="#" variant="body2" sx={{color: theme.palette.primary.main}}>
+                            </Grid2>
+                            <Grid2 item>
+                                <Link component={RouterLink} to="/signup" variant="body2" sx={{color: theme.palette.primary.main}}>
                                     New User? Create Account
                                 </Link>
-                            </Grid>
-                        </Grid>
+                            </Grid2>
+                        </Grid2>
                     </Box>
                 </Paper>
             </Box>
