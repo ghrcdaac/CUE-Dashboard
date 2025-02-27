@@ -12,7 +12,7 @@ import Paper from '@mui/material/Paper';
 import './LoginPage.css';
 import { useDispatch } from 'react-redux';
 import { setChallengeName, setUser } from '../app/reducers/authSlice';
-import { useNavigate, Link as RouterLink } from 'react-router-dom'; // Import useNavigate and rename Link
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom'; // Import useNavigate and rename Link
 import useAuth from '../hooks/useAuth';
 // Import Cognito SDK
 import { CognitoUserPool, CognitoUser, AuthenticationDetails } from 'amazon-cognito-identity-js';
@@ -46,6 +46,8 @@ function LoginPage() {
     //const navigate = useNavigate(); // Get the navigate function - NO LONGER NEEDED HERE
     const { login } = useAuth(); // Use the useAuth hook!  Get login function.
     const navigate = useNavigate();
+    const location = useLocation(); // Get current location
+    const from = location.state?.from?.pathname || '/';
 
     const handleLogin = async (event) => {
         event.preventDefault();
@@ -55,6 +57,7 @@ function LoginPage() {
             // Call the 'login' function from useAuth, passing username/password
             await login(username, password, navigate); // Pass navigate!
             // Success handling is now done within the `login` function (Redux, redirect)
+            navigate(from, { replace: true });
         } catch (error) {
             console.error("Login error:", error); // Log the error
             setLoginError(error.message || 'An unexpected error occurred.'); // Set error state

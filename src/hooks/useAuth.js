@@ -1,5 +1,5 @@
 import { useSelector, useDispatch } from 'react-redux';
-import { loginSuccess, logoutSuccess, setChallengeName, setUser, setAccessToken } from '../app/reducers/authSlice';
+import { loginSuccess, logoutSuccess, setChallengeName, setUser, setAccessToken, setLoading  } from '../app/reducers/authSlice';
 import { CognitoUserPool, CognitoUser, AuthenticationDetails, CognitoRefreshToken } from 'amazon-cognito-identity-js';
 import { config } from '../config';
 //import { useNavigate } from 'react-router-dom'; // REMOVE useNavigate from here
@@ -239,7 +239,7 @@ function useAuth() {
 
         console.log("initializeAuth: refreshToken from localstorage:", storedRefreshToken); // LOG THIS
         console.log("initializeAuth: username from localStorage:", storedUsername);
-
+        dispatch(setLoading(true));
        if (storedUsername && storedRefreshToken && storedExpiration) {
         const now = Math.floor(Date.now() / 1000); // Current time in seconds
 
@@ -307,6 +307,7 @@ function useAuth() {
             // No refresh token, user is not logged in.
             console.log("initializeAuth: No username/refresh token found. User is not logged in.");
             dispatch(logoutSuccess());  // Ensure consistent state - important!
+            dispatch(setLoading(false));
         }
     }, [dispatch]); // removed auth.refreshToken
      useEffect(() => {

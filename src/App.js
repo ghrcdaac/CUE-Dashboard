@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
-import { Provider } from "react-redux";
-import store from "./app/store";
+//import { Provider } from "react-redux"; // REMOVE THIS
+import { store } from "./app/store";  //KEEP THIS
 import Header from "./components/Header";
 import SideNav from "./components/SideNav";
 import Footer from "./components/Footer";
@@ -19,8 +19,8 @@ import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { useSelector } from 'react-redux'; // Import useSelector
 import Profile from './pages/Profile'; // Import
 import useAuth from "./hooks/useAuth"; // Import the useAuth hook
-import SignupPage from './components/SignupPage';
 //import { useNavigate } from 'react-router-dom'; // Import useNavigate --Removed
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const theme = createTheme({
   palette: {
@@ -57,39 +57,42 @@ function Layout() {
 function App() {
     const isAuthenticated = useSelector((state) => state.auth.isAuthenticated); // Get authentication status
     const challengeName = useSelector((state) => state.auth.challengeName); // Get challenge name
+    const isLoading = useSelector((state) => state.auth.isLoading);
      const { initializeAuth } = useAuth(); // Get initializeAuth
     //const navigate = useNavigate(); // Get navigate in component --Removed
 
     // Call initializeAuth *once* on app load
     useEffect(() => {
          initializeAuth(); // remove navigate
-    }, []);
+    }, [initializeAuth]);
 
+    if (isLoading) {
+      return <div>Loading...</div>; // Or a more sophisticated loading indicator
+  }
 
   return (
-    <Provider store={store}>
-      <ThemeProvider theme={theme}>
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <Routes >
+   <ThemeProvider theme={theme}>
+        <BrowserRouter>
+          <Routes>
             {/* Use the Layout component for all routes EXCEPT /login */}
             <Route path="/" element={<Layout />}>
-              <Route index element={<Home />} />
-              <Route path="collections" element={<Collections />} />
-              <Route path="providers" element={<Providers />} />
-              <Route path="metrics" element={<Metrics />} />
-              <Route path="users" element={<Users />} />
-              <Route path="daac" element={<DAAC />} />
-              <Route path="profile" element={<Profile />} />
+              <Route index element={<ProtectedRoute><Home /></ProtectedRoute>} />
+              <Route path="collections" element={<ProtectedRoute><Collections /></ProtectedRoute>} />
+              <Route path="providers" element={<ProtectedRoute><Providers /></ProtectedRoute>} />
+              <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />
+              <Route path="users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
+              <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />
+              <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             </Route>
             {/* LoginPage is OUTSIDE the Layout */}
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/change-password" element={challengeName === 'NEW_PASSWORD_REQUIRED' ? <ChangePassword /> : <Navigate to="/login" />} />
-            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/change-password" element={challengeName === 'NEW_PASSWORD_REQUIRED' ? <ChangePassword /> : <Navigate to="/" />} />
              <Route path="/forgot-password" element={<ForgotPassword />} />
+
+            <Route path="*" element={isAuthenticated ? <Navigate to="/" replace /> : <Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
       </ThemeProvider>
-    </Provider>
   );
 }
 
