@@ -12,12 +12,11 @@ import { fetchCueUsers, updateCueUser, deleteCueUser } from '../api/cueUser';
 import { fetchNgroups } from "../api/ngroup";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import useMenuSelection from '../hooks/useMenuSelection';
 import useAuth from '../hooks/useAuth'; // Import useAuth
 
 
 function Users() {
-    useMenuSelection("Users");
+
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);

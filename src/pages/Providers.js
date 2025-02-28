@@ -10,10 +10,10 @@ import { fetchProviders } from '../api/providerApi'; // Import API functions
 import useAuth from '../hooks/useAuth'; // Import useAuth
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import useMenuSelection from '../hooks/useMenuSelection';
+
 
 function Providers() {
-    useMenuSelection("Providers"); //for menu selection
+
     const [providers, setProviders] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
