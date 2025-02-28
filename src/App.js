@@ -23,7 +23,8 @@ import useAuth from "./hooks/useAuth"; // Import the useAuth hook
 import ProtectedRoute from "./components/ProtectedRoute";
 import SignupPage from './components/SignupPage';
 import CreateCollection from "./pages/collections/CreateCollection"; // Import
-
+import PendingRequests from "./pages/users/PendingRequests"; // Import
+import RejectedRequests from "./pages/users/RejectedRequests";
 
 
 const theme = createTheme({
@@ -90,7 +91,12 @@ function App() {
 
               <Route path="providers" element={<ProtectedRoute><Providers /></ProtectedRoute>} />
               <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />
-              <Route path="users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
+
+              <Route path="users" element={<ProtectedRoute><Users /></ProtectedRoute>}>
+                            <Route index element={<Users/>} /> {/*  New component */}
+                            <Route path="pending-requests" element={<PendingRequests />} />
+                            <Route path="rejected-requests" element={<RejectedRequests />} />
+                        </Route>
               <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />
               <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             </Route>
