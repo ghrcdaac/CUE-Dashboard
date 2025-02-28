@@ -141,7 +141,7 @@ function ChangePassword() {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center',
+                // justifyContent: 'center',
                 minHeight: '100vh',
                 backgroundColor: 'primary.main',
                 color: 'white',
@@ -154,6 +154,7 @@ function ChangePassword() {
                         flexDirection: 'column',
                         alignItems: 'center',
                         mb: 4,
+                        paddingTop: 10
                     }}
                 >
                     <img src="/nasa_logo.png" alt="NASA Logo" className="nasa-logo" />

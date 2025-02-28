@@ -12,12 +12,13 @@ import Paper from '@mui/material/Paper';
 import './LoginPage.css';
 import { useDispatch } from 'react-redux';
 import { setChallengeName, setUser } from '../app/reducers/authSlice';
-import { useNavigate, Link as RouterLink } from 'react-router-dom'; // Import useNavigate and rename Link
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom'; // Import useNavigate and rename Link
 import useAuth from '../hooks/useAuth';
 // Import Cognito SDK
 import { CognitoUserPool, CognitoUser, AuthenticationDetails } from 'amazon-cognito-identity-js';
 import { config } from '../config'; // Import config
 import { toast } from 'react-toastify';
+import { Grid2 } from '@mui/material';
 //import 'react-toastify/dist/ReactToastify.css'; -- No need to add in individual component
 
 const theme = createTheme({
@@ -45,6 +46,8 @@ function LoginPage() {
     //const navigate = useNavigate(); // Get the navigate function - NO LONGER NEEDED HERE
     const { login } = useAuth(); // Use the useAuth hook!  Get login function.
     const navigate = useNavigate();
+    const location = useLocation(); // Get current location
+    const from = location.state?.from?.pathname || '/';
 
     const handleLogin = async (event) => {
         event.preventDefault();
@@ -54,6 +57,7 @@ function LoginPage() {
             // Call the 'login' function from useAuth, passing username/password
             await login(username, password, navigate); // Pass navigate!
             // Success handling is now done within the `login` function (Redux, redirect)
+            navigate(from, { replace: true });
         } catch (error) {
             console.error("Login error:", error); // Log the error
             setLoginError(error.message || 'An unexpected error occurred.'); // Set error state
@@ -91,11 +95,11 @@ function LoginPage() {
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    justifyContent: 'center',
+                    // justifyContent: 'center',
                     minHeight: '100vh',
                     backgroundColor: 'primary.main',
                     color: 'white',
-                    padding: '20px',
+                    // padding: '20px',
                 }}
             >
                 {/* Logo and Title */}
@@ -105,6 +109,7 @@ function LoginPage() {
                         flexDirection: 'column',
                         alignItems: 'center',
                         mb: 4,
+                        paddingTop: 10, 
                     }}
                 >
                     <img src="/nasa_logo.png" alt="NASA Logo" className="nasa-logo" />
@@ -185,18 +190,18 @@ function LoginPage() {
                                 {loginError}
                             </Typography>
                         )}
-                        <Grid container justifyContent="space-between">
-                            <Grid item>
+                        <Grid2 container justifyContent="space-between">
+                            <Grid2 item>
                                  <Link component={RouterLink} to="/forgot-password" variant="body2" sx={{color: theme.palette.primary.main}}>
                                     Forgot password?
                                 </Link>
-                            </Grid>
-                            <Grid item>
-                                <Link href="#" variant="body2" sx={{color: theme.palette.primary.main}}>
+                            </Grid2>
+                            <Grid2 item>
+                                <Link component={RouterLink} to="/signup" variant="body2" sx={{color: theme.palette.primary.main}}>
                                     New User? Create Account
                                 </Link>
-                            </Grid>
-                        </Grid>
+                            </Grid2>
+                        </Grid2>
                     </Box>
                 </Paper>
             </Box>

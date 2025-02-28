@@ -8,7 +8,8 @@ const initialState = {
     isAuthenticated: false,
     username: null,
     challengeName: null, // Add challengeName to the state
-    user: null // to store the cognito user object
+    user: null, // to store the cognito user object
+    isLoading: true,
 };
 
 const authSlice = createSlice({
@@ -22,6 +23,7 @@ const authSlice = createSlice({
             state.username = action.payload.username;
             state.challengeName = null; // Clear challenge on successful login
             state.user = null; //clear user data
+            state.isLoading = false;
         },
         logoutSuccess: (state) => {
             state.accessToken = null;
@@ -30,6 +32,7 @@ const authSlice = createSlice({
             state.username = null;
             state.challengeName = null; // Clear on logout
             state.user = null;
+            state.isLoading = false;
             //Cookies.remove('refreshToken', { path: '/', secure: true, sameSite: 'strict' }); -- No cookies
         },
         // You can add other reducers here (e.g., for handling token refresh)
@@ -41,9 +44,12 @@ const authSlice = createSlice({
         },
         setUser: (state, action) => {
             state.user = action.payload;
-        }
+        },
+        setLoading: (state, action) => { // Add a setLoading reducer
+            state.isLoading = action.payload;
+        },
     },
 });
 
-export const { loginSuccess, logoutSuccess, setAccessToken, setChallengeName, setUser } = authSlice.actions;
+export const { loginSuccess, logoutSuccess, setAccessToken, setChallengeName, setUser, setLoading  } = authSlice.actions;
 export default authSlice.reducer;
