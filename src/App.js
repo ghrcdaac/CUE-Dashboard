@@ -102,11 +102,11 @@ function App() {
             </Route>
             {/* LoginPage is OUTSIDE the Layout */}
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/change-password" element={challengeName === 'NEW_PASSWORD_REQUIRED' ? <ChangePassword /> : <Navigate to="/" />} />
+            <Route path="/change-password" element={challengeName === 'NEW_PASSWORD_REQUIRED' ? <ChangePassword /> : <Navigate to="/login" />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/signup" element={<SignupPage />} />
 
-            { <Route path="*" element={ <Navigate to="/" replace />} /> }
+            {/* { <Route path="*" element={ <Navigate to="/" replace />} /> } */}
           </Routes>
         </BrowserRouter>
       </ThemeProvider>
