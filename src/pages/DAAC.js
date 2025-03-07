@@ -33,11 +33,11 @@ import {
 import { fetchNgroups } from "../api/ngroup";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import useMenuSelection from '../hooks/useMenuSelection';
+
 import useAuth from '../hooks/useAuth'; // Import useAuth
 
 export default function DAAC() {
-    useMenuSelection("DAAC");
+
     const [rows, setRows] = useState([]);
     const [ngroups, setNgroups] = useState({});
     const [ngroupOptions, setNgroupOptions] = useState([]);

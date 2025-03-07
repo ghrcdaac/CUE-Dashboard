@@ -21,6 +21,11 @@ import Profile from './pages/Profile'; // Import
 import useAuth from "./hooks/useAuth"; // Import the useAuth hook
 //import { useNavigate } from 'react-router-dom'; // Import useNavigate --Removed
 import ProtectedRoute from "./components/ProtectedRoute";
+import SignupPage from './components/SignupPage';
+import CreateCollection from "./pages/collections/CreateCollection"; // Import
+import PendingRequests from "./pages/users/PendingRequests"; // Import
+import RejectedRequests from "./pages/users/RejectedRequests";
+
 
 const theme = createTheme({
   palette: {
@@ -43,11 +48,11 @@ function Layout() {
 
     return (
         <div style={{ display: "flex", minHeight: "100vh" }}>
-            <SideNav selectedMenu={selectedMenu} />
+            {/* <SideNav selectedMenu={selectedMenu} /> */}
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                <Header selectedMenu={selectedMenu} onMenuClick={handleMenuClick} />
-                {/* Pass setSelectedMenu to the Outlet via context*/}
-                <Outlet context={{ setSelectedMenu }} />
+                <Header  />
+                
+                <Outlet/>
                 <Footer />
             </div>
         </div>
@@ -67,29 +72,41 @@ function App() {
     }, [initializeAuth]);
 
     if (isLoading) {
-      return <div>Loading...</div>; // Or a more sophisticated loading indicator
+      return <div>Loading...</div>; // wait for the page to load
   }
 
   return (
    <ThemeProvider theme={theme}>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             {/* Use the Layout component for all routes EXCEPT /login */}
             <Route path="/" element={<Layout />}>
               <Route index element={<ProtectedRoute><Home /></ProtectedRoute>} />
-              <Route path="collections" element={<ProtectedRoute><Collections /></ProtectedRoute>} />
+              <Route path="collections" element={<ProtectedRoute><Collections /></ProtectedRoute>}>
+                            <Route index element={<Collections />} />  {/*  use collections for index*/}
+                            <Route path="create" element={<CreateCollection />} />
+
+                        </Route>
+
+
               <Route path="providers" element={<ProtectedRoute><Providers /></ProtectedRoute>} />
               <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />
-              <Route path="users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
+
+              <Route path="users" element={<ProtectedRoute><Users /></ProtectedRoute>}>
+                            <Route index element={<Users/>} /> {/*  New component */}
+                            <Route path="pending-requests" element={<PendingRequests />} />
+                            <Route path="rejected-requests" element={<RejectedRequests />} />
+                        </Route>
               <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />
               <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             </Route>
             {/* LoginPage is OUTSIDE the Layout */}
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/change-password" element={challengeName === 'NEW_PASSWORD_REQUIRED' ? <ChangePassword /> : <Navigate to="/" />} />
-             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/change-password" element={challengeName === 'NEW_PASSWORD_REQUIRED' ? <ChangePassword /> : <Navigate to="/login" />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/signup" element={<SignupPage />} />
 
-            <Route path="*" element={isAuthenticated ? <Navigate to="/" replace /> : <Navigate to="/login" replace />} />
+            {/* { <Route path="*" element={ <Navigate to="/" replace />} /> } */}
           </Routes>
         </BrowserRouter>
       </ThemeProvider>

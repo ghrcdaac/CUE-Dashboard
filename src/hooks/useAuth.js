@@ -63,7 +63,7 @@ function useAuth() {
                     dispatch(setChallengeName('NEW_PASSWORD_REQUIRED'));
                     dispatch(setUser(cognitoUser))
                     navigate('/change-password', { state: { username: username } });
-                    resolve();
+                    // resolve();
                 }
             });
         })
@@ -83,9 +83,10 @@ function useAuth() {
         navigate('/login');
          // Clear refresh token cookie.  IMPORTANT!
         //Cookies.remove('refreshToken', { path: '/', secure: true, sameSite: 'strict' }); -- Removed cookie
-         localStorage.removeItem('CUE_username'); // Clear username
-         localStorage.removeItem('CUE_refreshToken');
-          localStorage.removeItem('CUE_accessTokenExpiration'); //clear on logout
+        localStorage.removeItem('CUE_username'); // Clear username
+        localStorage.removeItem('CUE_accessToken');
+        localStorage.removeItem('CUE_refreshToken');
+        localStorage.removeItem('CUE_accessTokenExpiration'); //clear on logout
 
     },[dispatch]);
 

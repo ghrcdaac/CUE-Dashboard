@@ -1,100 +1,79 @@
-import * as React from "react";
-import Drawer from "@mui/material/Drawer";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemIcon from "@mui/material/ListItemIcon";
-import ListItemText from "@mui/material/ListItemText";
-import InboxIcon from "@mui/icons-material/MoveToInbox";
-import MailIcon from "@mui/icons-material/Mail";
-import Box from "@mui/material/Box";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+// src/components/SideNav.js
+import React from 'react';
+import { List, ListItem, ListItemButton, ListItemText, ListItemIcon, Box, IconButton } from '@mui/material';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
-export default function SideNav({ isDrawerOpen, toggleDrawer, selectedMenu }) {
- 
+function SideNav({ menuItems, open, onToggle }) {
+    const location = useLocation();
 
-  const list = () => (
-<Box
-      sx={{
-        width: 250,
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        mt: "64px",
-      }}
-      role="presentation"
-      onKeyDown={toggleDrawer}
-    >
-      <List>
-        <ListItem disablePadding>
-          <ListItemButton onClick={toggleDrawer}> 
-            <ListItemIcon>
-              <ChevronLeftIcon />
-            </ListItemIcon>
-          </ListItemButton>
-        </ListItem>
-
-        {/* Conditionally render submenus based on selectedMenu */}
-        {selectedMenu === "DAAC" && (
-          <>
-            <ListItem key="DAAC-Submenu-1" disablePadding>
-              <ListItemButton>
-                <ListItemIcon>
-                  <InboxIcon />
-                </ListItemIcon>
-                <ListItemText primary="DAAC Submenu 1" />
-              </ListItemButton>
-            </ListItem>
-            <ListItem key="DAAC-Submenu-2" disablePadding>
-              <ListItemButton>
-                <ListItemIcon>
-                  <MailIcon />
-                </ListItemIcon>
-                <ListItemText primary="DAAC Submenu 2" />
-              </ListItemButton>
-            </ListItem>
-          </>
+    return (
+        <>
+            {open && (  // This was already correct, keeping it
+            <Box sx={{
+                width: '250px',
+                backgroundColor: '#d0d0d0',
+                transition: 'width 0.3s ease, opacity 0.3s ease',
+                position: 'sticky',
+                top: '150px',
+                height: 'calc(100vh - 150px - 30px)',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+            }}>
+                 <IconButton
+                        onClick={onToggle}
+                        sx={{
+                            width: "100%",
+                            justifyContent: 'flex-end',
+                            paddingRight: '10px',
+                        }}
+                        size="large">
+                        <ChevronLeftIcon />
+                    </IconButton>
+                <List sx={{ flexGrow: 1 }}>
+                    {menuItems.map((item) => (
+                        <ListItem key={item.path} disablePadding>
+                            <ListItemButton
+                                component={RouterLink}
+                                to={item.path}
+                                selected={location.pathname === item.path}
+                            >
+                                <ListItemIcon>{item.icon}</ListItemIcon>
+                                <ListItemText
+                                    primary={item.text}
+                                    primaryTypographyProps={{
+                                        fontSize: 18,
+                                        fontWeight: location.pathname === item.path ? 'bold' : 'normal',
+                                    }}
+                                />
+                            </ListItemButton>
+                        </ListItem>
+                    ))}
+                </List>
+            </Box>
         )}
-        {selectedMenu === "Collections" && (
-          <>
-            <ListItem key="Collections-Submenu-1" disablePadding>
-              <ListItemButton>
-                <ListItemIcon>
-                  <InboxIcon />
-                </ListItemIcon>
-                <ListItemText primary="Collections Submenu 1" />
-              </ListItemButton>
-            </ListItem>
-            <ListItem key="Collections-Submenu-2" disablePadding>
-              <ListItemButton>
-                <ListItemIcon>
-                  <MailIcon />
-                </ListItemIcon>
-                <ListItemText primary="Collections Submenu 2" />
-              </ListItemButton>
-            </ListItem>
-          </>
-        )}
-       
+         {!open && ( // This was already correct, keeping it
+                <Box sx={{
+                    width: '60px', // Width when collapsed
+                    backgroundColor: '#d0d0d0', //keep the bg color.
+                    position: 'sticky',
+                    transition: 'opacity 0.3s ease', //transition
+                    top: '150px',
+                    height: 'calc(100vh - 150px - 30px)',
+                    display: 'flex',
+                    justifyContent: 'center', // Center the button
+                    alignItems: 'flex-start', // Align to the top
 
-      </List>
-    </Box>
-  );
-
-  return (
-    <div>
-      <Drawer
-        variant="persistent"
-        open={isDrawerOpen} // Open drawer if isDrawerOpen is true
-        sx={{
-          "& .MuiDrawer-paper": {
-            top: "150px", // Adjust top position to account for the updated header height
-            height: "calc(100vh - 130px)", // Adjust height to account for the updated header height
-          },
-        }}
-      >
-        {list()}
-      </Drawer>
-    </div>
-  );
+                }}>
+                    <IconButton onClick={onToggle} size="large" >
+                        <ChevronRightIcon />
+                    </IconButton>
+                </Box>
+            )}
+        </>
+    );
 }
+
+export default SideNav;

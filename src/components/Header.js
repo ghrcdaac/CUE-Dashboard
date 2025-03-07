@@ -5,21 +5,22 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
-// import MenuIcon from "@mui/icons-material/Menu"; // Not used, based on your request
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useLocation } from "react-router-dom"; // Import useLocation
 import Divider from "@mui/material/Divider";
 import MenuItem from '@mui/material/MenuItem';
 import Menu from '@mui/material/Menu';
 import AccountCircle from '@mui/icons-material/AccountCircle';
-import useAuth from '../hooks/useAuth'; // Import useAuth
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'; // Import down arrow
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import useAuth from '../hooks/useAuth';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import { useNavigate } from 'react-router-dom';
+import usePageTitle from "../hooks/usePageTitle";
 
 
-export default function Header({ selectedMenu }) { // isDrawerOpen, toggleDrawer removed
-    const { isAuthenticated, logout, username } = useAuth(); // Use the hook!
-    const [anchorEl, setAnchorEl] = useState(null); // State for menu anchor
-    const navigate = useNavigate(); // Get the navigate function
+export default function Header() {
+    const { isAuthenticated, logout, username } = useAuth();
+    const [anchorEl, setAnchorEl] = useState(null);
+    const navigate = useNavigate();
+    const location = useLocation(); // Get current location
 
     const handleMenu = (event) => {
         setAnchorEl(event.currentTarget);
@@ -30,9 +31,27 @@ export default function Header({ selectedMenu }) { // isDrawerOpen, toggleDrawer
     };
 
     const handleLogout = () => {
-        logout(navigate); // Pass navigate to logout
-        handleClose();    // Close the menu
+        logout(navigate);
+        handleClose();
     };
+
+    // Determine the section title based on the route
+    let sectionTitle = "Home"; // Default title
+    if (location.pathname.startsWith("/collections")) {
+        sectionTitle = "Collections";
+    } else if (location.pathname.startsWith("/providers")) {
+        sectionTitle = "Providers";
+    } else if (location.pathname.startsWith("/metrics")) {
+        sectionTitle = "Metrics";
+    } else if (location.pathname.startsWith("/users")) {
+        sectionTitle = "Users";
+    } else if (location.pathname.startsWith("/daac")) {
+        sectionTitle = "DAAC";
+    }
+       else if (location.pathname.startsWith("/profile")) { //added profile
+        sectionTitle = "Profile";
+    }
+    const pageTitle = usePageTitle(sectionTitle);
 
     return (
         <Box>
@@ -70,19 +89,18 @@ export default function Header({ selectedMenu }) { // isDrawerOpen, toggleDrawer
                             </Box>
                         </Box>
 
-                        {/* User/Login Section - Aligned Right */}
+                        {/* User/Login Section */}
                         <Box
                             sx={{
                                 display: "flex",
-                                justifyContent: "flex-end", // Right-align
+                                justifyContent: "flex-end",
                                 alignItems: "center",
-                                width: "100%", // Take full width to push to the right
+                                width: "100%",
                             }}
                         >
                             {isAuthenticated ? (
                                 <>
-                                    {/* User Avatar and Dropdown */}
-                                     <IconButton
+                                    <IconButton
                                         size="large"
                                         aria-label="account of current user"
                                         aria-controls="menu-appbar"
@@ -92,7 +110,7 @@ export default function Header({ selectedMenu }) { // isDrawerOpen, toggleDrawer
                                         sx={{ padding: 0 }}
                                     >
                                         <AccountCircle />
-                                         <Typography sx={{ ml: 1, textTransform: 'none' }}>{username}</Typography>
+                                        <Typography sx={{ ml: 1, textTransform: 'none' }}>{username}</Typography>
                                         <ArrowDropDownIcon />
                                     </IconButton>
                                     <Menu
@@ -110,12 +128,11 @@ export default function Header({ selectedMenu }) { // isDrawerOpen, toggleDrawer
                                         open={Boolean(anchorEl)}
                                         onClose={handleClose}
                                     >
-                                        <MenuItem component={RouterLink} to="/profile" onClick={handleClose}>Profile</MenuItem>
+                                         <MenuItem component={RouterLink} to="/profile" onClick={handleClose}>Profile</MenuItem>
                                         <MenuItem onClick={handleLogout}>Logout</MenuItem>
                                     </Menu>
                                 </>
                             ) : (
-                                // Login Button (if not authenticated)
                                 <Button color="inherit" component={RouterLink} to="/login">Login</Button>
                             )}
                         </Box>
@@ -123,7 +140,7 @@ export default function Header({ selectedMenu }) { // isDrawerOpen, toggleDrawer
 
                     <Divider sx={{ my: 1, width: "100%" }} />
                     <Typography variant="h5" sx={{ fontWeight: "bold", textAlign: "left", ml: 11 }}>
-                        {selectedMenu}
+                    {pageTitle}
                     </Typography>
                 </Toolbar>
             </AppBar>
