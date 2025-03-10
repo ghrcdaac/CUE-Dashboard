@@ -35,6 +35,12 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import useAuth from '../hooks/useAuth'; // Import useAuth
+import { NavigationRounded } from "@mui/icons-material";
+import { Outlet, useLocation } from 'react-router-dom'; // Import Outlet and useLocation
+import SideNav from "../components/SideNav";  // Import SideNav
+import EvStationIcon from '@mui/icons-material/EvStation'; //example icon
+import DnsIcon from '@mui/icons-material/Dns';//example icon
+import usePageTitle from "../hooks/usePageTitle"; // Import
 
 export default function DAAC() {
 
@@ -45,6 +51,7 @@ export default function DAAC() {
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
     const [openAddDialog, setOpenAddDialog] = useState(false);
     const [openEditDialog, setOpenEditDialog] = useState(false);
     const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
@@ -281,7 +288,30 @@ export default function DAAC() {
         [rows, page, rowsPerPage]
     );
 
+    // ---------- SideNav Logic ----------
+    const [open, setOpen] = useState(true);
+    const location = useLocation();
+
+    const handleToggle = () => {
+        setOpen(!open);
+    };
+
+    const daacMenuItems = [
+        { text: 'Egress', path: '/daac', icon: <EvStationIcon /> }, // Use /daac for main page
+        { text: 'Providers', path: '/daac/providers', icon: <DnsIcon /> },
+    ];
+
+    usePageTitle(
+        location.pathname === '/daac' || location.pathname === '/daac/'
+            ? "DAAC"
+            : undefined
+    );
+    // ---------- End SideNav Logic ----------
+
     return (
+        <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
+            {/* SideNav Component */}
+            <SideNav menuItems={daacMenuItems} open={open} onToggle={handleToggle} />
         <Box
             sx={{
                 flexGrow: 1,
@@ -292,7 +322,8 @@ export default function DAAC() {
                 overflow: "hidden", // Ensure no overflow
             }}
         >
-            {loading && <Typography>Loading...</Typography>}
+            {loading && <Typography>Loading DAAC egress data...</Typography>}
+            {error && <Typography color="error">Error: {error}</Typography>}
 
             <Grid2 container spacing={2} direction="column">
                 <Grid2 xs={12}>
@@ -609,6 +640,7 @@ export default function DAAC() {
                 </DialogActions>
             </Dialog>
             <ToastContainer position="top-center" />
+        </Box>
         </Box>
     );
 }

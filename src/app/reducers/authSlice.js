@@ -1,15 +1,16 @@
-// src/app/reducers/authSlice.js
+// src/app/reducers/authSlice.js (Modified)
 import { createSlice } from '@reduxjs/toolkit';
-//import Cookies from 'js-cookie'; // REMOVE THIS - no cookies
 
 const initialState = {
     accessToken: null,
-    refreshToken: null, // Store refresh token in Redux
+    refreshToken: null,
     isAuthenticated: false,
     username: null,
-    challengeName: null, // Add challengeName to the state
-    user: null, // to store the cognito user object
+    challengeName: null,
+    user: null,
     isLoading: true,
+    ngroupId: null, // Add ngroupId
+    roleId: null,   // Add roleId
 };
 
 const authSlice = createSlice({
@@ -18,38 +19,47 @@ const authSlice = createSlice({
     reducers: {
         loginSuccess: (state, action) => {
             state.accessToken = action.payload.accessToken;
-            state.refreshToken = action.payload.refreshToken; // Store refresh token
+            state.refreshToken = action.payload.refreshToken;
             state.isAuthenticated = true;
             state.username = action.payload.username;
-            state.challengeName = null; // Clear challenge on successful login
-            state.user = null; //clear user data
+            state.challengeName = null;
+            state.user = null;
             state.isLoading = false;
+            state.ngroupId = action.payload.ngroupId; // Store ngroupId
+            state.roleId = action.payload.roleId;     // Store roleId
         },
         logoutSuccess: (state) => {
             state.accessToken = null;
-            state.refreshToken = null; // Clear refresh token
+            state.refreshToken = null;
             state.isAuthenticated = false;
             state.username = null;
-            state.challengeName = null; // Clear on logout
+            state.challengeName = null;
             state.user = null;
             state.isLoading = false;
-            //Cookies.remove('refreshToken', { path: '/', secure: true, sameSite: 'strict' }); -- No cookies
+            state.ngroupId = null; // Clear ngroupId
+            state.roleId = null;   // Clear roleId
         },
-        // You can add other reducers here (e.g., for handling token refresh)
         setAccessToken: (state, action) => {
             state.accessToken = action.payload;
         },
-        setChallengeName: (state, action) => { // Add this reducer
+        setChallengeName: (state, action) => {
             state.challengeName = action.payload;
         },
         setUser: (state, action) => {
             state.user = action.payload;
         },
-        setLoading: (state, action) => { // Add a setLoading reducer
+        setLoading: (state, action) => {
             state.isLoading = action.payload;
         },
+        // Add reducers for setting ngroupId and roleId if needed separately
+        setNgroupId: (state, action) => {
+          state.ngroupId = action.payload;
+        },
+        setRoleId: (state, action) => {
+          state.roleId = action.payload;
+        }
     },
 });
 
-export const { loginSuccess, logoutSuccess, setAccessToken, setChallengeName, setUser, setLoading  } = authSlice.actions;
+export const { loginSuccess, logoutSuccess, setAccessToken, setChallengeName, setUser, setLoading, setNgroupId, setRoleId } = authSlice.actions;
 export default authSlice.reducer;
