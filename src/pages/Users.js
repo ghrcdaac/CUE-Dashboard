@@ -306,7 +306,7 @@ function Users() {
                                             startIcon={<EditIcon />}
                                             sx={{ mr: 1 }}
                                         >
-                                            Edit
+                                            Modify
                                         </Button>
                                         <Button
                                             variant="contained"
@@ -454,7 +454,7 @@ function Users() {
 
                         {/* Edit User Dialog */}
                         <Dialog open={openEditDialog} onClose={handleCloseEditDialog}>
-                            <DialogTitle>Edit User</DialogTitle>
+                            <DialogTitle>Modify User Role</DialogTitle>
                             <DialogContent>
                                 <TextField
                                     autoFocus
