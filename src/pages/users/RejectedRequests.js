@@ -30,7 +30,7 @@ function RejectedRequests() {
     const [orderBy, setOrderBy] = useState('name');
     const { accessToken, logout } = useAuth();
     const { navigate } = useAuth();
-    usePageTitle("Rejected Requests");
+    // usePageTitle("Rejected Requests");
 
     const formatDate = (dateString) => {
         if (!dateString) return '';

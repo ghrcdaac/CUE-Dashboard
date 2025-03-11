@@ -22,7 +22,7 @@ export default function Collections() {
 
     const collectionsMenuItems = [
         { text: 'Overview', path: '/collections', icon: <InboxIcon /> },
-        { text: 'Dummy 1', path: '/collections/create', icon: <DraftsIcon /> },
+        { text: 'Create Collection', path: '/collections/create', icon: <SendIcon /> },
 
     ];
 

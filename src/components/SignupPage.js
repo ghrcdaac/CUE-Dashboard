@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
@@ -52,11 +52,12 @@ function SignupPage() {
     const [loadingNgroups, setLoadingNgroups] = useState(false);
     const [loadingProviders, setLoadingProviders] = useState(false);
 
+    const navigate = useNavigate(); // Use useNavigate hook
 
     useEffect(() => {
         setIsFormExpanded(true);
     }, []);
-    const {  navigate } = useAuth(); // Only need navigate
+    // const {  navigate } = useAuth(); // Only need navigate --  REMOVED.  useNavigate() is the correct way.
 
     const fetchNgroupOptions = async () => {
         setLoadingNgroups(true);
@@ -154,7 +155,7 @@ function SignupPage() {
 
     const handleCloseSuccessDialog = () => {
         setOpenSuccessDialog(false);
-        navigate('/login');
+        navigate('/login'); //  CORRECT:  Use the navigate hook.
     };
     const handleNewApplication = () => {
         setOpenSuccessDialog(false);

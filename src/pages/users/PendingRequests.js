@@ -33,7 +33,7 @@ function PendingRequests() {
       const [openRejectDialog, setOpenRejectDialog] = useState(false);
     const { accessToken, logout } = useAuth();
     const { navigate } = useAuth();
-    usePageTitle("Pending Requests");
+    // usePageTitle("Pending Requests");
 
     const formatDate = (dateString) => {
         if (!dateString) return '';

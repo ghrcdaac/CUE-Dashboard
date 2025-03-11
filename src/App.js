@@ -106,7 +106,7 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/signup" element={<SignupPage />} />
 
-            {/* { <Route path="*" element={ <Navigate to="/" replace />} /> } */}
+            { <Route path="*" element={ <Navigate to="/" replace />} /> }
           </Routes>
         </BrowserRouter>
       </ThemeProvider>
