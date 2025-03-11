@@ -155,7 +155,7 @@ function SignupPage() {
 
     const handleCloseSuccessDialog = () => {
         setOpenSuccessDialog(false);
-        navigate('/login'); //  CORRECT:  Use the navigate hook.
+        navigate('/login'); 
     };
     const handleNewApplication = () => {
         setOpenSuccessDialog(false);
@@ -164,6 +164,7 @@ function SignupPage() {
             email: '',
             username: '',
             justification: '',
+            edpub_id: '',
             ngroup_id: '',
             account_type: 'daac',
             provider_id: null,

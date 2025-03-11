@@ -1,7 +1,6 @@
+// App.js (Corrected)
 import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
-//import { Provider } from "react-redux"; // REMOVE THIS
-import { store } from "./app/store";  //KEEP THIS
 import Header from "./components/Header";
 import SideNav from "./components/SideNav";
 import Footer from "./components/Footer";
@@ -12,33 +11,32 @@ import Metrics from "./pages/Metrics";
 import Users from "./pages/Users";
 import DAAC from "./pages/DAAC";
 import LoginPage from "./components/LoginPage";
-import ChangePassword from "./components/ChangePassword"; // Import ChangePassword
-import ForgotPassword from "./components/ForgotPassword";     // Import ForgotPassword
-//import ConfirmForgotPassword from "./components/ConfirmForgotPassword"; // Import ConfirmForgotPassword
+import ChangePassword from "./components/ChangePassword";
+import ForgotPassword from "./components/ForgotPassword";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { useSelector } from 'react-redux'; // Import useSelector
-import Profile from './pages/Profile'; // Import
-import useAuth from "./hooks/useAuth"; // Import the useAuth hook
-//import { useNavigate } from 'react-router-dom'; // Import useNavigate --Removed
+import { useSelector, useDispatch } from 'react-redux'; // Import useDispatch
+import Profile from './pages/Profile';
+import useAuth from "./hooks/useAuth";
+import { logoutSuccess } from './app/reducers/authSlice'; // Import logoutSuccess
 import ProtectedRoute from "./components/ProtectedRoute";
 import SignupPage from './components/SignupPage';
-import CreateCollection from "./pages/collections/CreateCollection"; // Import
-import PendingRequests from "./pages/users/PendingRequests"; // Import
+import CreateCollection from "./pages/collections/CreateCollection";
+import PendingRequests from "./pages/users/PendingRequests";
 import RejectedRequests from "./pages/users/RejectedRequests";
+import { CircularProgress } from "@mui/material";
 
 
 const theme = createTheme({
-  palette: {
-    primary: {
-      main: "#19577F",
+    palette: {
+        primary: {
+            main: "#19577F",
+        },
+        secondary: {
+            main: "#f0f0f0",
+        },
     },
-    secondary: {
-      main: "#f0f0f0",
-    },
-  },
 });
 
-// Create a Layout component
 function Layout() {
     const [selectedMenu, setSelectedMenu] = useState("Overview");
 
@@ -51,8 +49,7 @@ function Layout() {
             {/* <SideNav selectedMenu={selectedMenu} /> */}
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
                 <Header  />
-                
-                <Outlet/>
+                <Outlet />
                 <Footer />
             </div>
         </div>
@@ -60,57 +57,67 @@ function Layout() {
 }
 
 function App() {
-    const isAuthenticated = useSelector((state) => state.auth.isAuthenticated); // Get authentication status
-    const challengeName = useSelector((state) => state.auth.challengeName); // Get challenge name
-    const isLoading = useSelector((state) => state.auth.isLoading);
-     const { initializeAuth } = useAuth(); // Get initializeAuth
-    //const navigate = useNavigate(); // Get navigate in component --Removed
+    const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+    const challengeName = useSelector((state) => state.auth.challengeName);
+    const isLoading = useSelector((state) => state.auth.isLoading); // Get loading state
+    const { initializeAuth } = useAuth();
+    const dispatch = useDispatch(); // Get dispatch
 
-    // Call initializeAuth *once* on app load
+
     useEffect(() => {
-         initializeAuth(); // remove navigate
-    }, [initializeAuth]);
+      const checkAuthentication = async () => {
+          const storedUsername = localStorage.getItem('CUE_username');
+          const storedRefreshToken = localStorage.getItem('CUE_refreshToken');
 
-    if (isLoading) {
-      return <div>Loading...</div>; // wait for the page to load
-  }
+          if (!storedUsername || !storedRefreshToken) {
+            // If no user is logged in, set auth state to false.
+            dispatch(logoutSuccess());
+        }
+            initializeAuth();
 
-  return (
-   <ThemeProvider theme={theme}>
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <Routes>
-            {/* Use the Layout component for all routes EXCEPT /login */}
-            <Route path="/" element={<Layout />}>
-              <Route index element={<ProtectedRoute><Home /></ProtectedRoute>} />
-              <Route path="collections" element={<ProtectedRoute><Collections /></ProtectedRoute>}>
-                            <Route index element={<Collections />} />  {/*  use collections for index*/}
+      };
+        checkAuthentication();
+    }, [initializeAuth, dispatch]); //  dispatch in the dependency array
+
+
+     if (isLoading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                <CircularProgress />
+            </div>
+        );
+    }
+
+    return (
+        <ThemeProvider theme={theme}>
+            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                <Routes>
+                    <Route path="/" element={<Layout />}>
+                        <Route index element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                        <Route path="collections" element={<ProtectedRoute><Collections /></ProtectedRoute>}>
+                            <Route index element={<Collections />} />
                             <Route path="create" element={<CreateCollection />} />
-
                         </Route>
-
-
-              <Route path="providers" element={<ProtectedRoute><Providers /></ProtectedRoute>} />
-              <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />
-
-              <Route path="users" element={<ProtectedRoute><Users /></ProtectedRoute>}>
-                            <Route index element={<Users/>} /> {/*  New component */}
+                        <Route path="providers" element={<ProtectedRoute><Providers /></ProtectedRoute>} />
+                        <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />
+                        <Route path="users" element={<ProtectedRoute><Users /></ProtectedRoute>}>
+                            <Route index element={<Users />} />
                             <Route path="pending-requests" element={<PendingRequests />} />
                             <Route path="rejected-requests" element={<RejectedRequests />} />
                         </Route>
-              <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />
-              <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            </Route>
-            {/* LoginPage is OUTSIDE the Layout */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/change-password" element={challengeName === 'NEW_PASSWORD_REQUIRED' ? <ChangePassword /> : <Navigate to="/login" />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/signup" element={<SignupPage />} />
+                        <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />
+                        <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                    </Route>
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/change-password" element={challengeName === 'NEW_PASSWORD_REQUIRED' ? <ChangePassword /> : <Navigate to="/login" />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/signup" element={<SignupPage />} />
 
-            { <Route path="*" element={ <Navigate to="/" replace />} /> }
-          </Routes>
-        </BrowserRouter>
-      </ThemeProvider>
-  );
+                    { <Route path="*" element={<Navigate to="/" replace />} /> }
+                </Routes>
+            </BrowserRouter>
+        </ThemeProvider>
+    );
 }
 
 export default App;
