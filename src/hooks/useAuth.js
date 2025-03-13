@@ -78,7 +78,9 @@ function useAuth() {
                     reject(err); // Reject the promise with the error
                 },
                 newPasswordRequired: (userAttributes, requiredAttributes) => {
+                    
                     localStorage.setItem('CUE_username', username);
+                    
                     dispatch(setChallengeName('NEW_PASSWORD_REQUIRED'));
                     dispatch(setUser(cognitoUser))
                     // navigate('/change-password', { state: { username: username } }); // Removed navigate
