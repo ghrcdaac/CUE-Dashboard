@@ -14,9 +14,8 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import { verifyUserEmail } from '../api/authApi'; 
 
-// Cognito SDK (assuming you've installed amazon-cognito-identity-js)
-//import { CognitoUser } from 'amazon-cognito-identity-js'; // We get this from Redux now
 
 const theme = createTheme({
     palette: {
@@ -92,10 +91,18 @@ function ChangePassword() {
             const result = await new Promise((reject) => {
                 cognitoUser.completeNewPasswordChallenge(newPassword, {}, {
                     onSuccess: (session) => {
-                        toast.success("Password reset successfully! Please log in.");
-                        setSuccessDialogOpen(true);
-                        // navigate('/login');
-                        // resolve(session)
+                        verifyUserEmail(username) //Await this
+                        .then(() => {
+                            toast.success("Password changed and email verified successfully!");
+                            setSuccessDialogOpen(true);
+                        }).catch((verifyError) => {
+                            console.error("Error verifying email:", verifyError);
+                            // Display BOTH errors.  Password change *did* happen.
+                            toast.error("Password changed, but email verification failed: " + verifyError.message + ". Please log in again.");
+                            navigate('/login');
+                            reject(verifyError);
+                        });
+
                     },
                     onFailure: (err) => {
                         console.error("Password change error:", err);
@@ -242,7 +249,7 @@ function ChangePassword() {
                 >
                 <DialogTitle>Success</DialogTitle>
                 <DialogContent>
-                    <Typography>Your password has been successfully reset. You can now log in.</Typography>
+                    <Typography>Your password has been reset and email verified successfully. You can now log in.</Typography>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseSuccessDialog} color="primary">

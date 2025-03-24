@@ -1,131 +1,237 @@
 // src/api/cueUser.js
 import { config } from "../config";
-//import useAuth from '../hooks/useAuth'; // REMOVED
 
 const API_BASE_URL = config.apiBaseUrl;
 
-// Get All CUE Users
-export async function fetchCueUsers(accessToken) { // Added accessToken
-    if (!accessToken) {
-        throw new Error("Not authenticated: No access token available.");
-    }
 
-    const response = await fetch(`${API_BASE_URL}/v1/cueuser/`, {
-        method: 'GET',
+/**
+ * @typedef {Object} Cueuser
+ * @property {string} email - The user's email address.
+ * @property {string} name - The user's name.
+ * @property {string} cueusername - The user's CUE username.
+ * @property {string} [edpub_id] - The user's EDPub ID (optional).
+ * @property {string} [ngroup_id] - The ID of the associated Ngroup (optional).
+ * @property {string} [provider_id] - The ID of the associated Provider (optional).
+ * @property {string} [role_id] - The ID of the associated Role (optional).
+ */
+
+/**
+ * Creates a new Cueuser.
+ *
+ * @param {Cueuser} cueuserData - The data for the new Cueuser.
+ * @param {string} accessToken - The user's access token.
+ * @returns {Promise<Cueuser>} The created Cueuser object.
+ * @throws {Error} If the API request fails.
+ */
+async function createCueuser(cueuserData, accessToken) {
+    const url = `${API_BASE_URL}/v1/cueuser/`;
+    const response = await fetch(url, {
+        method: 'POST',
         headers: {
-            'Authorization': `Bearer ${accessToken}`, // Use the passed-in token
-            'Content-Type': 'application/json'
-        },
-    });
-    if (!response.ok) {
-        throw new Error(`Failed to fetch CUE users: ${response.status} ${response.statusText}`);
-    }
-    return await response.json();
-}
-
-// Get CUE User by ID
-export async function fetchCueUserById(userId, accessToken) { // Added accessToken
-     if (!accessToken) {
-        throw new Error("Not authenticated: No access token available.");
-    }
-
-    const response = await fetch(`${API_BASE_URL}/v1/cueuser/${userId}`, {
-        method: 'GET',
-        headers: {
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
         },
+        body: JSON.stringify(cueuserData),
     });
-    if (!response.ok) {
-        if (response.status === 404) {
-            throw new Error(`CUE User not found: ${userId}`);
-        }
-        throw new Error(`Failed to fetch CUE user: ${response.status} ${response.statusText}`);
-    }
-    return await response.json();
-}
 
-// Update CUE User
-export async function updateCueUser(userId, userData, accessToken) { // Added accessToken
-     if (!accessToken) {
-        throw new Error("Not authenticated: No access token available.");
-    }
-    const response = await fetch(`${API_BASE_URL}/v1/cueuser/${userId}`, {
-        method: 'PATCH',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(userData),
-    });
     if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(`Failed to update CUE user: ${response.status} ${errorData.detail || response.statusText}`);
+        throw new Error(errorData.detail || 'Failed to create Cueuser.');
     }
-    return await response.json();
+
+    return response.json();
 }
 
-// Delete CUE User
-export async function deleteCueUser(userId, accessToken) { // Added accessToken
-     if (!accessToken) {
-        throw new Error("Not authenticated: No access token available.");
-    }
-    const response = await fetch(`${API_BASE_URL}/v1/cueuser/${userId}`, {
-        method: 'DELETE',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-        },
-    });
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Failed to delete CUE user: ${response.status} ${errorData.detail || response.statusText}`);
-    }
-    return true;
-}
-
-// Lookup CUE User (by email, cueusername, name, or edpub_id)
-export async function lookupCueUser(params, accessToken) { // Added accessToken
-    if (!accessToken) {
-        throw new Error("Not authenticated: No access token available.");
-    }
-    const url = new URL(`${API_BASE_URL}/v1/cueuser/lookup`);
-    Object.keys(params).forEach(key => {
-        if (params[key]) {
-            url.searchParams.append(key, params[key]);
-        }
-    });
+/**
+ * Finds Cueusers based on search criteria.
+ *
+ * @param {Object} params - The search parameters.
+ * @param {string} params.ngroup_id - (Required) The Ngroup ID.
+ * @param {string} [params.email] - (Optional) The user's email.
+ * @param {string} [params.cueusername] - (Optional) The user's CUE username.
+ * @param {string} [params.name] - (Optional) The user's name.
+ * @param {string} [params.edpub_id] - (Optional) The user's EDPub ID.
+ * @param {string} accessToken - The user's access token.
+ * @returns {Promise<Cueuser[]>} An array of matching Cueuser objects.
+ * @throws {Error} If the API request fails.
+ */
+async function findCueusers(params, accessToken) {
+    const url = new URL(`${API_BASE_URL}/v1/cueuser/find`);
+    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
 
     const response = await fetch(url, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
         },
     });
 
-    if (!response.ok) {
-         const errorData = await response.json();
-        throw new Error(`Failed to lookup CUE user: ${response.status} - ${errorData.detail || response.statusText}`);
-    }
-
-    return await response.json();
-}
-//create user
-export async function createCueUser(userData, accessToken) {
-    if (!accessToken) {
-        throw new Error('Not authenticated');
-    }
-    const response = await fetch(`${API_BASE_URL}/v1/cueuser/`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify(userData),
-    });
     if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(`Failed to create user: ${response.statusText}, ${errorData.detail}`);
+         throw new Error(errorData.detail || 'Failed to find Cueusers.');
     }
-    return await response.json();
+
+    return response.json();
 }
+
+/**
+ * Retrieves a Cueuser by their ID.
+ *
+ * @param {string} cueuserId - The ID of the Cueuser to retrieve.
+ * @param {string} ngroupId - The Ngroup ID associated.
+ * @param {string} accessToken - The user's access token.
+ * @returns {Promise<Cueuser>} The Cueuser object.
+ * @throws {Error} If the API request fails or the Cueuser is not found.
+ */
+async function getCueuserById(cueuserId, ngroupId, accessToken) {
+    const url = `${API_BASE_URL}/v1/cueuser/${cueuserId}?ngroup_id=${ngroupId}`;
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to get Cueuser by ID.');
+    }
+
+    return response.json();
+}
+
+/**
+ * Updates an existing Cueuser.
+ *
+ * @param {string} cueuserId - The ID of the Cueuser to update.
+ * @param {Partial<Cueuser>} updates - The fields to update.
+ * @param {string} accessToken - The user's access token.
+ * @returns {Promise<Cueuser>} The updated Cueuser object.
+ * @throws {Error} If the API request fails.
+ */
+async function updateCueuser(cueuserId, updates, accessToken) {
+    const url = `${API_BASE_URL}/v1/cueuser/${cueuserId}`;
+    const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to update Cueuser.');
+    }
+    return response.json();
+}
+
+/**
+ * Retrieves the role of a Cueuser.
+ *
+ * @param {string} cueuserId - The ID of the Cueuser.
+ * @param {string} accessToken - The user's access token.
+ * @returns {Promise<Object>} The role information.
+ * @throws {Error} If the API request fails.
+ */
+async function getCueuserRole(cueuserId, accessToken) {
+    const url = `${API_BASE_URL}/v1/cueuser/${cueuserId}/role`;
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to get Cueuser role.');
+    }
+    return response.json();
+}
+/**
+ * Deletes a Cueuser.
+ *
+ * @param {string} cueuserId - The ID of the Cueuser to delete.
+ * @param {string} ngroupId - The Ngroup ID.
+ * @param {string} accessToken - The user's access token.
+ * @returns {Promise<void>}
+ * @throws {Error} If the API request fails.
+ */
+async function deleteCueuser(cueuserId, ngroupId, accessToken) {
+    const url = `${API_BASE_URL}/v1/cueuser/${cueuserId}?ngroup_id=${ngroupId}`;
+    const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to delete Cueuser.');
+    }
+    return; // No content on successful DELETE.
+
+}
+
+/**
+ * Lists all Cueusers within a given Ngroup.
+ *
+ * @param {string} ngroupId - The ID of the Ngroup.
+ * @param {string} accessToken - The user's access token.
+ * @returns {Promise<Cueuser[]>} An array of Cueuser objects.
+ * @throws {Error} If the API request fails.
+ */
+async function listCueusers(ngroupId, accessToken) {
+    const url = `${API_BASE_URL}/v1/cueuser/?ngroup_id=${ngroupId}`;
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to list Cueusers.');
+    }
+
+    return response.json();
+}
+/**
+ * Retrieves a Cueuser by their username.
+ *
+ * @param {string} username - The username of the Cueuser to retrieve.
+ * @param {string} accessToken - The user's access token.
+ * @returns {Promise<Cueuser>} The Cueuser object.
+ * @throws {Error} If the API request fails or the Cueuser is not found.
+ */
+async function getCueuserByUsername(username, accessToken) {
+    const url = `${API_BASE_URL}/v1/cueuser/by_username/${username}`;
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to get Cueuser by username.');
+    }
+    return response.json();
+}
+
+
+export {
+    createCueuser,
+    findCueusers,
+    getCueuserById,
+    updateCueuser,
+    getCueuserRole,
+    deleteCueuser,
+    listCueusers,
+    getCueuserByUsername
+};

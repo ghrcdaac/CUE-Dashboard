@@ -1,18 +1,21 @@
 // src/api/egress.js
 import { config } from "../config";
-//import useAuth from '../hooks/useAuth'; // REMOVE
 
-const API_BASE_URL = config.apiBaseUrl;
+const API_BASE_URL = config.apiBaseUrl; // Keep the base URL from config
 
-export async function fetchEgresses(accessToken) { // Add accessToken
+export async function fetchEgresses(accessToken, ngroupId) {
     if (!accessToken) {
         throw new Error("Not authenticated: No access token available.");
     }
-    const response = await fetch(`${API_BASE_URL}/v1/egress/`, {
+    let url = `${API_BASE_URL}/v1/egress/`; // Added /v1/ here
+    if (ngroupId) {
+        url += `?ngroup_id=${ngroupId}`;
+    }
+    const response = await fetch(url, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}` // Use the token
+            'Authorization': `Bearer ${accessToken}`
         },
     });
 
@@ -22,11 +25,15 @@ export async function fetchEgresses(accessToken) { // Add accessToken
     return await response.json();
 }
 
-export async function fetchEgressById(egressId, accessToken) { // Add accessToken
-     if (!accessToken) {
+export async function fetchEgressById(egressId, accessToken, ngroupId) {
+    if (!accessToken) {
         throw new Error("Not authenticated: No access token available.");
     }
-    const response = await fetch(`${API_BASE_URL}/v1/egress/${egressId}`,{
+    let url = `${API_BASE_URL}/v1/egress/${egressId}`; // Added /v1/ here
+    if (ngroupId) {
+        url += `?ngroup_id=${ngroupId}`;
+    }
+    const response = await fetch(url, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -43,16 +50,15 @@ export async function fetchEgressById(egressId, accessToken) { // Add accessToke
     return await response.json();
 }
 
-
-export async function createEgress(egressData, accessToken) { // Add accessToken
-   if (!accessToken) {
+export async function createEgress(egressData, accessToken) {
+    if (!accessToken) {
         throw new Error("Not authenticated: No access token available.");
     }
-    const response = await fetch(`${API_BASE_URL}/v1/egress/`, {
+    const response = await fetch(`${API_BASE_URL}/v1/egress/`, { // Added /v1/ here
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-             'Authorization': `Bearer ${accessToken}`
+            'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify(egressData),
     });
@@ -64,11 +70,11 @@ export async function createEgress(egressData, accessToken) { // Add accessToken
     return await response.json();
 }
 
-export async function updateEgress(egressId, egressData, accessToken) { // Add accessToken
+export async function updateEgress(egressId, egressData, accessToken) {
     if (!accessToken) {
         throw new Error("Not authenticated: No access token available.");
     }
-    const response = await fetch(`${API_BASE_URL}/v1/egress/${egressId}`, {
+    const response = await fetch(`${API_BASE_URL}/v1/egress/${egressId}`, { // Added /v1/ here
         method: "PATCH",
         headers: {
             "Content-Type": "application/json",
@@ -83,14 +89,17 @@ export async function updateEgress(egressId, egressData, accessToken) { // Add a
     return await response.json();
 }
 
-
-export async function deleteEgress(egressId, accessToken) {// Add accessToken
-   if (!accessToken) {
+export async function deleteEgress(egressId, accessToken, ngroupId) {
+    if (!accessToken) {
         throw new Error("Not authenticated: No access token available.");
     }
-    const response = await fetch(`${API_BASE_URL}/v1/egress/${egressId}`, {
+    let url = `${API_BASE_URL}/v1/egress/${egressId}`; // Added /v1/ here
+    if (ngroupId) {
+        url += `?ngroup_id=${ngroupId}`;
+    }
+    const response = await fetch(url, {
         method: "DELETE",
-         headers: {
+        headers: {
             'Authorization': `Bearer ${accessToken}`
         }
     });
@@ -100,4 +109,30 @@ export async function deleteEgress(egressId, accessToken) {// Add accessToken
         throw new Error(`Failed to delete egress: ${errorData.message || response.statusText}`);
     }
     return true;
+}
+
+
+// List Egresses (added ngroupId parameter)
+export async function listEgresses(ngroupId, accessToken) {
+    if (!accessToken) {
+        throw new Error("Access token is required.");
+    }
+    if (!ngroupId) {
+        throw new Error("ngroupId is required.");
+    }
+
+    const url = `${API_BASE_URL}/v1/egress/?ngroup_id=${ngroupId}`;  // Added /v1/ here
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to list egresses');
+    }
+    return await response.json();
 }
