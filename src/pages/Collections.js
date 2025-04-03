@@ -416,14 +416,14 @@ function Collections() {
                                         <Table sx={{ minWidth: 650 }} aria-label="collections table" stickyHeader>
                                             <TableHead>
                                                 <TableRow>
-                                                    <TableCell padding="checkbox">
+                                                    <TableCell padding="checkbox" sx={{ bgcolor: "#E5E8EB", color: "black " }}>
                                                         <Checkbox
                                                             indeterminate={selected.length > 0 && selected.length < collections.length}
                                                             checked={collections.length > 0 && selected.length === collections.length}
                                                             onChange={handleSelectAllClick}
                                                         />
                                                     </TableCell>
-                                                    <TableCell>
+                                                    <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}> 
                                                         <TableSortLabel
                                                             active={orderBy === 'short_name'}
                                                             direction={orderBy === 'short_name' ? order : 'asc'}
@@ -432,9 +432,9 @@ function Collections() {
                                                             Short Name
                                                         </TableSortLabel>
                                                     </TableCell>
-                                                    <TableCell>Provider</TableCell>
-                                                    <TableCell>Egress Path</TableCell>
-                                                    <TableCell>
+                                                    <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>Provider</TableCell>
+                                                    <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>Egress Path</TableCell>
+                                                    <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>
                                                         <TableSortLabel
                                                             active={orderBy === 'active'}
                                                             direction={orderBy === 'active' ? order : 'asc'}

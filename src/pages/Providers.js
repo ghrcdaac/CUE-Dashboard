@@ -375,14 +375,14 @@ function Providers() {
                                             <Table sx={{ minWidth: 650 }} aria-label="providers table" stickyHeader>
                                                 <TableHead>
                                                     <TableRow>
-                                                        <TableCell padding="checkbox">
+                                                        <TableCell padding="checkbox" sx={{ bgcolor: "#E5E8EB", color: "black " }}>
                                                             <Checkbox
                                                                 indeterminate={selected.length > 0 && selected.length < providers.length}
                                                                 checked={providers.length > 0 && selected.length === providers.length}
                                                                 onChange={handleSelectAllClick}
                                                             />
                                                         </TableCell>
-                                                        <TableCell>
+                                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>
                                                             <TableSortLabel
                                                                 active={orderBy === 'short_name'}
                                                                 direction={orderBy === 'short_name' ? order : 'asc'}
@@ -391,8 +391,8 @@ function Providers() {
                                                                 Short Name
                                                             </TableSortLabel>
                                                         </TableCell>
-                                                        <TableCell>Long Name</TableCell>
-                                                        <TableCell>
+                                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>Long Name</TableCell>
+                                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>
                                                             <TableSortLabel
                                                                 active={orderBy === 'can_upload'}
                                                                 direction={orderBy === 'can_upload' ? order : 'asc'}
@@ -400,7 +400,7 @@ function Providers() {
                                                                 Can Upload
                                                             </TableSortLabel>
                                                         </TableCell>
-                                                        <TableCell>
+                                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>
                                                             <TableSortLabel
                                                                 active={orderBy === 'point_of_contact_name'}
                                                                 direction={orderBy === 'point_of_contact_name' ? order : 'asc'}

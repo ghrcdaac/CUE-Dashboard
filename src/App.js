@@ -24,7 +24,7 @@ import CreateCollection from "./pages/collections/CreateCollection";
 import PendingRequests from "./pages/users/PendingRequests";
 import RejectedRequests from "./pages/users/RejectedRequests";
 import { CircularProgress } from "@mui/material";
-
+import FilesByStatus from './pages/metrics/FilesByStatus';
 
 const theme = createTheme({
     palette: {
@@ -99,12 +99,18 @@ function App() {
                             <Route path="create" element={<CreateCollection />} />
                         </Route>
                         <Route path="providers" element={<ProtectedRoute><Providers /></ProtectedRoute>} />
+
                         <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />
+                        <Route index element={<Metrics />} />
+                        <Route path="files-by-status" element={<FilesByStatus />} />
+                        
                         <Route path="users" element={<ProtectedRoute><Users /></ProtectedRoute>}>
                             <Route index element={<Users />} />
                             <Route path="pending-requests" element={<PendingRequests />} />
                             <Route path="rejected-requests" element={<RejectedRequests />} />
                         </Route>
+
+
                         <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />
                         <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                     </Route>
