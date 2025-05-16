@@ -30,6 +30,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ClearIcon from '@mui/icons-material/Clear';
 import FilePresentIcon from '@mui/icons-material/FilePresent';
+import MoneyIcon from '@mui/icons-material/Money';
 
 // --- Constants ---
 const DATE_FORMAT_API_DAYJS = 'YYYY-MM-DD';
@@ -102,6 +103,7 @@ function Metrics() {
     const metricsMenuItems = [
         { text: 'Overview', path: '/metrics', icon: <AssessmentIcon /> },
         { text: 'Files by Status', path: '/files-by-status', icon: <FilePresentIcon /> },
+        { text: 'Cost', path: '/files-by-cost', icon: <MoneyIcon /> }
     ];
 
     // --- Data Fetching Callbacks --- (fetchFilterOptions remains the same)
