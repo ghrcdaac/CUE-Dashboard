@@ -31,7 +31,7 @@ const getErrorMessage = (reason) => {
 };
 
 // --- Component ---
-function MetricsFilter(handleDataFilter, clearData) {
+function MetricsFilter({handleDataFilter}, {clearData}) {
     usePageTitle("Files by Status");
     const { accessToken } = useAuth();
     const ngroupId = useMemo(() => localStorage.getItem('CUE_ngroup_id'), []);

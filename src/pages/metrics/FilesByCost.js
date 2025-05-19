@@ -46,11 +46,9 @@ function FilesByCost() {
     usePageTitle("Files by Cost");
     const { accessToken } = useAuth();
     const ngroupId = useMemo(() => localStorage.getItem('CUE_ngroup_id'), []);
-    const hasNgroupId = useMemo(() => !!ngroupId, [ngroupId]);
 
     const [openSideNav, setOpenSideNav] = useState(true);
-    const [startDate, setStartDate] = useState(getDefaultStartDate);
-    const [endDate, setEndDate] = useState(getDefaultEndDate);
+
     const [summary, setSummary] = useState(null);
     const [collectionCost, setCollectionCost] = useState([]);
     const [filesByCostData, setFilesByCostData] = useState([]);
@@ -65,6 +63,12 @@ function FilesByCost() {
     const [error, setError] = useState(null);
     const [page, setPage] = useState(1);
 
+    const [startDate, setStartDate] = useState(getDefaultStartDate);
+    const [endDate, setEndDate] = useState(getDefaultEndDate);
+    const [selectedProvider, setSelectedProvider] = useState(null);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [selectedCollection, setSelectedCollection] = useState(null); 
+
     const handleToggleSideNav = () => setOpenSideNav(!openSideNav);
     const metricsMenuItems = [
         { text: 'Overview', path: '/metrics', icon: <AssessmentIcon /> },
@@ -72,18 +76,52 @@ function FilesByCost() {
         { text: 'Cost', path: '/files-by-cost', icon: <MoneyIcon /> }
     ];
 
+    function handleDataFilter(provider, user, collection, startDate, endDate) {
+            setSelectedProvider(provider);
+            setSelectedUser(user);
+            setSelectedCollection(collection);
+            setStartDate(startDate);
+            setEndDate(endDate)
+            fetchDataByCost();
+    }
+
+    function clearDataFilter() {
+        setSelectedProvider(null); setSelectedUser(null); setSelectedCollection(null);
+        setStartDate(getDefaultStartDate()); setEndDate(getDefaultEndDate());
+        toast.info("Filters cleared.")
+    }
+
     const fetchDataByCost = useCallback(async () => {
         if (!accessToken || !ngroupId) return;
         setLoading(true);
         setError(null);
 
         try {
+            const params = {
+                ngroup_id: ngroupId,
+            };
+            if (selectedProvider) params.provider_id = selectedProvider.id;
+            if (selectedUser) params.user_id = selectedUser.id;
+            if (selectedCollection) params.collection_id = selectedCollection.id;
+            if (startDate?.isValid()) params.start_date = startDate.format(DATE_FORMAT_API_DAYJS);
+            if (endDate?.isValid()) params.end_date = endDate.format(DATE_FORMAT_API_DAYJS);
+
+            const collectionCostParams = {
+                ...params,
+                page: filesListPage + 1, 
+                page_size: filesListRowsPerPage,
+            };
+            const fileCostParams = {
+                ...params,
+                page: filesListPage + 1, 
+                page_size: filesListRowsPerPage,
+            };
             const [summaryRes, collectionRes, fileCostResponse] = await Promise.all([
-                fileStatusApi.getCostSummary({ ngroup_id: ngroupId, start_date: startDate.format('YYYY-MM-DD'), end_date: endDate.format('YYYY-MM-DD') }, accessToken),
-                fileStatusApi.getCollectionByCost({ ngroup_id: ngroupId }, accessToken),
-                fileStatusApi.getFileByCost({ ngroup_id: ngroupId, page: filesListPage + 1, page_size: filesListRowsPerPage }, accessToken)
+                fileStatusApi.getCostSummary(params, accessToken),
+                fileStatusApi.getCollectionByCost(collectionCostParams, accessToken),
+                fileStatusApi.getFileByCost(fileCostParams, accessToken)
             ]);
-            console.log(summary, "collection ",collectionRes, "fileCost ",fileCostResponse)
+
             setSummary(summaryRes);
             setCollectionCost(Array.isArray(collectionRes) ? collectionRes : []);
             setFilesByCostData(Array.isArray(fileCostResponse) ? fileCostResponse : fileCostResponse?.items || []);
@@ -118,7 +156,7 @@ function FilesByCost() {
             <SideNav menuItems={metricsMenuItems} open={openSideNav} onToggle={handleToggleSideNav} />
             <Box component="main" sx={{ flexGrow: 1, p: 3, backgroundColor: '#f4f6f8' }}>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
-                    <MetricsFilter handleDataFilter={fetchDataByCost} clearData={() => toast.info("Filters cleared.")} />
+                    <MetricsFilter handleDataFilter={handleDataFilter} clearData={clearDataFilter} />
 
                     {loading ? <CircularProgress /> : error ? <Alert severity="error">{error}</Alert> : (
                         <>
@@ -159,7 +197,7 @@ function FilesByCost() {
                                                     <LineChart data={summary.daily_cost}>
                                                         <CartesianGrid strokeDasharray="3 3" />
                                                         <XAxis dataKey="date" />
-                                                        <YAxis />
+                                                        <YAxis allowDataOverflow domain={['auto', 'auto']} />
                                                         <Tooltip />
                                                         <Legend />
                                                         <Line type="monotone" dataKey="cost" stroke="#8884d8" name="Daily Cost ($)" />
@@ -175,18 +213,41 @@ function FilesByCost() {
                                 <Grid item xs={12} md={6}>
                                     <Card>
                                         <CardContent>
-                                            <Typography variant="subtitle1" color="text.secondary" gutterBottom>Collection Cost</Typography>
-                                            {paginatedCollections.length > 0 ? (
+                                        <Typography variant="subtitle1" color="text.secondary" gutterBottom>Collection Cost</Typography>
+                                        {paginatedCollections.length > 0 ? (
+                                            <Box sx={{ '& .recharts-bar-rectangle:hover': { fill: '#82ca9d !important', stroke: 'none !important', opacity: 1 } }}>
                                                 <ResponsiveContainer width="100%" height={300}>
                                                     <BarChart data={paginatedCollections}>
                                                         <CartesianGrid strokeDasharray="3 3" />
                                                         <XAxis dataKey="name" />
                                                         <YAxis />
-                                                        <Tooltip formatter={(value) => [`$${value}`, 'Cost']} />
+                                                        <Tooltip content={({ active, payload }) => {
+                                                            if (active && payload && payload.length) {
+                                                                const { name, cost, size } = payload[0].payload;
+                                                                return (
+                                                                <Box sx={{ p: 1, borderRadius: 1, boxShadow: 2, backgroundColor: 'white' }}>
+                                                                    <Typography variant="body2"><b>{name}</b></Typography>
+                                                                    <Typography variant="body2">Cost: ${cost}</Typography>
+                                                                    <Typography variant="body2">Size: {size}</Typography>
+                                                                </Box>
+                                                                );
+                                                            }
+                                                            return null;
+                                                            }} />
                                                         <Legend />
-                                                        <Bar dataKey="cost" fill="#82ca9d" name="Cost ($)" />
+                                                        <Bar
+                                                            dataKey="cost"
+                                                            fill="#82ca9d"
+                                                            name="Cost ($)"
+                                                            isAnimationActive={false}
+                                                            shape={({ x, y, width, height }) => (
+                                                                <rect x={x} y={y} width={width} height={height} fill="#82ca9d" stroke="none" style={{ pointerEvents: 'none' }} />
+                                                            )}
+                                                            activeBar={false}
+                                                            />
                                                     </BarChart>
                                                 </ResponsiveContainer>
+                                                </Box>
                                             ) : (
                                                 <Typography variant="body2" color="text.secondary">No collection cost data available.</Typography>
                                             )}
