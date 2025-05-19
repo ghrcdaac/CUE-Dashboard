@@ -196,7 +196,7 @@ function FilesByCost() {
                                                 <ResponsiveContainer width="100%" height={300}>
                                                     <LineChart data={summary.daily_cost}>
                                                         <CartesianGrid strokeDasharray="3 3" />
-                                                        <XAxis dataKey="date" />
+                                                        <XAxis dataKey="date" padding={{ left: 20, right: 20 }}/>
                                                         <YAxis allowDataOverflow domain={['auto', 'auto']} />
                                                         <Tooltip />
                                                         <Legend />
@@ -212,16 +212,19 @@ function FilesByCost() {
 
                                 <Grid item xs={12} md={6}>
                                     <Card>
-                                        <CardContent>
-                                        <Typography variant="subtitle1" color="text.secondary" gutterBottom>Collection Cost</Typography>
-                                        {paginatedCollections.length > 0 ? (
-                                            <Box sx={{ '& .recharts-bar-rectangle:hover': { fill: '#82ca9d !important', stroke: 'none !important', opacity: 1 } }}>
-                                                <ResponsiveContainer width="100%" height={300}>
-                                                    <BarChart data={paginatedCollections}>
-                                                        <CartesianGrid strokeDasharray="3 3" />
-                                                        <XAxis dataKey="name" />
-                                                        <YAxis />
-                                                        <Tooltip content={({ active, payload }) => {
+                                    <CardContent>
+                                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Collection Cost</Typography>
+                                    {paginatedCollections.length > 0 ? (
+                                        <Box>
+                                            <ResponsiveContainer width="100%" height={300}>
+                                                <BarChart data={paginatedCollections}>
+                                                    <CartesianGrid strokeDasharray="3 3" />
+                                                    <XAxis dataKey="name" />
+                                                    <YAxis />
+                                                    <Tooltip
+                                                        // THIS IS THE KEY CHANGE
+                                                        cursor={false} // Disables the default grey hover background
+                                                        content={({ active, payload }) => {
                                                             if (active && payload && payload.length) {
                                                                 const { name, cost, size } = payload[0].payload;
                                                                 return (
@@ -233,30 +236,30 @@ function FilesByCost() {
                                                                 );
                                                             }
                                                             return null;
-                                                            }} />
-                                                        <Legend />
-                                                        <Bar
-                                                            dataKey="cost"
-                                                            fill="#82ca9d"
-                                                            name="Cost ($)"
-                                                            isAnimationActive={false}
-                                                            shape={({ x, y, width, height }) => (
-                                                                <rect x={x} y={y} width={width} height={height} fill="#82ca9d" stroke="none" style={{ pointerEvents: 'none' }} />
-                                                            )}
-                                                            activeBar={false}
-                                                            />
-                                                    </BarChart>
-                                                </ResponsiveContainer>
-                                                </Box>
-                                            ) : (
-                                                <Typography variant="body2" color="text.secondary">No collection cost data available.</Typography>
-                                            )}
-                                            {totalPages > 1 && (
-                                                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                                                    <Pagination count={totalPages} page={page} onChange={(e, val) => setPage(val)} />
-                                                </Box>
-                                            )}
-                                        </CardContent>
+                                                        }} />
+                                                    <Legend />
+                                                    <Bar
+                                                        dataKey="cost"
+                                                        fill="#82ca9d"
+                                                        name="Cost ($)"
+                                                        isAnimationActive={false}
+                                                        shape={({ x, y, width, height }) => (
+                                                            <rect x={x} y={y} width={width} height={height} fill="#82ca9d" stroke="none" style={{ pointerEvents: 'none' }} />
+                                                        )}
+                                                        // activeBar={false}
+                                                        />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </Box>
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary">No collection cost data available.</Typography>
+                                    )}
+                                    {totalPages > 1 && (
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                                            <Pagination count={totalPages} page={page} onChange={(e, val) => setPage(val)} />
+                                        </Box>
+                                    )}
+                                    </CardContent>
                                     </Card>
                                 </Grid>
                             </Grid>
