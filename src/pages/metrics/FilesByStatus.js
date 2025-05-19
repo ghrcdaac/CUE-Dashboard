@@ -103,7 +103,7 @@ function FilesByStatus() {
     const metricsMenuItems = [
         { text: 'Overview', path: '/metrics', icon: <AssessmentIcon /> },
         { text: 'Files by Status', path: '/files-by-status', icon: <FilePresentIcon /> },
-        { text: 'Cost', path: '/file-by-cost', icon: <MoneyIcon /> }
+        { text: 'Cost', path: '/files-by-cost', icon: <MoneyIcon /> }
     ];
 
     // --- Data Fetching Callbacks ---
