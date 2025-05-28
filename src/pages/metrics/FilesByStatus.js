@@ -62,6 +62,19 @@ function getComparator(order, orderBy) {
   return order === 'desc' ? (a, b) => descendingComparator(a, b, orderBy) : (a, b) => -descendingComparator(a, b, orderBy);
 };
 
+const dateformatter = (date) => {
+    return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZoneName: 'short'
+      }).format(new Date(date))
+}
+
 // --- Component ---
 function FilesByStatus() {
     usePageTitle("Files by Status");
@@ -301,12 +314,93 @@ function FilesByStatus() {
                                 <>
                                     <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
                                         <Table stickyHeader sx={{ minWidth: 650 }} aria-label={`files table for status ${selectedStatusTab}`}>
-                                            <TableHead>
-                                                <TableRow>
-                                                     <TableCell sortDirection={filesOrderBy === 'name' ? filesOrder : false} sx={{ bgcolor: "#E5E8EB", color: "black " }}> <TableSortLabel active={filesOrderBy === 'name'} direction={filesOrderBy === 'name' ? filesOrder : 'asc'} onClick={() => handleFilesRequestSort('name')}> File Name <Box component="span" sx={visuallyHidden}>{/* sort text */}</Box> </TableSortLabel> </TableCell>
-                                                     <TableCell sortDirection={filesOrderBy === 'collection' ? filesOrder : false} sx={{ bgcolor: "#E5E8EB", color: "black " }}> <TableSortLabel active={filesOrderBy === 'collection'} direction={filesOrderBy === 'collection' ? filesOrder : 'asc'} onClick={() => handleFilesRequestSort('collection')}> Collection <Box component="span" sx={visuallyHidden}>{/* sort text */}</Box> </TableSortLabel> </TableCell>
-                                                     <TableCell sortDirection={filesOrderBy === 'size_bytes' ? filesOrder : false} sx={{ bgcolor: "#E5E8EB", color: "black " }}> <TableSortLabel active={filesOrderBy === 'size_bytes'} direction={filesOrderBy === 'size_bytes' ? filesOrder : 'asc'} onClick={() => handleFilesRequestSort('size_bytes')}> Size <Box component="span" sx={visuallyHidden}>{/* sort text */}</Box> </TableSortLabel> </TableCell>
-                                                </TableRow>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell sortDirection={filesOrderBy === 'name' ? filesOrder : false} sx={{ bgcolor: "#E5E8EB", color: "black" }}>
+                                                <TableSortLabel active={filesOrderBy === 'name'} direction={filesOrderBy === 'name' ? filesOrder : 'asc'} onClick={() => handleFilesRequestSort('name')}>
+                                                    File Name
+                                                    <Box component="span" sx={visuallyHidden}></Box>
+                                                </TableSortLabel>
+                                                </TableCell>
+
+                                                <TableCell sortDirection={filesOrderBy === 'collection' ? filesOrder : false} sx={{ bgcolor: "#E5E8EB", color: "black" }}>
+                                                <TableSortLabel active={filesOrderBy === 'collection'} direction={filesOrderBy === 'collection' ? filesOrder : 'asc'} onClick={() => handleFilesRequestSort('collection')}>
+                                                    Collection
+                                                    <Box component="span" sx={visuallyHidden}></Box>
+                                                </TableSortLabel>
+                                                </TableCell>
+
+                                                <TableCell sortDirection={filesOrderBy === 'size_bytes' ? filesOrder : false} sx={{ bgcolor: "#E5E8EB", color: "black" }}>
+                                                <TableSortLabel active={filesOrderBy === 'size_bytes'} direction={filesOrderBy === 'size_bytes' ? filesOrder : 'asc'} onClick={() => handleFilesRequestSort('size_bytes')}>
+                                                    Size
+                                                    <Box component="span" sx={visuallyHidden}></Box>
+                                                </TableSortLabel>
+                                                </TableCell>
+
+                                                {selectedStatusTab === 'distributed' && (
+                                                <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
+                                                    <TableSortLabel
+                                                    active={filesOrderBy === 'date'}
+                                                    direction={filesOrderBy === 'date' ? filesOrder : 'asc'}
+                                                    onClick={() => handleFilesRequestSort('egress_start')}
+                                                    >
+                                                    Upload Time
+                                                    <Box component="span" sx={visuallyHidden}></Box>
+                                                    </TableSortLabel>
+                                                </TableCell>
+                                                )}
+
+                                                {selectedStatusTab === 'unscanned' && (
+                                                <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
+                                                    <TableSortLabel
+                                                    active={filesOrderBy === 'date'}
+                                                    direction={filesOrderBy === 'date' ? filesOrder : 'asc'}
+                                                    onClick={() => handleFilesRequestSort('upload_time')}
+                                                    >
+                                                    Upload Time
+                                                    <Box component="span" sx={visuallyHidden}></Box>
+                                                    </TableSortLabel>
+                                                </TableCell>
+                                                )}
+
+                                                {selectedStatusTab === 'clean' && (
+                                                <>
+                                                    <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
+                                                    <TableSortLabel
+                                                        active={filesOrderBy === 'date'}
+                                                        direction={filesOrderBy === 'date' ? filesOrder : 'asc'}
+                                                        onClick={() => handleFilesRequestSort('scan_start')}
+                                                    >
+                                                        Scan Start
+                                                        <Box component="span" sx={visuallyHidden}></Box>
+                                                    </TableSortLabel>
+                                                    </TableCell>
+                                                    <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
+                                                    <TableSortLabel
+                                                        active={filesOrderBy === 'date'}
+                                                        direction={filesOrderBy === 'date' ? filesOrder : 'asc'}
+                                                        onClick={() => handleFilesRequestSort('scan_end')}
+                                                    >
+                                                        Scan End
+                                                        <Box component="span" sx={visuallyHidden}></Box>
+                                                    </TableSortLabel>
+                                                    </TableCell>
+                                                </>
+                                                )}
+
+                                                {(selectedStatusTab === 'infected' || selectedStatusTab === 'scan_failed') && (
+                                                <TableCell
+                                                    sx={{
+                                                    bgcolor: "#E5E8EB",
+                                                    color: "black",
+                                                    whiteSpace: "nowrap",
+                                                    minWidth: 200,
+                                                    }}
+                                                >
+                                                    Scan Result
+                                                </TableCell>
+                                                )}
+                                            </TableRow>
                                             </TableHead>
                                             <TableBody>
                                                 {visibleFiles.length > 0 ? (
@@ -315,6 +409,33 @@ function FilesByStatus() {
                                                             <TableCell>{file.name || '(No Name)'}</TableCell>
                                                             <TableCell>{collectionNameMap[file.collection_id] || file.collection_id || 'N/A'}</TableCell>
                                                             <TableCell>{formatBytes(file.size_bytes)}</TableCell>
+                                                            {selectedStatusTab === 'distributed' && (
+                                                            <TableCell>{file.egress_start ? dateformatter(file.egress_start) : ''}</TableCell>
+                                                     )}
+                                                     {selectedStatusTab === 'unscanned' && (
+                                                            <TableCell>{file.upload_time ? dateformatter(file.upload_time) : ''}</TableCell>
+                                                     )}
+                                                     {selectedStatusTab === 'clean' && (
+                                                        <>
+                                                            <TableCell>{file.scan_start ? dateformatter(file.scan_start) : ''}</TableCell>
+                                                            <TableCell>{file.scan_end ? dateformatter(file.scan_end) : ''}</TableCell>
+                                                        </>
+                                                     )}
+                                                     {(selectedStatusTab === 'infected' || selectedStatusTab === 'scan_failed') && (
+                                                            <TableCell sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word',  minWidth: 200 }}>
+                                                                {(() => {
+                                                                    if (file.scan_results === null || file.scan_results === "null") {
+                                                                    return ''; // show empty for null
+                                                                    }
+                                                                    try {
+                                                                    const parsed = JSON.parse(file.scan_results);
+                                                                    return typeof parsed === 'object' ? JSON.stringify(parsed, null, 2) : file.scan_results;
+                                                                    } catch {
+                                                                    return file.scan_results; // raw string fallback
+                                                                    }
+                                                                })()}
+                                                            </TableCell>
+                                                     )}
                                                         </TableRow>
                                                     ))
                                                 ) : ( <TableRow> <TableCell colSpan={3} align="center"> {filesSearchTerm ? 'No files match your search.' : `No files found for status '${selectedStatusTab}'. Apply filters or clear search.`} </TableCell> </TableRow> )}
