@@ -340,11 +340,11 @@ function FilesByStatus() {
                                                 {selectedStatusTab === 'distributed' && (
                                                 <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
                                                     <TableSortLabel
-                                                    active={filesOrderBy === 'date'}
-                                                    direction={filesOrderBy === 'date' ? filesOrder : 'asc'}
+                                                    active={filesOrderBy === 'egress_start'}
+                                                    direction={filesOrderBy === 'egress_start' ? filesOrder : 'asc'}
                                                     onClick={() => handleFilesRequestSort('egress_start')}
                                                     >
-                                                    Upload Time
+                                                    Distributed Time
                                                     <Box component="span" sx={visuallyHidden}></Box>
                                                     </TableSortLabel>
                                                 </TableCell>
@@ -353,8 +353,8 @@ function FilesByStatus() {
                                                 {selectedStatusTab === 'unscanned' && (
                                                 <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
                                                     <TableSortLabel
-                                                    active={filesOrderBy === 'date'}
-                                                    direction={filesOrderBy === 'date' ? filesOrder : 'asc'}
+                                                    active={filesOrderBy === 'upload_time'}
+                                                    direction={filesOrderBy === 'upload_time' ? filesOrder : 'asc'}
                                                     onClick={() => handleFilesRequestSort('upload_time')}
                                                     >
                                                     Upload Time
@@ -367,8 +367,8 @@ function FilesByStatus() {
                                                 <>
                                                     <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
                                                     <TableSortLabel
-                                                        active={filesOrderBy === 'date'}
-                                                        direction={filesOrderBy === 'date' ? filesOrder : 'asc'}
+                                                        active={filesOrderBy === 'scan_start'}
+                                                        direction={filesOrderBy === 'scan_start' ? filesOrder : 'asc'}
                                                         onClick={() => handleFilesRequestSort('scan_start')}
                                                     >
                                                         Scan Start
@@ -377,8 +377,8 @@ function FilesByStatus() {
                                                     </TableCell>
                                                     <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
                                                     <TableSortLabel
-                                                        active={filesOrderBy === 'date'}
-                                                        direction={filesOrderBy === 'date' ? filesOrder : 'asc'}
+                                                        active={filesOrderBy === 'scan_end'}
+                                                        direction={filesOrderBy === 'scan_end' ? filesOrder : 'asc'}
                                                         onClick={() => handleFilesRequestSort('scan_end')}
                                                     >
                                                         Scan End
@@ -425,13 +425,28 @@ function FilesByStatus() {
                                                             <TableCell sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word',  minWidth: 200 }}>
                                                                 {(() => {
                                                                     if (file.scan_results === null || file.scan_results === "null") {
-                                                                    return ''; // show empty for null
+                                                                    return '';
                                                                     }
                                                                     try {
                                                                     const parsed = JSON.parse(file.scan_results);
-                                                                    return typeof parsed === 'object' ? JSON.stringify(parsed, null, 2) : file.scan_results;
+
+                                                                    const collectKeyValues = (obj) => {
+                                                                        let results = [];
+                                                                        for (const [key, value] of Object.entries(obj)) {
+                                                                        if (value && typeof value === 'object' && !Array.isArray(value)) {
+                                                                            results = results.concat(collectKeyValues(value));
+                                                                        } else {
+                                                                            results.push(`${key}: ${value}`);
+                                                                        }
+                                                                        }
+                                                                        return results;
+                                                                    };
+
+                                                                    return typeof parsed === 'object'
+                                                                        ? collectKeyValues(parsed).join('\n')
+                                                                        : file.scan_results;
                                                                     } catch {
-                                                                    return file.scan_results; // raw string fallback
+                                                                    return file.scan_results;
                                                                     }
                                                                 })()}
                                                             </TableCell>
