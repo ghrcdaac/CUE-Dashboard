@@ -49,20 +49,6 @@ function MetricsFilter({handleDataFilter, clearData}) {
     const [startDate, setStartDate] = useState(getDefaultStartDate);
     const [endDate, setEndDate] = useState(getDefaultEndDate);
     
-
-    // --- Data Fetching Callbacks ---
-    // Fetches file list based on current state
-    const loadData = useCallback(async () => {
-        if (!accessToken || !ngroupId) return;
-        handleDataFilter(
-            {
-                provider: selectedProvider,
-                user: selectedUser,
-                collection: selectedCollection,
-                startDate: startDate,
-                endDate: endDate
-            });
-    }, [accessToken, ngroupId, selectedProvider, selectedUser, selectedCollection, startDate, endDate]); 
     
     // Fetches filter dropdown options
     const fetchFilterOptions = useCallback(async () => {
@@ -84,9 +70,16 @@ function MetricsFilter({handleDataFilter, clearData}) {
         }, [accessToken, ngroupId]);
 
     // --- Event Handlers ---
-    const handleApplyFilters = () => {
-        loadData(); 
-    };
+    const handleApplyFilters = useCallback(() => {
+        if (!accessToken || !ngroupId) return;
+        handleDataFilter({
+            provider: selectedProvider,
+            user: selectedUser,
+            collection: selectedCollection,
+            startDate,
+            endDate
+        });
+    }, [accessToken, ngroupId, selectedProvider, selectedUser, selectedCollection, startDate, endDate, handleDataFilter]);
 
     const handleClearFilters = () => {
         setSelectedProvider(null); setSelectedUser(null); setSelectedCollection(null);
