@@ -81,11 +81,11 @@ function FilesByCost() {
     ];
 
     function handleDataFilter({provider, user, collection, startDate, endDate}) {
-        if (provider) setSelectedProvider(provider);
-        if (user) setSelectedUser(user);
-        if (collection) setSelectedCollection(collection);
-        if (startDate) setStartDate(startDate);
-        if (endDate) setEndDate(endDate)
+        setSelectedProvider(provider ?? null);
+        setSelectedUser(user ?? null);
+        setSelectedCollection(collection ?? null);
+        setStartDate(startDate ?? getDefaultStartDate());
+        setEndDate(endDate ?? getDefaultEndDate());
     }
 
     function clearDataFilter() {
@@ -93,55 +93,81 @@ function FilesByCost() {
         setStartDate(getDefaultStartDate()); setEndDate(getDefaultEndDate());
     }
 
-    const fetchDataByCost = useCallback(async () => {
+    const fetchSummary = useCallback(async () => {
         if (!accessToken || !ngroupId) return;
-        setLoading(true);
-        setError(null);
-
         try {
             const params = {
                 ngroup_id: ngroupId,
+                provider_id: selectedProvider?.id,
+                user_id: selectedUser?.id,
+                collection_id: selectedCollection?.id,
+                start_date: startDate?.format(DATE_FORMAT_API_DAYJS),
+                end_date: endDate?.format(DATE_FORMAT_API_DAYJS),
             };
-            if (selectedProvider) params.provider_id = selectedProvider.id;
-            if (selectedUser) params.user_id = selectedUser.id;
-            if (selectedCollection) params.collection_id = selectedCollection.id;
-            if (startDate?.isValid()) params.start_date = startDate.format(DATE_FORMAT_API_DAYJS);
-            if (endDate?.isValid()) params.end_date = endDate.format(DATE_FORMAT_API_DAYJS);
+            const summaryRes = await costMetricsApi.getCostSummary(params, accessToken);
+            setSummary(summaryRes);
+        } catch (err) {
+            toast.error("Error loading summary");
+        }
+    }, [accessToken, ngroupId, selectedProvider, selectedUser, selectedCollection, startDate, endDate]);
 
-            const collectionCostParams = {
-                ...params,
-                page: collectionPage, 
+    const fetchCollections = useCallback(async () => {
+        if (!accessToken || !ngroupId) return;
+        try {
+            const params = {
+                ngroup_id: ngroupId,
+                provider_id: selectedProvider?.id,
+                user_id: selectedUser?.id,
+                collection_id: selectedCollection?.id,
+                start_date: startDate?.format(DATE_FORMAT_API_DAYJS),
+                end_date: endDate?.format(DATE_FORMAT_API_DAYJS),
+                page: collectionPage,
                 page_size: 4,
                 sort_by: collectionsOrderBy,
-                sort_order: collectionsOrder
+                sort_order: collectionsOrder,
             };
-            const fileCostParams = {
-                ...params,
-                page: filesListPage + 1, 
+            const res = await costMetricsApi.getCollectionByCost(params, accessToken);
+            setCollectionCost(res?.costs || []);
+            setCollectionTotalPages(res?.pages || 1);
+        } catch (err) {
+            toast.error("Error loading collection cost");
+        }
+    }, [accessToken, ngroupId, selectedProvider, selectedUser, selectedCollection, startDate, endDate, collectionPage, collectionsOrderBy, collectionsOrder]);
+
+    const fetchFiles = useCallback(async () => {
+        if (!accessToken || !ngroupId) return;
+        try {
+            const params = {
+                ngroup_id: ngroupId,
+                provider_id: selectedProvider?.id,
+                user_id: selectedUser?.id,
+                collection_id: selectedCollection?.id,
+                start_date: startDate?.format(DATE_FORMAT_API_DAYJS),
+                end_date: endDate?.format(DATE_FORMAT_API_DAYJS),
+                page: filesListPage + 1,
                 page_size: filesListRowsPerPage,
                 sort_by: filesOrderBy,
-                sort_order: filesOrder
+                sort_order: filesOrder,
             };
-            const [summaryRes, collectionRes, fileCostResponse] = await Promise.all([
-                costMetricsApi.getCostSummary(params, accessToken),
-                costMetricsApi.getCollectionByCost(collectionCostParams, accessToken),
-                costMetricsApi.getFileByCost(fileCostParams, accessToken)
-            ]);
-
-            setSummary(summaryRes);
-            setCollectionCost(collectionRes?.costs || []);
-            setCollectionTotalPages(collectionRes?.pages || 1);
-            setFilesByCostData(Array.isArray(fileCostResponse) ? fileCostResponse : fileCostResponse?.costs || []);
-            setFilesListTotalCount(fileCostResponse?.length || fileCostResponse?.total || 0);
+            const res = await costMetricsApi.getFileByCost(params, accessToken);
+            setFilesByCostData(Array.isArray(res) ? res : res?.costs || []);
+            setFilesListTotalCount(res?.length || res?.total || 0);
         } catch (err) {
-            setError("Failed to load cost metrics");
-            toast.error("Error loading cost metrics");
-        } finally {
-            setLoading(false);
+            toast.error("Error loading file cost");
         }
-      }, [accessToken, ngroupId, startDate, endDate, selectedProvider, selectedUser, selectedCollection, filesListPage, filesListRowsPerPage, filesOrder, filesOrderBy, collectionPage]);
+    }, [accessToken, ngroupId, selectedProvider, selectedUser, selectedCollection, startDate, endDate, filesListPage, filesListRowsPerPage, filesOrderBy, filesOrder]);
 
-    useEffect(() => { fetchDataByCost(); }, [fetchDataByCost]);
+    useEffect(() => {
+        fetchSummary();
+    }, [fetchSummary]);
+
+    useEffect(() => {
+        fetchCollections();
+    }, [fetchCollections]);
+
+    useEffect(() => {
+        fetchFiles();
+    }, [fetchFiles]);
 
     const handleFilesPageChange = (event, newPage) => setFilesListPage(newPage);
     const handleFilesRowsPerPageChange = (event) => setFilesListRowsPerPage(parseInt(event.target.value, 10));
