@@ -86,6 +86,8 @@ function FilesByCost() {
         setSelectedCollection(collection ?? null);
         setStartDate(startDate ?? getDefaultStartDate());
         setEndDate(endDate ?? getDefaultEndDate());
+        setFilesListPage(0);
+        setCollectionPage(1);
     }
 
     function clearDataFilter() {
@@ -235,7 +237,7 @@ function FilesByCost() {
                                                     <LineChart data={summary.daily_cost}>
                                                         <CartesianGrid strokeDasharray="3 3" />
                                                         <XAxis dataKey="date" padding={{ left: 20, right: 20 }}/>
-                                                        <YAxis allowDataOverflow domain={['auto', 'auto']} />
+                                                        <YAxis allowDataOverflow domain={[0, 'auto']} />
                                                         <Tooltip />
                                                         <Legend />
                                                         <Line type="monotone" dataKey="cost" stroke="#8884d8" name="Daily Cost ($)" />
