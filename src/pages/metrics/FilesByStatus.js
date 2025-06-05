@@ -439,21 +439,19 @@ function FilesByStatus() {
                                                                 if (!item || typeof item !== 'object') return null;
 
                                                                 const virusName = Array.isArray(item.virusName) ? item.virusName.join(', ') : 'N/A';
-                                                                const engine = item.engine || 'N/A';
                                                                 const message = Array.isArray(item.message) ? item.message.join(', ') : 'N/A';
                                                                 const dateScanned = item.dateScanned?dateformatter(item.dateScanned): 'N/A';
 
                                                                 return (
-                                                                <div key={index} style={{padding: '0' }}>
+                                                                <div key={index} style={{padding: 0 }}>
                                                                     <div><strong>Virus Name:</strong> {virusName}</div>
-                                                                    <div><strong>Engine:</strong> {engine}</div>
                                                                     <div><strong>Message:</strong> {message}</div>
                                                                     <div><strong>Date Scanned:</strong> {dateScanned}</div>
                                                                 </div>
                                                                 );
                                                             });
                                                             } catch {
-                                                            return '';
+                                                                return '';
                                                             }
                                                         })()}
                                                         </TableCell>
