@@ -438,8 +438,13 @@ function FilesByStatus() {
                                                             return parsed.map((item, index) => {
                                                                 if (!item || typeof item !== 'object') return null;
 
-                                                                const virusName = Array.isArray(item.virusName) ? item.virusName.join(', ') : 'N/A';
-                                                                const message = Array.isArray(item.message) ? item.message.join(', ') : 'N/A';
+                                                                const virusName = Array.isArray(item.virusName) && item.virusName.length > 0
+                                                                ? item.virusName.join(', ')
+                                                                : 'N/A';
+
+                                                                const message = Array.isArray(item.message) && item.message.length > 0
+                                                                ? item.message.join(', ')
+                                                                : '';
                                                                 const dateScanned = item.dateScanned?dateformatter(item.dateScanned): 'N/A';
 
                                                                 return (
