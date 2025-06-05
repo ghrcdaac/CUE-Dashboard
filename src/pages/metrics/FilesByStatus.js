@@ -422,34 +422,41 @@ function FilesByStatus() {
                                                         </>
                                                      )}
                                                      {(selectedStatusTab === 'infected' || selectedStatusTab === 'scan_failed') && (
-                                                            <TableCell sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word',  minWidth: 200 }}>
-                                                                {(() => {
-                                                                    if (file.scan_results === null || file.scan_results === "null") {
-                                                                    return '';
-                                                                    }
-                                                                    try {
-                                                                    const parsed = JSON.parse(file.scan_results);
+                                                            <TableCell sx={{ whiteSpace: 'normal', wordBreak: 'break-word', minWidth: 200 }}>
+                                                        {(() => {
+                                                            if (!file.scan_results || file.scan_results === 'null' || file.scan_results.trim() === '') {
+                                                            return '';
+                                                            }
 
-                                                                    const collectKeyValues = (obj) => {
-                                                                        let results = [];
-                                                                        for (const [key, value] of Object.entries(obj)) {
-                                                                        if (value && typeof value === 'object' && !Array.isArray(value)) {
-                                                                            results = results.concat(collectKeyValues(value));
-                                                                        } else {
-                                                                            results.push(`${key}: ${value}`);
-                                                                        }
-                                                                        }
-                                                                        return results;
-                                                                    };
+                                                            try {
+                                                            const parsed = JSON.parse(file.scan_results);
 
-                                                                    return typeof parsed === 'object'
-                                                                        ? collectKeyValues(parsed).join('\n')
-                                                                        : file.scan_results;
-                                                                    } catch {
-                                                                    return file.scan_results;
-                                                                    }
-                                                                })()}
-                                                            </TableCell>
+                                                            if (!Array.isArray(parsed) || parsed.length === 0) {
+                                                                return '';
+                                                            }
+
+                                                            return parsed.map((item, index) => {
+                                                                if (!item || typeof item !== 'object') return null;
+
+                                                                const virusName = Array.isArray(item.virusName) ? item.virusName.join(', ') : 'N/A';
+                                                                const engine = item.engine || 'N/A';
+                                                                const message = Array.isArray(item.message) ? item.message.join(', ') : 'N/A';
+                                                                const dateScanned = item.dateScanned?dateformatter(item.dateScanned): 'N/A';
+
+                                                                return (
+                                                                <div key={index} style={{padding: '0' }}>
+                                                                    <div><strong>Virus Name:</strong> {virusName}</div>
+                                                                    <div><strong>Engine:</strong> {engine}</div>
+                                                                    <div><strong>Message:</strong> {message}</div>
+                                                                    <div><strong>Date Scanned:</strong> {dateScanned}</div>
+                                                                </div>
+                                                                );
+                                                            });
+                                                            } catch {
+                                                            return '';
+                                                            }
+                                                        })()}
+                                                        </TableCell>
                                                      )}
                                                         </TableRow>
                                                     ))
