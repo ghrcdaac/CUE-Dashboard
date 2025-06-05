@@ -171,15 +171,20 @@ function FilesByCost() {
         fetchFiles();
     }, [fetchFiles]);
 
+    useEffect(() => {
+        setFilesListPage(0);
+    }, [filesSearchTerm]);
+
     const handleFilesPageChange = (event, newPage) => setFilesListPage(newPage);
     const handleFilesRowsPerPageChange = (event) => setFilesListRowsPerPage(parseInt(event.target.value, 10));
   
     const filteredFiles = useMemo(() => {
-      const sorted = [...filesByCostData].sort(getComparator(filesOrder, filesOrderBy));
-      if (filesSearchTerm) {
-        return sorted.filter(f => f.name?.toLowerCase().includes(filesSearchTerm.toLowerCase()));
-      }
-      return sorted;
+    const sorted = [...filesByCostData].sort(getComparator(filesOrder, filesOrderBy));
+    const filtered = filesSearchTerm
+        ? sorted.filter(f => f.name?.toLowerCase().includes(filesSearchTerm.toLowerCase()))
+        : sorted;
+
+    return filtered;
     }, [filesByCostData, filesSearchTerm, filesOrder, filesOrderBy]);
 
     const paginatedCollections = collectionCost.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -189,7 +194,16 @@ function FilesByCost() {
         const isAsc = filesOrderBy === property && filesOrder === 'asc';
         setFilesOrder(isAsc ? 'desc' : 'asc');
         setFilesOrderBy(property);
-      };
+    };
+
+    const paginatedFiles = useMemo(() => {
+        if (filesSearchTerm) {
+            const start = filesListPage * filesListRowsPerPage;
+            const end = start + filesListRowsPerPage;
+            return filteredFiles.slice(start, end);
+        }
+        return filteredFiles;
+    }, [filteredFiles, filesSearchTerm, filesListPage, filesListRowsPerPage]);
 
     return (
         <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
@@ -221,7 +235,7 @@ function FilesByCost() {
                                     <Card sx={{ height: '100%' }}>
                                         <CardContent>
                                             <Typography variant="subtitle1" color="text.secondary" gutterBottom>Cost per Byte</Typography>
-                                            <Typography variant="h4">{summary?.files_metadata?.cost_per_byte || 0}</Typography>
+                                            <Typography variant="h4">${summary?.files_metadata?.cost_per_byte || 0}</Typography>
                                         </CardContent>
                                     </Card>
                                 </Grid>
@@ -322,12 +336,12 @@ function FilesByCost() {
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
-                                            {filteredFiles.map((row, idx) => (
-                                            <TableRow key={idx} hover>
+                                            {paginatedFiles.map((row, idx) => (
+                                                <TableRow key={idx} hover>
                                                 <TableCell>{row.name}</TableCell>
                                                 <TableCell>${row.cost}</TableCell>
                                                 <TableCell>{row.size}</TableCell>
-                                            </TableRow>
+                                                </TableRow>
                                             ))}
                                         </TableBody>
                                         </Table>
@@ -335,7 +349,7 @@ function FilesByCost() {
                                     <TablePagination
                                         rowsPerPageOptions={[10, 25, 50]}
                                         component="div"
-                                        count={filesListTotalCount}
+                                        count={filesSearchTerm ? filteredFiles.length : filesListTotalCount}
                                         rowsPerPage={filesListRowsPerPage}
                                         page={filesListPage}
                                         onPageChange={handleFilesPageChange}
