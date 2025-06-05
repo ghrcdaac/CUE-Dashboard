@@ -221,7 +221,7 @@ function FilesByCost() {
                                     <Card sx={{ height: '100%' }}>
                                         <CardContent>
                                             <Typography variant="subtitle1" color="text.secondary" gutterBottom>Cost per Byte</Typography>
-                                            <Typography variant="h4">{summary?.files_metadata?.cost_per_byte || 0}</Typography>
+                                            <Typography variant="h4">${summary?.files_metadata?.cost_per_byte || 0}</Typography>
                                         </CardContent>
                                     </Card>
                                 </Grid>
