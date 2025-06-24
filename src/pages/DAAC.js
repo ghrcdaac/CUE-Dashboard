@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useOutletContext } from 'react-router-dom';
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -29,7 +30,6 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import useAuth from '../hooks/useAuth';
 import { useLocation } from 'react-router-dom';
-import SideNav from "../components/SideNav";
 import EvStationIcon from '@mui/icons-material/EvStation';
 import DnsIcon from '@mui/icons-material/Dns';
 import usePageTitle from "../hooks/usePageTitle";
@@ -273,17 +273,20 @@ export default function DAAC() {
 
 
     // ---------- SideNav Logic ----------
-    const [open, setOpen] = useState(true);
     const location = useLocation();
-
-    const handleToggle = () => {
-        setOpen(!open);
-    };
 
     const daacMenuItems = [
         { text: 'Egress', path: '/daac', icon: <EvStationIcon /> },
         { text: 'Providers', path: '/daac/providers', icon: <DnsIcon /> },
     ];
+
+    const { setMenuItems } = useOutletContext();
+
+    useEffect(() => {
+        setMenuItems(daacMenuItems);
+        // Optional: clear the menu when the page is left
+        return () => setMenuItems([]);
+    }, [setMenuItems]);
 
     usePageTitle(
         location.pathname === '/daac' || location.pathname === '/daac/'
@@ -294,7 +297,6 @@ export default function DAAC() {
 
     return (
         <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
-            <SideNav menuItems={daacMenuItems} open={open} onToggle={handleToggle} />
             <Box
                 sx={{
                     flexGrow: 1,

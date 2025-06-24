@@ -13,11 +13,11 @@ import dayjs from 'dayjs';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useOutletContext } from 'react-router-dom';
 
 // Hooks & Components
 import useAuth from '../hooks/useAuth';
 import usePageTitle from "../hooks/usePageTitle";
-import SideNav from "../components/SideNav";
 
 // API Imports
 import * as fileStatusApi from '../api/fileStatusApi';
@@ -77,7 +77,6 @@ function Metrics() {
     const hasNgroupId = useMemo(() => !!ngroupId, [ngroupId]);
 
     // --- State --- (Keep state variables as before)
-    const [openSideNav, setOpenSideNav] = useState(true);
     const [providerOptions, setProviderOptions] = useState([]);
     const [userOptions, setUserOptions] = useState([]);
     const [collectionOptions, setCollectionOptions] = useState([]);
@@ -98,13 +97,20 @@ function Metrics() {
     const [metricsFetched, setMetricsFetched] = useState(false);
 
     // --- Side Navigation ---
-    const handleToggleSideNav = () => { setOpenSideNav(!openSideNav); };
     // --- CHANGE: Updated SideNav Title ---
     const metricsMenuItems = [
         { text: 'Overview', path: '/metrics', icon: <AssessmentIcon /> },
         { text: 'Files by Status', path: '/files-by-status', icon: <FilePresentIcon /> },
         { text: 'Cost', path: '/files-by-cost', icon: <MoneyIcon /> }
     ];
+
+    const { setMenuItems } = useOutletContext();
+
+    useEffect(() => {
+        setMenuItems(metricsMenuItems);
+        // Optional: clear the menu when the page is left
+        return () => setMenuItems([]);
+    }, [setMenuItems]);
 
     // --- Data Fetching Callbacks --- (fetchFilterOptions remains the same)
     const fetchFilterOptions = useCallback(async () => {
@@ -260,7 +266,6 @@ function Metrics() {
     return (
         <LocalizationProvider dateAdapter={AdapterDayjs}>
             <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)'  }}> {/* Adjust minHeight based on header */}
-                <SideNav menuItems={metricsMenuItems} open={openSideNav} onToggle={handleToggleSideNav} />
 
                 <Box component="main" sx={{ flexGrow: 1, p: 3, backgroundColor: '#f4f6f8' }}>
                     {/* Filter Card */}

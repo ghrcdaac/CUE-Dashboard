@@ -26,6 +26,7 @@ import RejectedRequests from "./pages/users/RejectedRequests";
 import { CircularProgress } from "@mui/material";
 import FilesByStatus from './pages/metrics/FilesByStatus';
 import FilesByCost from './pages/metrics/FilesByCost';
+import { Box } from '@mui/material';
 
 const theme = createTheme({
     palette: {
@@ -44,16 +45,47 @@ function Layout() {
     const handleMenuClick = (menu) => {
         setSelectedMenu(menu);
     };
+    const [sideNavOpen, setSideNavOpen] = useState(true);
+    const [menuItems, setMenuItems] = useState([]); // State for the dynamic menu
+
+    const handleToggleSideNav = () => {
+        setSideNavOpen(!sideNavOpen);
+    };
 
     return (
-        <div style={{ display: "flex", minHeight: "100vh" }}>
-            {/* <SideNav selectedMenu={selectedMenu} /> */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                <Header  />
-                <Outlet />
-                <Footer />
-            </div>
-        </div>
+        // This outer Box is the main container for the entire screen
+        <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
+            {/* HEADER: It stays at the top */}
+            <Header />
+
+            {/* This Box holds the SideNav and the main content side-by-side */}
+            <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
+                
+                {/* SIDENAV: It gets its state from this Layout component */}
+                <SideNav
+                    menuItems={menuItems}
+                    open={sideNavOpen}
+                    onToggle={handleToggleSideNav}
+                />
+
+                {/* MAIN CONTENT AREA: This is the only part that will scroll */}
+                <Box
+                    component="main"
+                    sx={{
+                        flexGrow: 1, // Takes up all remaining space
+                        overflowY: 'auto', // CRITICAL: This makes the content scrollable
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}
+                >
+                    {/* The page content will be rendered here by React Router */}
+                    <Box sx={{ flexGrow: 1, p: 3 /* Adds padding around content */ }}>
+                        <Outlet context={{ setMenuItems }} />
+                    </Box>
+                </Box>
+            </Box>
+            <Footer />
+        </Box>
     );
 }
 

@@ -12,11 +12,11 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useOutletContext } from 'react-router-dom';
 
 // Hooks & Components
 import useAuth from '../../hooks/useAuth'; // Adjusted path
 import usePageTitle from "../../hooks/usePageTitle"; // Adjusted path
-import SideNav from "../../components/SideNav"; // Adjusted path
 
 // API Imports
 import * as fileStatusApi from '../../api/fileStatusApi'; // Adjusted path
@@ -83,7 +83,6 @@ function FilesByStatus() {
     const hasNgroupId = useMemo(() => !!ngroupId, [ngroupId]);
 
     // --- State ---
-    const [openSideNav, setOpenSideNav] = useState(true);
     const [providerOptions, setProviderOptions] = useState([]);
     const [userOptions, setUserOptions] = useState([]);
     const [collectionOptions, setCollectionOptions] = useState([]);
@@ -112,12 +111,18 @@ function FilesByStatus() {
 
 
     // --- Side Navigation ---
-    const handleToggleSideNav = () => { setOpenSideNav(!openSideNav); };
     const metricsMenuItems = [
         { text: 'Overview', path: '/metrics', icon: <AssessmentIcon /> },
         { text: 'Files by Status', path: '/files-by-status', icon: <FilePresentIcon /> },
         { text: 'Cost', path: '/files-by-cost', icon: <MoneyIcon /> }
     ];
+    const { setMenuItems } = useOutletContext();
+
+    useEffect(() => {
+        setMenuItems(metricsMenuItems);
+        // Optional: clear the menu when the page is left
+        return () => setMenuItems([]);
+    }, [setMenuItems]);
 
     // --- Data Fetching Callbacks ---
     // Fetches file list based on current state
@@ -266,7 +271,6 @@ function FilesByStatus() {
      // --- Render ---
     return (
         <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)'  }}>
-            <SideNav menuItems={metricsMenuItems} open={openSideNav} onToggle={handleToggleSideNav} />
 
             <Box component="main" sx={{ flexGrow: 1, p: 3, backgroundColor: '#f4f6f8' }}>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>

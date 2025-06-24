@@ -11,10 +11,10 @@ import dayjs from 'dayjs';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { LineChart, BarChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useOutletContext } from 'react-router-dom';
 
 import useAuth from '../../hooks/useAuth';
 import usePageTitle from "../../hooks/usePageTitle";
-import SideNav from "../../components/SideNav";
 import MetricsFilter from './MetricsFilter';
 
 import * as costMetricsApi from '../../api/costApi';
@@ -47,7 +47,6 @@ function FilesByCost() {
     const { accessToken } = useAuth();
     const ngroupId = useMemo(() => localStorage.getItem('CUE_ngroup_id'), []);
 
-    const [openSideNav, setOpenSideNav] = useState(true);
 
     const [summary, setSummary] = useState(null);
     const [collectionCost, setCollectionCost] = useState([]);
@@ -73,12 +72,19 @@ function FilesByCost() {
     const [collectionsOrder, setCollectionsOrder] = useState('asc');
     const [collectionsOrderBy, setCollectionsOrderBy] = useState('name');
 
-    const handleToggleSideNav = () => setOpenSideNav(!openSideNav);
     const metricsMenuItems = [
         { text: 'Overview', path: '/metrics', icon: <AssessmentIcon /> },
         { text: 'Files by Status', path: '/files-by-status', icon: <FilePresentIcon /> },
         { text: 'Cost', path: '/files-by-cost', icon: <MoneyIcon /> }
     ];
+
+    const { setMenuItems } = useOutletContext();
+    
+    useEffect(() => {
+        setMenuItems(metricsMenuItems);
+        // Optional: clear the menu when the page is left
+        return () => setMenuItems([]);
+    }, [setMenuItems]);
 
     function handleDataFilter({provider, user, collection, startDate, endDate}) {
         setSelectedProvider(provider ?? null);
@@ -207,7 +213,6 @@ function FilesByCost() {
 
     return (
         <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
-            <SideNav menuItems={metricsMenuItems} open={openSideNav} onToggle={handleToggleSideNav} />
             <Box component="main" sx={{ flexGrow: 1, p: 3, backgroundColor: '#f4f6f8' }}>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                     <MetricsFilter handleDataFilter={handleDataFilter} clearData={clearDataFilter} />
