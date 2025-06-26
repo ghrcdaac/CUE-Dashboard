@@ -221,7 +221,7 @@ function RejectedRequests() {
 
 
     return (
-        <Box sx={{ p: 3 }}>
+        <Box>
             <ToastContainer position="top-center" />
             <Card>
                 <CardContent>

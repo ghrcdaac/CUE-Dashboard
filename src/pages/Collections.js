@@ -353,8 +353,7 @@ function Collections() {
 
     return (
         <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
-
-            <Box sx={{ flexGrow: 1, p: 3 }}>
+            <Box sx={{ flexGrow: 1 }}>
                 {location.pathname === '/collections' || location.pathname === '/collections/' ? (
                     <>
                         <Card sx={{ marginBottom: 2 }}>

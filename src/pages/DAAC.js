@@ -300,7 +300,6 @@ export default function DAAC() {
             <Box
                 sx={{
                     flexGrow: 1,
-                    p: 3,
                     display: "flex",
                     flexDirection: "column",
                     gap: 2,

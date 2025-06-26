@@ -319,7 +319,7 @@ function Providers() {
     return (
         <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
 
-            <Box sx={{ flexGrow: 1, p: 3 }}>
+            <Box sx={{ flexGrow: 1}}>
                 {location.pathname === '/providers' || location.pathname === '/providers/' ? (
                     <>
                         <Card sx={{ marginBottom: 2 }}>

@@ -38,50 +38,53 @@ const theme = createTheme({
         },
     },
 });
+function SimpleLayout() {
+    return (
+        <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
+            <Header />
+            <Box
+                component="main"
+                sx={{
+                    flexGrow: 1,
+                    overflowY: 'auto',
+                    p: 3,
+                    backgroundColor: '#f4f6f8',
+                }}
+            >
+                <Outlet />
+            </Box>
+            <Footer />
+        </Box>
+    );
+}
 
-function Layout() {
-    const [selectedMenu, setSelectedMenu] = useState("Overview");
-
-    const handleMenuClick = (menu) => {
-        setSelectedMenu(menu);
-    };
+function AppLayout() {
     const [sideNavOpen, setSideNavOpen] = useState(true);
-    const [menuItems, setMenuItems] = useState([]); // State for the dynamic menu
+    const [menuItems, setMenuItems] = useState([]);
 
     const handleToggleSideNav = () => {
         setSideNavOpen(!sideNavOpen);
     };
 
     return (
-        // This outer Box is the main container for the entire screen
         <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
-            {/* HEADER: It stays at the top */}
             <Header />
-
-            {/* This Box holds the SideNav and the main content side-by-side */}
             <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
-                
-                {/* SIDENAV: It gets its state from this Layout component */}
                 <SideNav
                     menuItems={menuItems}
                     open={sideNavOpen}
                     onToggle={handleToggleSideNav}
                 />
-
-                {/* MAIN CONTENT AREA: This is the only part that will scroll */}
                 <Box
                     component="main"
                     sx={{
-                        flexGrow: 1, // Takes up all remaining space
-                        overflowY: 'auto', // CRITICAL: This makes the content scrollable
-                        display: 'flex',
-                        flexDirection: 'column'
+                        flexGrow: 1,
+                        overflowY: 'auto',
+                        p: 3,
+                        backgroundColor: '#f4f6f8',
                     }}
                 >
-                    {/* The page content will be rendered here by React Router */}
-                    <Box sx={{ flexGrow: 1, p: 3 /* Adds padding around content */ }}>
-                        <Outlet context={{ setMenuItems }} />
-                    </Box>
+                    <Outlet context={{ setMenuItems }} />
                 </Box>
             </Box>
             <Footer />
@@ -124,29 +127,26 @@ function App() {
     return (
         <ThemeProvider theme={theme}>
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <Routes>
-                    <Route path="/" element={<Layout />}>
-                        <Route index element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                 <Routes>
+                    <Route element={<SimpleLayout />}>
+                        <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                        <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                    </Route>
+                    <Route element={<AppLayout />}>
                         <Route path="collections" element={<ProtectedRoute><Collections /></ProtectedRoute>}>
-                            <Route index element={<Collections />} />
-                            <Route path="create" element={<CreateCollection />} />
+                           <Route index element={<Collections />} />
+                           <Route path="create" element={<CreateCollection />} />
                         </Route>
                         <Route path="providers" element={<ProtectedRoute><Providers /></ProtectedRoute>} />
-
                         <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />
-                        <Route index element={<Metrics />} />
                         <Route path="files-by-status" element={<FilesByStatus />} />
                         <Route path="files-by-cost" element={<FilesByCost/>} />
-                        
                         <Route path="users" element={<ProtectedRoute><Users /></ProtectedRoute>}>
-                            <Route index element={<Users />} />
+                           <Route index element={<Users />} />
                             <Route path="pending-requests" element={<PendingRequests />} />
                             <Route path="rejected-requests" element={<RejectedRequests />} />
                         </Route>
-
-
                         <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />
-                        <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                     </Route>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/change-password" element={challengeName === 'NEW_PASSWORD_REQUIRED' ? <ChangePassword /> : <Navigate to="/login" />} />

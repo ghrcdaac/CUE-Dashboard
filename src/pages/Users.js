@@ -279,8 +279,7 @@ function Users() {
 
     return (
         <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
-
-            <Box sx={{ flexGrow: 1, p: 3 }}>
+            <Box sx={{ flexGrow: 1}}>
                 {location.pathname === '/users' || location.pathname === '/users/' ? (
                     <>
                         {error && <Typography color="error">Error: {error}</Typography>}

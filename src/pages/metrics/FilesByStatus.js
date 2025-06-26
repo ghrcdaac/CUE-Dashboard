@@ -270,221 +270,217 @@ function FilesByStatus() {
 
      // --- Render ---
     return (
-        <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)'  }}>
+        
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+            {/* Filter Card */}
+            <Card sx={{ marginBottom: 3 }}>
+                <CardContent>
+                        {/* ... Filters ... */}
+                    <Typography variant="h5" gutterBottom>Filter Files by Status</Typography>
+                    {!hasNgroupId && <Alert severity="error" sx={{ mb: 2 }}>NGROUP ID not found. Cannot load filters or files.</Alert>}
+                    {errorOptions && <Alert severity="error" sx={{ mb: 2 }}>{errorOptions}</Alert>}
+                    <Grid container spacing={2} alignItems="center">
+                        <Grid item xs={12} sm={6} md={3}> <DatePicker label="Start Date" value={startDate} onChange={setStartDate} maxDate={endDate || undefined} disabled={loadingOptions || !hasNgroupId} slotProps={{ textField: { fullWidth: true, size: 'small' } }} /> </Grid>
+                        <Grid item xs={12} sm={6} md={3}> <DatePicker label="End Date" value={endDate} onChange={setEndDate} minDate={startDate || undefined} disableFuture disabled={loadingOptions || !hasNgroupId} slotProps={{ textField: { fullWidth: true, size: 'small' } }}/> </Grid>
+                        <Grid item xs={12} sm={6} md={2}> <Autocomplete options={providerOptions} getOptionLabel={(o) => o?.short_name || ''} value={selectedProvider} onChange={(e, v) => setSelectedProvider(v)} isOptionEqualToValue={(o, v) => o?.id === v?.id} renderInput={(params) => <TextField {...params} label="Provider" size="small" />} disabled={loadingOptions || !hasNgroupId} fullWidth /> </Grid>
+                        <Grid item xs={12} sm={6} md={2}> <Autocomplete options={userOptions} getOptionLabel={(o) => o?.name || o?.email || ''} value={selectedUser} onChange={(e, v) => setSelectedUser(v)} isOptionEqualToValue={(o, v) => o?.id === v?.id} renderInput={(params) => <TextField {...params} label="User" size="small" />} disabled={loadingOptions || !hasNgroupId} fullWidth /> </Grid>
+                        <Grid item xs={12} sm={6} md={2}> <Autocomplete options={collectionOptions} getOptionLabel={(o) => o?.short_name || ''} value={selectedCollection} onChange={(e, v) => setSelectedCollection(v)} isOptionEqualToValue={(o, v) => o?.id === v?.id} renderInput={(params) => <TextField {...params} label="Collection" size="small" />} disabled={loadingOptions || !hasNgroupId} fullWidth /> </Grid>
+                        <Grid item xs={12} sm={12} md={12} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                                <Button variant="outlined" onClick={handleClearFilters} startIcon={<ClearIcon />} disabled={loadingFilesTable || loadingOptions || !hasNgroupId}> Clear Filters </Button>
+                                <Button variant="contained" onClick={handleApplyFilters} startIcon={<FilterListIcon />} disabled={loadingFilesTable || loadingOptions || !hasNgroupId || !startDate?.isValid() || !endDate?.isValid()}> Apply Filters </Button>
+                        </Grid>
+                        {loadingOptions && hasNgroupId && <Grid item xs={12}><CircularProgress size={20} /> Loading filter options...</Grid>}
+                    </Grid>
+                </CardContent>
+            </Card>
 
-            <Box component="main" sx={{ flexGrow: 1, p: 3, backgroundColor: '#f4f6f8' }}>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                    {/* Filter Card */}
-                    <Card sx={{ marginBottom: 3 }}>
-                        <CardContent>
-                             {/* ... Filters ... */}
-                            <Typography variant="h5" gutterBottom>Filter Files by Status</Typography>
-                            {!hasNgroupId && <Alert severity="error" sx={{ mb: 2 }}>NGROUP ID not found. Cannot load filters or files.</Alert>}
-                            {errorOptions && <Alert severity="error" sx={{ mb: 2 }}>{errorOptions}</Alert>}
-                            <Grid container spacing={2} alignItems="center">
-                                <Grid item xs={12} sm={6} md={3}> <DatePicker label="Start Date" value={startDate} onChange={setStartDate} maxDate={endDate || undefined} disabled={loadingOptions || !hasNgroupId} slotProps={{ textField: { fullWidth: true, size: 'small' } }} /> </Grid>
-                                <Grid item xs={12} sm={6} md={3}> <DatePicker label="End Date" value={endDate} onChange={setEndDate} minDate={startDate || undefined} disableFuture disabled={loadingOptions || !hasNgroupId} slotProps={{ textField: { fullWidth: true, size: 'small' } }}/> </Grid>
-                                <Grid item xs={12} sm={6} md={2}> <Autocomplete options={providerOptions} getOptionLabel={(o) => o?.short_name || ''} value={selectedProvider} onChange={(e, v) => setSelectedProvider(v)} isOptionEqualToValue={(o, v) => o?.id === v?.id} renderInput={(params) => <TextField {...params} label="Provider" size="small" />} disabled={loadingOptions || !hasNgroupId} fullWidth /> </Grid>
-                                <Grid item xs={12} sm={6} md={2}> <Autocomplete options={userOptions} getOptionLabel={(o) => o?.name || o?.email || ''} value={selectedUser} onChange={(e, v) => setSelectedUser(v)} isOptionEqualToValue={(o, v) => o?.id === v?.id} renderInput={(params) => <TextField {...params} label="User" size="small" />} disabled={loadingOptions || !hasNgroupId} fullWidth /> </Grid>
-                                <Grid item xs={12} sm={6} md={2}> <Autocomplete options={collectionOptions} getOptionLabel={(o) => o?.short_name || ''} value={selectedCollection} onChange={(e, v) => setSelectedCollection(v)} isOptionEqualToValue={(o, v) => o?.id === v?.id} renderInput={(params) => <TextField {...params} label="Collection" size="small" />} disabled={loadingOptions || !hasNgroupId} fullWidth /> </Grid>
-                                <Grid item xs={12} sm={12} md={12} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                                     <Button variant="outlined" onClick={handleClearFilters} startIcon={<ClearIcon />} disabled={loadingFilesTable || loadingOptions || !hasNgroupId}> Clear Filters </Button>
-                                     <Button variant="contained" onClick={handleApplyFilters} startIcon={<FilterListIcon />} disabled={loadingFilesTable || loadingOptions || !hasNgroupId || !startDate?.isValid() || !endDate?.isValid()}> Apply Filters </Button>
-                                </Grid>
-                                {loadingOptions && hasNgroupId && <Grid item xs={12}><CircularProgress size={20} /> Loading filter options...</Grid>}
-                            </Grid>
-                        </CardContent>
-                    </Card>
+            {/* Files by Status Card */}
+            <Card>
+                <CardContent>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>Files</Typography>
+                        <TextField label="Search Files by Name" variant="outlined" size="small" value={filesSearchTerm} onChange={handleFilesSearchChange} InputProps={{ startAdornment: ( <SearchIcon fontSize="small" sx={{ mr: 1, color: 'action.active' }} /> ) }} sx={{ width: '300px' }} />
+                        </Box>
+                        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+                        <Tabs value={selectedStatusTab} onChange={handleStatusTabChange} aria-label="File status tabs" variant="scrollable" scrollButtons="auto" >
+                            {FILE_STATUSES.map(status => (<Tab label={status} value={status} key={status} />))}
+                        </Tabs>
+                        </Box>
 
-                    {/* Files by Status Card */}
-                    <Card>
-                        <CardContent>
-                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>Files</Typography>
-                                <TextField label="Search Files by Name" variant="outlined" size="small" value={filesSearchTerm} onChange={handleFilesSearchChange} InputProps={{ startAdornment: ( <SearchIcon fontSize="small" sx={{ mr: 1, color: 'action.active' }} /> ) }} sx={{ width: '300px' }} />
-                             </Box>
-                             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-                                <Tabs value={selectedStatusTab} onChange={handleStatusTabChange} aria-label="File status tabs" variant="scrollable" scrollButtons="auto" >
-                                    {FILE_STATUSES.map(status => (<Tab label={status} value={status} key={status} />))}
-                                </Tabs>
-                             </Box>
+                        {loadingFilesTable && <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}><CircularProgress /></Box>}
+                        {errorFilesTable && !loadingFilesTable && <Alert severity="error" sx={{ my: 2 }}>{errorFilesTable}</Alert>}
+                        {/* Show different message before initial fetch is complete */}
+                        {!filesFetched && !loadingFilesTable && !errorFilesTable && <Alert severity="info">Loading initial files or apply filters...</Alert>}
+                        {/* Render table section once first fetch attempt is done and not loading/error */}
+                        {filesFetched && !errorFilesTable && !loadingFilesTable && (
+                        <>
+                            <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
+                                <Table stickyHeader sx={{ minWidth: 650 }} aria-label={`files table for status ${selectedStatusTab}`}>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell sortDirection={filesOrderBy === 'name' ? filesOrder : false} sx={{ bgcolor: "#E5E8EB", color: "black" }}>
+                                        <TableSortLabel active={filesOrderBy === 'name'} direction={filesOrderBy === 'name' ? filesOrder : 'asc'} onClick={() => handleFilesRequestSort('name')}>
+                                            File Name
+                                            <Box component="span" sx={visuallyHidden}></Box>
+                                        </TableSortLabel>
+                                        </TableCell>
 
-                             {loadingFilesTable && <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}><CircularProgress /></Box>}
-                             {errorFilesTable && !loadingFilesTable && <Alert severity="error" sx={{ my: 2 }}>{errorFilesTable}</Alert>}
-                             {/* Show different message before initial fetch is complete */}
-                             {!filesFetched && !loadingFilesTable && !errorFilesTable && <Alert severity="info">Loading initial files or apply filters...</Alert>}
-                             {/* Render table section once first fetch attempt is done and not loading/error */}
-                             {filesFetched && !errorFilesTable && !loadingFilesTable && (
-                                <>
-                                    <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
-                                        <Table stickyHeader sx={{ minWidth: 650 }} aria-label={`files table for status ${selectedStatusTab}`}>
-                                        <TableHead>
-                                            <TableRow>
-                                                <TableCell sortDirection={filesOrderBy === 'name' ? filesOrder : false} sx={{ bgcolor: "#E5E8EB", color: "black" }}>
-                                                <TableSortLabel active={filesOrderBy === 'name'} direction={filesOrderBy === 'name' ? filesOrder : 'asc'} onClick={() => handleFilesRequestSort('name')}>
-                                                    File Name
-                                                    <Box component="span" sx={visuallyHidden}></Box>
-                                                </TableSortLabel>
-                                                </TableCell>
+                                        <TableCell sortDirection={filesOrderBy === 'collection' ? filesOrder : false} sx={{ bgcolor: "#E5E8EB", color: "black" }}>
+                                        <TableSortLabel active={filesOrderBy === 'collection'} direction={filesOrderBy === 'collection' ? filesOrder : 'asc'} onClick={() => handleFilesRequestSort('collection')}>
+                                            Collection
+                                            <Box component="span" sx={visuallyHidden}></Box>
+                                        </TableSortLabel>
+                                        </TableCell>
 
-                                                <TableCell sortDirection={filesOrderBy === 'collection' ? filesOrder : false} sx={{ bgcolor: "#E5E8EB", color: "black" }}>
-                                                <TableSortLabel active={filesOrderBy === 'collection'} direction={filesOrderBy === 'collection' ? filesOrder : 'asc'} onClick={() => handleFilesRequestSort('collection')}>
-                                                    Collection
-                                                    <Box component="span" sx={visuallyHidden}></Box>
-                                                </TableSortLabel>
-                                                </TableCell>
+                                        <TableCell sortDirection={filesOrderBy === 'size_bytes' ? filesOrder : false} sx={{ bgcolor: "#E5E8EB", color: "black" }}>
+                                        <TableSortLabel active={filesOrderBy === 'size_bytes'} direction={filesOrderBy === 'size_bytes' ? filesOrder : 'asc'} onClick={() => handleFilesRequestSort('size_bytes')}>
+                                            Size
+                                            <Box component="span" sx={visuallyHidden}></Box>
+                                        </TableSortLabel>
+                                        </TableCell>
 
-                                                <TableCell sortDirection={filesOrderBy === 'size_bytes' ? filesOrder : false} sx={{ bgcolor: "#E5E8EB", color: "black" }}>
-                                                <TableSortLabel active={filesOrderBy === 'size_bytes'} direction={filesOrderBy === 'size_bytes' ? filesOrder : 'asc'} onClick={() => handleFilesRequestSort('size_bytes')}>
-                                                    Size
-                                                    <Box component="span" sx={visuallyHidden}></Box>
-                                                </TableSortLabel>
-                                                </TableCell>
+                                        {selectedStatusTab === 'distributed' && (
+                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
+                                            <TableSortLabel
+                                            active={filesOrderBy === 'egress_start'}
+                                            direction={filesOrderBy === 'egress_start' ? filesOrder : 'asc'}
+                                            onClick={() => handleFilesRequestSort('egress_start')}
+                                            >
+                                            Distributed Time
+                                            <Box component="span" sx={visuallyHidden}></Box>
+                                            </TableSortLabel>
+                                        </TableCell>
+                                        )}
 
-                                                {selectedStatusTab === 'distributed' && (
-                                                <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
-                                                    <TableSortLabel
-                                                    active={filesOrderBy === 'egress_start'}
-                                                    direction={filesOrderBy === 'egress_start' ? filesOrder : 'asc'}
-                                                    onClick={() => handleFilesRequestSort('egress_start')}
-                                                    >
-                                                    Distributed Time
-                                                    <Box component="span" sx={visuallyHidden}></Box>
-                                                    </TableSortLabel>
-                                                </TableCell>
+                                        {selectedStatusTab === 'unscanned' && (
+                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
+                                            <TableSortLabel
+                                            active={filesOrderBy === 'upload_time'}
+                                            direction={filesOrderBy === 'upload_time' ? filesOrder : 'asc'}
+                                            onClick={() => handleFilesRequestSort('upload_time')}
+                                            >
+                                            Upload Time
+                                            <Box component="span" sx={visuallyHidden}></Box>
+                                            </TableSortLabel>
+                                        </TableCell>
+                                        )}
+
+                                        {selectedStatusTab === 'clean' && (
+                                        <>
+                                            <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
+                                            <TableSortLabel
+                                                active={filesOrderBy === 'scan_start'}
+                                                direction={filesOrderBy === 'scan_start' ? filesOrder : 'asc'}
+                                                onClick={() => handleFilesRequestSort('scan_start')}
+                                            >
+                                                Scan Start
+                                                <Box component="span" sx={visuallyHidden}></Box>
+                                            </TableSortLabel>
+                                            </TableCell>
+                                            <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
+                                            <TableSortLabel
+                                                active={filesOrderBy === 'scan_end'}
+                                                direction={filesOrderBy === 'scan_end' ? filesOrder : 'asc'}
+                                                onClick={() => handleFilesRequestSort('scan_end')}
+                                            >
+                                                Scan End
+                                                <Box component="span" sx={visuallyHidden}></Box>
+                                            </TableSortLabel>
+                                            </TableCell>
+                                        </>
+                                        )}
+
+                                        {(selectedStatusTab === 'infected' || selectedStatusTab === 'scan_failed') && (
+                                        <TableCell
+                                            sx={{
+                                            bgcolor: "#E5E8EB",
+                                            color: "black",
+                                            whiteSpace: "nowrap",
+                                            minWidth: 200,
+                                            }}
+                                        >
+                                            Scan Result
+                                        </TableCell>
+                                        )}
+                                    </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {visibleFiles.length > 0 ? (
+                                            visibleFiles.map((file) => (
+                                                <TableRow hover key={file.id}>
+                                                    <TableCell>{file.name || '(No Name)'}</TableCell>
+                                                    <TableCell>{collectionNameMap[file.collection_id] || file.collection_id || 'N/A'}</TableCell>
+                                                    <TableCell>{formatBytes(file.size_bytes)}</TableCell>
+                                                    {selectedStatusTab === 'distributed' && (
+                                                    <TableCell>{file.egress_start ? dateformatter(file.egress_start) : ''}</TableCell>
                                                 )}
-
                                                 {selectedStatusTab === 'unscanned' && (
-                                                <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
-                                                    <TableSortLabel
-                                                    active={filesOrderBy === 'upload_time'}
-                                                    direction={filesOrderBy === 'upload_time' ? filesOrder : 'asc'}
-                                                    onClick={() => handleFilesRequestSort('upload_time')}
-                                                    >
-                                                    Upload Time
-                                                    <Box component="span" sx={visuallyHidden}></Box>
-                                                    </TableSortLabel>
-                                                </TableCell>
+                                                    <TableCell>{file.upload_time ? dateformatter(file.upload_time) : ''}</TableCell>
                                                 )}
-
                                                 {selectedStatusTab === 'clean' && (
                                                 <>
-                                                    <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
-                                                    <TableSortLabel
-                                                        active={filesOrderBy === 'scan_start'}
-                                                        direction={filesOrderBy === 'scan_start' ? filesOrder : 'asc'}
-                                                        onClick={() => handleFilesRequestSort('scan_start')}
-                                                    >
-                                                        Scan Start
-                                                        <Box component="span" sx={visuallyHidden}></Box>
-                                                    </TableSortLabel>
-                                                    </TableCell>
-                                                    <TableCell sx={{ bgcolor: "#E5E8EB", color: "black" }}>
-                                                    <TableSortLabel
-                                                        active={filesOrderBy === 'scan_end'}
-                                                        direction={filesOrderBy === 'scan_end' ? filesOrder : 'asc'}
-                                                        onClick={() => handleFilesRequestSort('scan_end')}
-                                                    >
-                                                        Scan End
-                                                        <Box component="span" sx={visuallyHidden}></Box>
-                                                    </TableSortLabel>
-                                                    </TableCell>
+                                                    <TableCell>{file.scan_start ? dateformatter(file.scan_start) : ''}</TableCell>
+                                                    <TableCell>{file.scan_end ? dateformatter(file.scan_end) : ''}</TableCell>
                                                 </>
                                                 )}
-
                                                 {(selectedStatusTab === 'infected' || selectedStatusTab === 'scan_failed') && (
-                                                <TableCell
-                                                    sx={{
-                                                    bgcolor: "#E5E8EB",
-                                                    color: "black",
-                                                    whiteSpace: "nowrap",
-                                                    minWidth: 200,
-                                                    }}
-                                                >
-                                                    Scan Result
+                                                    <TableCell sx={{ whiteSpace: 'normal', wordBreak: 'break-word', minWidth: 200 }}>
+                                                {(() => {
+                                                    if (!file.scan_results || file.scan_results === 'null' || file.scan_results.trim() === '') {
+                                                    return '';
+                                                    }
+
+                                                    try {
+                                                    const parsed = JSON.parse(file.scan_results);
+
+                                                    if (!Array.isArray(parsed) || parsed.length === 0) {
+                                                        return '';
+                                                    }
+
+                                                    return parsed.map((item, index) => {
+                                                        if (!item || typeof item !== 'object') return null;
+
+                                                        const virusName = Array.isArray(item.virusName) && item.virusName.length > 0
+                                                        ? item.virusName.join(', ')
+                                                        : 'N/A';
+
+                                                        const message = Array.isArray(item.message) && item.message.length > 0
+                                                        ? item.message.join(', ')
+                                                        : '';
+                                                        const dateScanned = item.dateScanned?dateformatter(item.dateScanned): 'N/A';
+
+                                                        return (
+                                                        <div key={index} style={{padding: 0 }}>
+                                                            <div><strong>Virus Name:</strong> {virusName}</div>
+                                                            <div><strong>Message:</strong> {message}</div>
+                                                            <div><strong>Date Scanned:</strong> {dateScanned}</div>
+                                                        </div>
+                                                        );
+                                                    });
+                                                    } catch {
+                                                        return '';
+                                                    }
+                                                })()}
                                                 </TableCell>
                                                 )}
-                                            </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                                {visibleFiles.length > 0 ? (
-                                                    visibleFiles.map((file) => (
-                                                        <TableRow hover key={file.id}>
-                                                            <TableCell>{file.name || '(No Name)'}</TableCell>
-                                                            <TableCell>{collectionNameMap[file.collection_id] || file.collection_id || 'N/A'}</TableCell>
-                                                            <TableCell>{formatBytes(file.size_bytes)}</TableCell>
-                                                            {selectedStatusTab === 'distributed' && (
-                                                            <TableCell>{file.egress_start ? dateformatter(file.egress_start) : ''}</TableCell>
-                                                     )}
-                                                     {selectedStatusTab === 'unscanned' && (
-                                                            <TableCell>{file.upload_time ? dateformatter(file.upload_time) : ''}</TableCell>
-                                                     )}
-                                                     {selectedStatusTab === 'clean' && (
-                                                        <>
-                                                            <TableCell>{file.scan_start ? dateformatter(file.scan_start) : ''}</TableCell>
-                                                            <TableCell>{file.scan_end ? dateformatter(file.scan_end) : ''}</TableCell>
-                                                        </>
-                                                     )}
-                                                     {(selectedStatusTab === 'infected' || selectedStatusTab === 'scan_failed') && (
-                                                            <TableCell sx={{ whiteSpace: 'normal', wordBreak: 'break-word', minWidth: 200 }}>
-                                                        {(() => {
-                                                            if (!file.scan_results || file.scan_results === 'null' || file.scan_results.trim() === '') {
-                                                            return '';
-                                                            }
+                                                </TableRow>
+                                            ))
+                                        ) : ( <TableRow> <TableCell colSpan={3} align="center"> {filesSearchTerm ? 'No files match your search.' : `No files found for status '${selectedStatusTab}'. Apply filters or clear search.`} </TableCell> </TableRow> )}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                            <TablePagination
+                                rowsPerPageOptions={[10, 25, 50, 100]} component="div"
+                                count={filteredAndSortedFiles.length} rowsPerPage={filesListRowsPerPage} page={filesListPage}
+                                onPageChange={handleFilesPageChange} onRowsPerPageChange={handleFilesRowsPerPageChange}
+                            />
+                        </>
+                        )}
+                </CardContent>
+            </Card>
 
-                                                            try {
-                                                            const parsed = JSON.parse(file.scan_results);
-
-                                                            if (!Array.isArray(parsed) || parsed.length === 0) {
-                                                                return '';
-                                                            }
-
-                                                            return parsed.map((item, index) => {
-                                                                if (!item || typeof item !== 'object') return null;
-
-                                                                const virusName = Array.isArray(item.virusName) && item.virusName.length > 0
-                                                                ? item.virusName.join(', ')
-                                                                : 'N/A';
-
-                                                                const message = Array.isArray(item.message) && item.message.length > 0
-                                                                ? item.message.join(', ')
-                                                                : '';
-                                                                const dateScanned = item.dateScanned?dateformatter(item.dateScanned): 'N/A';
-
-                                                                return (
-                                                                <div key={index} style={{padding: 0 }}>
-                                                                    <div><strong>Virus Name:</strong> {virusName}</div>
-                                                                    <div><strong>Message:</strong> {message}</div>
-                                                                    <div><strong>Date Scanned:</strong> {dateScanned}</div>
-                                                                </div>
-                                                                );
-                                                            });
-                                                            } catch {
-                                                                return '';
-                                                            }
-                                                        })()}
-                                                        </TableCell>
-                                                     )}
-                                                        </TableRow>
-                                                    ))
-                                                ) : ( <TableRow> <TableCell colSpan={3} align="center"> {filesSearchTerm ? 'No files match your search.' : `No files found for status '${selectedStatusTab}'. Apply filters or clear search.`} </TableCell> </TableRow> )}
-                                            </TableBody>
-                                        </Table>
-                                    </TableContainer>
-                                    <TablePagination
-                                        rowsPerPageOptions={[10, 25, 50, 100]} component="div"
-                                        count={filteredAndSortedFiles.length} rowsPerPage={filesListRowsPerPage} page={filesListPage}
-                                        onPageChange={handleFilesPageChange} onRowsPerPageChange={handleFilesRowsPerPageChange}
-                                    />
-                                </>
-                             )}
-                        </CardContent>
-                    </Card>
-
-                    <ToastContainer position="top-center" autoClose={3000} hideProgressBar />
-                </LocalizationProvider>
-            </Box> {/* End main content Box */}
-        </Box> // End outer Flex Box
+            <ToastContainer position="top-center" autoClose={3000} hideProgressBar />
+        </LocalizationProvider>
     );
 }
 
