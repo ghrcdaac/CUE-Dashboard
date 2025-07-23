@@ -20,13 +20,13 @@ import useAuth from "./hooks/useAuth";
 import { logoutSuccess } from './app/reducers/authSlice'; // Import logoutSuccess
 import ProtectedRoute from "./components/ProtectedRoute";
 import SignupPage from './components/SignupPage';
-import CreateCollection from "./pages/collections/CreateCollection";
 import PendingRequests from "./pages/users/PendingRequests";
 import RejectedRequests from "./pages/users/RejectedRequests";
 import { CircularProgress } from "@mui/material";
 import FilesByStatus from './pages/metrics/FilesByStatus';
 import FilesByCost from './pages/metrics/FilesByCost';
 import { Box } from '@mui/material';
+import CollectionFileBrowser from "./pages/collections/CollectionFileBrowser";
 
 const theme = createTheme({
     palette: {
@@ -135,7 +135,7 @@ function App() {
                     <Route element={<AppLayout />}>
                         <Route path="collections" element={<ProtectedRoute><Collections /></ProtectedRoute>}>
                            <Route index element={<Collections />} />
-                           <Route path="create" element={<CreateCollection />} />
+                           <Route path="create" element={<CollectionFileBrowser />} />
                         </Route>
                         <Route path="providers" element={<ProtectedRoute><Providers /></ProtectedRoute>} />
                         <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />

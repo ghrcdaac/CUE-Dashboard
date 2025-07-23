@@ -1,6 +1,7 @@
 // src/api/collectionApi.js
 
 import { config } from '../config';
+import {handleResponse, buildQueryString} from './apiHelper';
 
 const API_BASE_URL = config.apiBaseUrl; // Use apiBaseUrl from config
 
@@ -236,4 +237,19 @@ export async function deactivateCollection(collectionId, accessToken) {
   }
 
   return response.json();
+}
+
+export async function findFilesByCollection(collectionId, params, accessToken) {
+    
+    const queryString = buildQueryString(params)
+    const url = `${API_BASE_URL}/v1/collection/${collectionId}/files?${queryString}`
+
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+
+    return handleResponse(response,"failed to fetch files");
 }
