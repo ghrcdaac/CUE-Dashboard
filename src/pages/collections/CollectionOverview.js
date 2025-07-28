@@ -6,8 +6,10 @@ import {
   CircularProgress
 } from '@mui/material';
 import { toast } from 'react-toastify';
-import useAuth from '../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
+import useAuth from '../../hooks/useAuth';
 import { collectionFilesCount } from '../../api/collectionApi';
+
 
 function CollectionOverview() {
   const [collections, setCollections] = useState([]);
@@ -17,6 +19,11 @@ function CollectionOverview() {
   const [loading, setLoading] = useState(false);
   const ngroupId = localStorage.getItem('CUE_ngroup_id');
   const { accessToken, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleNavigate = (collectionId) => {
+    navigate(`/collections/files?collection_id=${collectionId}`);
+  };
 
   const fetchCollectionOverview = useCallback(async () => {
     if (!ngroupId) {
@@ -53,7 +60,7 @@ function CollectionOverview() {
         <Card sx={{ marginBottom: 2 }}>
           <CardContent>
             <Typography variant="h5" gutterBottom>
-              Collection Overview
+              Collection Files Overview
             </Typography>
 
             {loading ? (
@@ -71,18 +78,18 @@ function CollectionOverview() {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {collections.length > 0 ? (
-                        collections.map((col) => (
-                          <TableRow key={col.id}>
-                            <TableCell>{col.name}</TableCell>
-                            <TableCell>{col.file_count}</TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={2} align="center">No collections found</TableCell>
-                        </TableRow>
-                      )}
+                        {collections.length > 0 ? (
+                            collections.map((col) => (
+                            <TableRow key={col.id} hover sx={{ cursor: 'pointer' }}>
+                                <TableCell onClick={() => handleNavigate(col.id)}>{col.name}</TableCell>
+                                <TableCell onClick={() => handleNavigate(col.id)}>{col.file_count}</TableCell>
+                            </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                            <TableCell colSpan={2} align="center">No collections found</TableCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                   </Table>
                 </TableContainer>

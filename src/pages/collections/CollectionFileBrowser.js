@@ -5,6 +5,7 @@ import {
   TablePagination, CircularProgress, TextField, Autocomplete,Card, CardContent
 } from '@mui/material';
 import { toast } from 'react-toastify';
+import { useSearchParams } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import { findFilesByCollection } from '../../api/collectionApi';
 
@@ -14,7 +15,8 @@ function CollectionFileBrowser() {
 
   // Collection state
   const [collections, setCollections] = useState([]);
-  const [selectedCollectionId, setSelectedCollectionId] = useState('');
+  const initialCollectionId = searchParams.get('collection_id');
+  const [selectedCollectionId, setSelectedCollectionId] = useState(initialCollectionId || '');
   const [collectionsPage, setCollectionsPage] = useState(0);
   const collectionsPageSize = 5;
 
@@ -27,6 +29,8 @@ function CollectionFileBrowser() {
   const [nextCollectionPage, setNextCollectionPage] = useState(1); // Start at page 1
   const [loadedPages, setLoadedPages] = useState(new Set());
   const [isFetchingCollections, setIsFetchingCollections] = useState(false);
+  const [searchParams] = useSearchParams();
+  
 
   // Fetch paginated collections
  const fetchCollections = useCallback(async (page) => {
@@ -78,8 +82,19 @@ function CollectionFileBrowser() {
   }, [fetchCollections]);
 
   useEffect(() => {
-    fetchFiles();
-  }, [fetchFiles]);
+    if (initialCollectionId) {
+    fetchFiles(); // assuming fetchFiles depends on selectedCollectionId
+    }
+  }, [initialCollectionId, fetchFiles]);
+
+  useEffect(() => {
+    if (initialCollectionId && collections.length > 0) {
+      const match = collections.find(c => c.id === initialCollectionId);
+      if (match) {
+        setSelectedCollectionId(initialCollectionId);
+      }
+    }
+  }, [collections, initialCollectionId])
 
   const handleCollectionChange = (id) => {
     setSelectedCollectionId(id);

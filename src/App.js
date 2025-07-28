@@ -27,6 +27,7 @@ import FilesByStatus from './pages/metrics/FilesByStatus';
 import FilesByCost from './pages/metrics/FilesByCost';
 import { Box } from '@mui/material';
 import CollectionFileBrowser from "./pages/collections/CollectionFileBrowser";
+import CollectionOverview from "./pages/collections/CollectionOverview";
 
 const theme = createTheme({
     palette: {
@@ -135,7 +136,8 @@ function App() {
                     <Route element={<AppLayout />}>
                         <Route path="collections" element={<ProtectedRoute><Collections /></ProtectedRoute>}>
                            <Route index element={<Collections />} />
-                           <Route path="create" element={<CollectionFileBrowser />} />
+                           <Route path="create" element={<CollectionOverview />} />
+                           <Route path="/collections/files" element={<CollectionFileBrowser />} />
                         </Route>
                         <Route path="providers" element={<ProtectedRoute><Providers /></ProtectedRoute>} />
                         <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />
