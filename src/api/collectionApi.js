@@ -253,3 +253,18 @@ export async function findFilesByCollection(collectionId, params, accessToken) {
 
     return handleResponse(response,"failed to fetch files");
 }
+
+export async function collectionFilesCount(params, accessToken) {
+    
+    const queryString = buildQueryString(params)
+    const url = `${API_BASE_URL}/v1/collection/files/overview?${queryString}`
+
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+
+    return handleResponse(response,"failed to fetch files");
+}
