@@ -28,7 +28,7 @@ function CollectionOverview() {
   const fetchCollectionOverview = useCallback(async () => {
     if (!ngroupId) {
         toast.error("Ngroup ID not found. Please log in again.");
-        logout(); // optional
+        logout();
         return;
     }
 

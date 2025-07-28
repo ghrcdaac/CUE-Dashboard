@@ -133,7 +133,7 @@ function CollectionFileBrowser() {
                   const atBottom = listboxNode.scrollTop + listboxNode.clientHeight >= listboxNode.scrollHeight - 1;
 
                   if (atBottom) {
-                    fetchCollections(nextCollectionPage); // now protected by flag
+                    fetchCollections(nextCollectionPage); // protected by flag
                   }
                 }
               }}
