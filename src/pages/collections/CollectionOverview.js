@@ -25,8 +25,8 @@ function CollectionOverview() {
   const { accessToken, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleNavigate = (collectionId) => {
-    navigate(`/collections/files?collection_id=${collectionId}`);
+  const handleNavigate = (collectionId, collectionName) => {
+    navigate(`/collections/files?collection_id=${collectionId}&collection_name=${encodeURIComponent(collectionName)}`);
   };
 
   const fetchCollectionOverview = useCallback(async () => {
@@ -123,8 +123,8 @@ function CollectionOverview() {
                       {sortedCollections.length > 0 ? (
                         sortedCollections.map((col) => (
                           <TableRow key={col.id} hover sx={{ cursor: 'pointer' }}>
-                            <TableCell onClick={() => handleNavigate(col.id)}>{col.name}</TableCell>
-                            <TableCell onClick={() => handleNavigate(col.id)}>{col.file_count}</TableCell>
+                            <TableCell onClick={() => handleNavigate(col.id, col.name)}>{col.name}</TableCell>
+                            <TableCell onClick={() => handleNavigate(col.id, col.name)}>{col.file_count}</TableCell>
                           </TableRow>
                         ))
                       ) : (

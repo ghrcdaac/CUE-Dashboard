@@ -301,4 +301,30 @@ export async function collectionFilesCount(params, accessToken) {
     return handleResponse(response,"failed to fetch files");
 }
 
+/**
+ * Lists all collections for a given nGroup and pagination.
+ *
+ * @param {string} ngroupId - The nGroup ID.
+ * @param {string} accessToken - The user's access token.
+ * @returns {Promise<object[]>} An array of collections.
+ * @throws {Error} If the request fails.
+ */
+export async function listCollectionsWithPagination(params, accessToken) {
+    
+    const queryString = buildQueryString(params)
+    const url = `${API_BASE_URL}/v1/collection${queryString}`;
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+        },
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to list collections');
+    }
+
+    return response.json();
+}
 

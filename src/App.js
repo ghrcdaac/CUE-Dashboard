@@ -135,9 +135,9 @@ function App() {
                     </Route>
                     <Route element={<AppLayout />}>
                         <Route path="collections" element={<ProtectedRoute><Collections /></ProtectedRoute>}>
-                           <Route index element={<Collections />} />
-                           <Route path="create" element={<CollectionOverview />} />
-                           <Route path="/collections/files" element={<CollectionFileBrowser />} />
+                            <Route index element={<Collections />} />
+                            <Route path="create" element={<CollectionOverview />} />
+                            <Route path="files" element={<CollectionFileBrowser />} />
                         </Route>
                         <Route path="providers" element={<ProtectedRoute><Providers /></ProtectedRoute>} />
                         <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />
