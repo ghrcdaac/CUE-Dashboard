@@ -125,6 +125,7 @@ export async function listProviders(accessToken, params = {}) {
     }
 
     let url = `${API_BASE_URL}/v1/provider/`;
+    console.log("providerApi API_BASE_URL:", API_BASE_URL);
     const queryParams = new URLSearchParams();
 
     // Add query parameters if provided

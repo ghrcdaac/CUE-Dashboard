@@ -13,7 +13,7 @@ const API_BASE_URL = config.apiBaseUrl; // Use apiBaseUrl from config
  * @throws {Error} If the request fails.
  */
 export async function createCollection(collectionData, accessToken) {
-    const url = `${API_BASE_URL}/v1/collection`;
+    const url = `${API_BASE_URL}/v1/collection/`;
     const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -66,7 +66,8 @@ export async function getCollection(collectionId, ngroupId, accessToken) {
  * @throws {Error} If the request fails.
  */
 export async function listCollections(ngroupId, accessToken) {
-    const url = `${API_BASE_URL}/v1/collection?ngroup_id=${ngroupId}`;
+    const url = `${API_BASE_URL}/v1/collection/?ngroup_id=${ngroupId}`;
+    console.log("collectionApi API_BASE_URL:", API_BASE_URL);
     const response = await fetch(url, {
         method: 'GET',
         headers: {
