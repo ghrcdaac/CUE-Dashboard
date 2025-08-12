@@ -16,9 +16,8 @@ import {
 } from '@mui/material';
 import { toast, ToastContainer } from 'react-toastify';
 import useAuth from '../../hooks/useAuth';
-import { getUserPreferences, updateUserPreferences } from '../../api/PreferenceApi';
+import { getUserNotification, createUserNotification, updateUserNotification } from '../../api/PreferenceApi';
 import { useNavigate } from 'react-router-dom';
-
 
 function NotificationPreferences() {
   const { accessToken } = useAuth();
@@ -28,56 +27,119 @@ function NotificationPreferences() {
   const [saving, setSaving] = useState(false);
 
   const [prefs, setPrefs] = useState({
-    emailReports: false,
-    emailInfectedFiles: false,
+    emailReports: false
   });
 
-  const [preference, setPreference] = useState('');
-
-  const handleChange = (event) => {
-    setPreference(event.target.value);
-  };
+  // preferences = { infected_file: { id: uuid, frequency: 'weekly' }, clean_file: {...} }
+  const [preferences, setPreferences] = useState({});
 
   const navigate = useNavigate();
 
-
   // Fetch user preferences
+  const [notificationIdList, setNotificationIdList] = useState([]);
+
   const fetchPreferences = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getUserPreferences(ngroupId, accessToken);
-      setPrefs({
-        emailReports: data.emailReports ?? false,
-        emailInfectedFiles: data.emailInfectedFiles ?? false,
-      });
-      setPreference(data.reportFrequency || ''); // load frequency if available
+      const data = await getUserNotification(accessToken);
+
+      if (Array.isArray(data) && data.length > 0) {
+        // Store notification IDs for update
+        setNotificationIdList(data.map(notif => ({
+          id: notif.id,
+          report_type: notif.report_type
+        })));
+
+        // Map fetched data into preferences state
+        const prefMap = {};
+        data.forEach(notif => {
+          prefMap[notif.report_type] = notif.frequency || "none";
+        });
+        setPreferences(prefMap);
+      } else {
+        // No data → defaults
+        setPreferences({
+          infected_file: "none",
+          // clean_file: "none",
+          // failed_scan: "none"
+        });
+        setNotificationIdList([]);
+      }
     } catch (err) {
       toast.error("Failed to load preferences");
     } finally {
       setLoading(false);
     }
-  }, [ngroupId, accessToken]);
+  }, [accessToken]);
 
   useEffect(() => {
     fetchPreferences();
   }, [fetchPreferences]);
 
+  const handleChange = (event, reportType) => {
+    const value = event.target.value; // This will be "weekly", "daily", etc.
+    setPreferences((prev) => ({
+      ...prev,
+      [reportType]: value
+    }));
+  };
+
+
   // Save preferences
   const handleSave = async () => {
-    if (prefs.emailReports && !preference) {
-        toast.error("Please select a frequency for Infected File Scan Report");
-        return;
+    // If emailReports is enabled, ensure no empty selections
+    if (!prefs.emailReports) {
+      //call disable notifications if needed
+
     }
+
     setSaving(true);
     try {
-        await updateUserPreferences(ngroupId, { ...prefs, reportFrequency: preference }, accessToken);
-        toast.success("Preferences saved"); 
+      // Create payload array from preferences object
+      const payload = Object.entries(preferences)
+        .filter(([_, freq]) => freq) // only selected
+        .map(([type, freq]) => ({
+          report_type: type,
+          frequency: freq  // Already a plain string now
+        }));
+
+      if (!notificationIdList || notificationIdList.length === 0) {
+        // No notifications exist → CREATE
+        const data = await createUserNotification(payload, accessToken);
+        if (Array.isArray(data) && data.length > 0) {
+        // Store notification IDs for update
+        setNotificationIdList(data.map(notif => ({
+          id: notif.id,
+          report_type: notif.report_type
+        })));
+
+        // Map fetched data into preferences state
+        const prefMap = {};
+        data.forEach(notif => {
+          prefMap[notif.report_type] = notif.frequency || "none";
+        });
+        setPreferences(prefMap);
+      }
+      } else {
+        // Notifications exist → UPDATE each by ID
+        await Promise.all(
+          notificationIdList.map((notif) => {
+            const freq = preferences[notif.report_type];
+            return updateUserNotification(notif.id, { 
+              report_type: notif.report_type, 
+              frequency: freq 
+            }, accessToken);
+          })
+        );
+      }
+
+      toast.success("Preferences saved");
     } catch (err) {
-        toast.error("Failed to save preferences");
+      toast.error("Failed to save preferences");
     } finally {
-        setSaving(false);
+      setSaving(false);
     }
-};
+  };
 
   return (
     <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
@@ -96,66 +158,63 @@ function NotificationPreferences() {
               <>
                 {/* Email Reports Toggle */}
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, ml: 30 }}>
-                    <Typography variant="subtitle1" sx={{ width: 400 }}>
-                        Send Email Reports
-                    </Typography>
-                    <FormControlLabel
-                        control={
-                        <Checkbox
-                            checked={prefs.emailReports}
-                            onChange={(e) =>
-                            setPrefs((prev) => ({
-                                ...prev,
-                                emailReports: e.target.checked,
-                            }))
-                            }
-                        />
+                  <Typography variant="subtitle1" sx={{ width: 400 }}>
+                    Send Email Reports
+                  </Typography>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={prefs.emailReports}
+                        onChange={(e) =>
+                          setPrefs(prev => ({
+                            ...prev,
+                            emailReports: e.target.checked
+                          }))
                         }
-                        label=""  // we already show the label via Typography
-                    />
+                      />
+                    }
+                  />
                 </Box>
 
                 {/* Infected Scan Report Frequency */}
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, ml:30 }}>
-                    <Typography variant="subtitle1" sx={{ width: 400 }}>
-                        Infected File Scan Report Frequency
-                    </Typography>
-                    <FormControl size="small" sx={{ minWidth: 150 }}>
-                        <InputLabel id="frequency-select-label">Frequency</InputLabel>
-                        <Select
-                        labelId="frequency-select-label"
-                        id="frequency-select"
-                        value={preference}
-                        label="Frequency"
-                        onChange={handleChange}
-                        >
-                        <MenuItem value="daily">Daily</MenuItem>
-                        <MenuItem value="weekly">Weekly</MenuItem>
-                        <MenuItem value="biweekly">Biweekly</MenuItem>
-                        <MenuItem value="monthly">Monthly</MenuItem>
-                        </Select>
-                    </FormControl>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, ml: 30 }}>
+                  <Typography variant="subtitle1" sx={{ width: 400 }}>
+                    Infected File Scan Report Frequency
+                  </Typography>
+                  <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <InputLabel>Frequency</InputLabel>
+                    <Select
+                      labelId="frequency-select-label"
+                      value={preferences.infected_file || ""}
+                      onChange={(e) => handleChange(e, "infected_file")}
+                    >
+                      <MenuItem value="daily">Daily</MenuItem>
+                      <MenuItem value="weekly">Weekly</MenuItem>
+                      <MenuItem value="biweekly">Biweekly</MenuItem>
+                      <MenuItem value="monthly">Monthly</MenuItem>
+                      <MenuItem value="none">None</MenuItem>
+                    </Select>
+                  </FormControl>
                 </Box>
 
+                {/* Save & Cancel */}
+                <Box sx={{ mt: 10, display: 'flex', gap: 3, justifyContent: 'left', ml: 50 }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleSave}
+                    disabled={saving}
+                  >
+                    {saving ? "Saving..." : "Save Preferences"}
+                  </Button>
 
-                {/* Save Button */}
-                <Box sx={{ mt: 10, display: 'flex', gap: 3, justifyContent: 'left', ml: 50}}>
-                    <Button
-                        variant="contained"
-                        onClick={handleSave}
-                        disabled={saving}
-                    >
-                        {saving ? "Saving..." : "Save Preferences"}
-                    </Button>
-
-                    <Button
-                        variant="contained"
-                        color="secondary"
-                        onClick={() => navigate('/')}
-                    >
-                        Cancel
-                    </Button>
-                </Box> 
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => navigate('/')}
+                  >
+                    Cancel
+                  </Button>
+                </Box>
                 <ToastContainer position="top-center" />
               </>
             )}
