@@ -145,7 +145,7 @@ function NotificationPreferences() {
     <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
       <Box sx={{ flexGrow: 1 }}>
         <Card sx={{ mb: 2 }}>
-          <CardContent>
+          <CardContent sx={{ width: '100%', maxWidth: 600 }}>
             <Typography variant="h5" gutterBottom>
               Notification Preferences
             </Typography>
@@ -157,8 +157,8 @@ function NotificationPreferences() {
             ) : (
               <>
                 {/* Email Reports Toggle */}
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, ml: 30 }}>
-                  <Typography variant="subtitle1" sx={{ width: 400 }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 3, gap: 2 }}>
+                  <Typography variant="subtitle1">
                     Send Email Reports
                   </Typography>
                   <FormControlLabel
@@ -166,39 +166,36 @@ function NotificationPreferences() {
                       <Checkbox
                         checked={prefs.emailReports}
                         onChange={(e) =>
-                          setPrefs(prev => ({
-                            ...prev,
-                            emailReports: e.target.checked
-                          }))
+                          setPrefs(prev => ({ ...prev, emailReports: e.target.checked }))
                         }
                       />
                     }
+                    label=""
                   />
                 </Box>
 
-                {/* Infected Scan Report Frequency */}
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, ml: 30 }}>
-                  <Typography variant="subtitle1" sx={{ width: 400 }}>
+                {/* Infected File Report Frequency */}
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 3, gap: 2 }}>
+                  <Typography variant="subtitle1">
                     Infected File Scan Report Frequency
                   </Typography>
                   <FormControl size="small" sx={{ minWidth: 150 }}>
                     <InputLabel>Frequency</InputLabel>
                     <Select
-                      labelId="frequency-select-label"
-                      value={preferences.infected_file || ""}
-                      onChange={(e) => handleChange(e, "infected_file")}
+                      value={preferences.infected_file}
+                      onChange={(e) => handleChange(e, 'infected_file')}
                     >
+                      <MenuItem value="none">None</MenuItem>
                       <MenuItem value="daily">Daily</MenuItem>
                       <MenuItem value="weekly">Weekly</MenuItem>
                       <MenuItem value="biweekly">Biweekly</MenuItem>
                       <MenuItem value="monthly">Monthly</MenuItem>
-                      <MenuItem value="none">None</MenuItem>
                     </Select>
                   </FormControl>
                 </Box>
 
-                {/* Save & Cancel */}
-                <Box sx={{ mt: 10, display: 'flex', gap: 3, justifyContent: 'left', ml: 50 }}>
+                {/* Save Button */}
+                <Box sx={{ mt: 5, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
                   <Button
                     variant="contained"
                     onClick={handleSave}
@@ -206,7 +203,6 @@ function NotificationPreferences() {
                   >
                     {saving ? "Saving..." : "Save Preferences"}
                   </Button>
-
                   <Button
                     variant="contained"
                     color="secondary"
@@ -215,6 +211,7 @@ function NotificationPreferences() {
                     Cancel
                   </Button>
                 </Box>
+
                 <ToastContainer position="top-center" />
               </>
             )}

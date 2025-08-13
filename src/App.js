@@ -150,6 +150,7 @@ function App() {
                         </Route>
                         <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />
                         <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} >
+                            <Route index element={<Navigate to="notification" replace />} />
                             <Route path="notification" element={<NotificationPreferences />} />
                         </Route>
                     </Route>
