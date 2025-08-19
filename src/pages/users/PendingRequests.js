@@ -130,11 +130,12 @@ function PendingRequests() {
         }
         setActionLoading(true);
         try {
+            // --- UPDATED LOGIC: Make a single call to the correct endpoint ---
             await approveUserApplication(applicationToProcess.id, applicationToProcess.role_id);
             toast.success("Application approved successfully!");
             setOpenAcceptDialog(false);
             setSelected([]);
-            fetchPageData();
+            fetchPageData(); // Refresh data to remove the approved application
         } catch (error) {
             toast.error(`Error approving application: ${error.message}`);
         } finally {
@@ -149,7 +150,7 @@ function PendingRequests() {
             toast.success(`${selected.length} application(s) rejected successfully!`);
             setOpenRejectDialog(false);
             setSelected([]);
-            fetchPageData();
+            fetchPageData(); // Refresh data
         } catch (error) {
             toast.error(`Error rejecting applications: ${error.message}`);
         } finally {
