@@ -10,14 +10,13 @@ import 'react-toastify/dist/ReactToastify.css';
 import usePageTitle from "../../hooks/usePageTitle";
 import { useSelector } from 'react-redux';
 
-// --- UPDATED API IMPORTS ---
 import { listUserApplications, approveUserApplication, rejectUserApplication } from '../../api/userApplicationApi';
 import { listRoles } from '../../api/roleApi';
 import { getProviderById } from '../../api/providerApi';
 
 function PendingRequests() {
     const [applications, setApplications] = useState([]);
-    const [loading, setLoading] = useState(false); // Changed initial state to false
+    const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [error, setError] = useState(null);
     const [selected, setSelected] = useState([]);
@@ -31,7 +30,7 @@ function PendingRequests() {
     const [order, setOrder] = useState('asc');
     const [orderBy, setOrderBy] = useState('name');
 
-    const ngroupId = useSelector((state) => state.auth.ngroupId);
+    const { activeNgroupId, isLoading: isAuthLoading } = useSelector((state) => state.auth);
     usePageTitle("Pending User Requests");
 
     const formatDate = (dateString) => {
@@ -49,10 +48,10 @@ function PendingRequests() {
     };
 
     const fetchPageData = useCallback(async () => {
-        if (!ngroupId) {
-            return;
-        }
+        if (!activeNgroupId) return;
+        
         setLoading(true);
+        setError(null);
         try {
             const [rolesData, appsData] = await Promise.all([
                 listRoles(),
@@ -76,14 +75,16 @@ function PendingRequests() {
         } finally {
             setLoading(false);
         }
-    }, [ngroupId]);
+    }, [activeNgroupId]);
 
     useEffect(() => {
-        // --- FIX: Only fetch data if the ngroupId is available ---
-        if (ngroupId) {
+        if (!isAuthLoading && activeNgroupId) {
             fetchPageData();
+        } else if (!isAuthLoading && !activeNgroupId) {
+            setLoading(false);
+            setApplications([]);
         }
-    }, [ngroupId, fetchPageData]);
+    }, [isAuthLoading, activeNgroupId, fetchPageData]);
 
     const handleRequestSort = (property) => {
         const isAsc = orderBy === property && order === 'asc';
@@ -102,11 +103,8 @@ function PendingRequests() {
     }, [applications, order, orderBy]);
 
     const handleSelectAllClick = (event) => {
-        if (event.target.checked) {
-            setSelected(applications.map((app) => app.id));
-            return;
-        }
-        setSelected([]);
+        if (event.target.checked) setSelected(applications.map((app) => app.id));
+        else setSelected([]);
     };
 
     const handleClick = (id) => {
@@ -136,7 +134,7 @@ function PendingRequests() {
             toast.success("Application approved successfully!");
             setOpenAcceptDialog(false);
             setSelected([]);
-            fetchPageData(); // Refresh data
+            fetchPageData();
         } catch (error) {
             toast.error(`Error approving application: ${error.message}`);
         } finally {
@@ -151,7 +149,7 @@ function PendingRequests() {
             toast.success(`${selected.length} application(s) rejected successfully!`);
             setOpenRejectDialog(false);
             setSelected([]);
-            fetchPageData(); // Refresh data
+            fetchPageData();
         } catch (error) {
             toast.error(`Error rejecting applications: ${error.message}`);
         } finally {
@@ -184,19 +182,21 @@ function PendingRequests() {
                             </Button>
                         </Box>
                     </Box>
-                    {loading ? <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box> :
-                        <TableContainer component={Paper}>
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell padding="checkbox"><Checkbox onChange={handleSelectAllClick} /></TableCell>
-                                        {['name', 'email', 'username', 'applied', 'account_type', 'providerName', 'edpub_id', 'justification'].map(col => (
-                                            <TableCell key={col}><TableSortLabel active={orderBy === col} direction={order} onClick={() => handleRequestSort(col)}>{col.replace('_', ' ').toUpperCase()}</TableSortLabel></TableCell>
-                                        ))}
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {visibleRows.map(app => {
+                    <TableContainer component={Paper}>
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell padding="checkbox"><Checkbox onChange={handleSelectAllClick} /></TableCell>
+                                    {['name', 'email', 'username', 'applied', 'account_type', 'providerName', 'edpub_id', 'justification'].map(col => (
+                                        <TableCell key={col}><TableSortLabel active={orderBy === col} direction={order} onClick={() => handleRequestSort(col)}>{col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</TableSortLabel></TableCell>
+                                    ))}
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {loading || isAuthLoading ? (
+                                    <TableRow><TableCell colSpan={9} align="center"><CircularProgress /></TableCell></TableRow>
+                                ) : visibleRows.length > 0 ? (
+                                    visibleRows.map(app => {
                                         const isItemSelected = isSelected(app.id);
                                         return (
                                             <TableRow key={app.id} hover onClick={() => handleClick(app.id)} selected={isItemSelected}>
@@ -211,11 +211,13 @@ function PendingRequests() {
                                                 <TableCell>{app.justification}</TableCell>
                                             </TableRow>
                                         );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    }
+                                    })
+                                ) : (
+                                    <TableRow><TableCell colSpan={9} align="center">No pending applications found.</TableCell></TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
                     <TablePagination
                         rowsPerPageOptions={[5, 10, 25]}
                         component="div"

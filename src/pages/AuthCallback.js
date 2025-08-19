@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import { CircularProgress, Box, Typography, Paper, Button, createTheme, ThemeProvider } from '@mui/material';
+import { jwtDecode } from 'jwt-decode';
 
 const theme = createTheme({
     palette: {
@@ -29,15 +30,33 @@ function AuthCallback() {
             }
 
             try {
-                // The hook now handles session creation and Redux dispatch.
-                // We no longer need to check the status here.
-                await handleAuthCallback(code, state);
+                const { status, id_token } = await handleAuthCallback(code, state);
                 
-                // After the session is created, always redirect to the homepage.
-                // ProtectedRoute will then handle routing to /login if not authenticated,
-                // or the user will see the dashboard if they are.
-                navigate('/', { replace: true });
-
+                // --- FIX: This logic now correctly routes based on the user's actual status ---
+                switch (status) {
+                    case 'registered':
+                        navigate('/', { replace: true });
+                        break;
+                    case 'pending_approval':
+                        navigate('/pending-approval', { replace: true });
+                        break;
+                    case 'unregistered':
+                        if (typeof id_token !== 'string') {
+                            throw new Error("Invalid ID token received from server.");
+                        }
+                        const decodedToken = jwtDecode(id_token);
+                        navigate('/signup', {
+                            replace: true,
+                            state: {
+                                name: decodedToken.name,
+                                email: decodedToken.email,
+                                username: decodedToken.preferred_username
+                            }
+                        });
+                        break;
+                    default:
+                        throw new Error(`Received an unknown user status from the server: ${status}`);
+                }
             } catch (err) {
                 console.error("Authentication callback error:", err);
                 setError(err.message || 'An unexpected error occurred during login. Please try again.');

@@ -1,11 +1,8 @@
 import sessionService from '../services/sessionService';
 import { config } from '../config';
-// --- REMOVED: No longer need to import the Redux store ---
+import store from '../app/store';
 
-/**
- * A helper function to get the temporary token during the login callback.
- * This is needed because the full session isn't saved yet when getMyProfile is called.
- */
+// Helper function for the apiClient to get the temp token during login
 const getTempToken = () => localStorage.getItem('CUE_TEMP_TOKEN');
 
 /**
@@ -13,18 +10,18 @@ const getTempToken = () => localStorage.getItem('CUE_TEMP_TOKEN');
  * JWT access token refreshing and adds the active ngroup header.
  */
 const apiClient = async (endpoint, options = {}) => {
-    // --- UPDATED: Use sessionService to get session data ---
     let session = sessionService.getSession();
     let accessToken = session ? session.accessToken : null;
 
-    // --- NEW: Handle the special case during the login callback ---
     const tempToken = getTempToken();
     if (tempToken) {
         accessToken = tempToken;
     }
 
     if (accessToken && session?.expiresAt) {
-        const isTokenExpiring = Date.now() > (session.expiresAt - 5 * 60 * 1000);
+        // --- FIX: Reduced the refresh buffer from 5 minutes to 1 minute ---
+        const isTokenExpiring = Date.now() > (session.expiresAt - 1 * 60 * 1000);
+
         if (isTokenExpiring) {
             console.log('Access token is expiring, attempting to refresh...');
             const newAccessToken = await sessionService.refreshAccessToken();
@@ -33,10 +30,12 @@ const apiClient = async (endpoint, options = {}) => {
                 throw new Error('Session expired. Please log in again.');
             }
             accessToken = newAccessToken;
-            // Refresh the session object after getting a new token
             session = sessionService.getSession(); 
         }
     }
+
+    const state = store.getState();
+    const activeNgroupId = state.auth.activeNgroupId;
 
     const headers = {
         'Content-Type': 'application/json',
@@ -45,10 +44,8 @@ const apiClient = async (endpoint, options = {}) => {
     if (accessToken) {
         headers['Authorization'] = `Bearer ${accessToken}`;
     }
-    
-    // --- UPDATED: Get active ngroupId from the session object ---
-    if (session?.active_ngroup_id) {
-        headers['X-Active-Ngroup-Id'] = session.active_ngroup_id;
+    if (activeNgroupId) {
+        headers['X-Active-Ngroup-Id'] = activeNgroupId;
     }
 
     const response = await fetch(`${config.apiBaseUrl}${endpoint}`, {
