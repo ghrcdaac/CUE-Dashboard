@@ -1,65 +1,63 @@
-// src/app/reducers/authSlice.js (Modified)
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
+    // --- UPDATED: The entire user profile is now stored ---
+    user: null, // Will contain name, email, ngroups, privileges, etc.
     accessToken: null,
-    refreshToken: null,
     isAuthenticated: false,
-    username: null,
-    challengeName: null,
-    user: null,
     isLoading: true,
-    ngroupId: null, // Add ngroupId
-    roleId: null,   // Add roleId
+    // --- ADDED: Store the active ngroupId separately for easy access ---
+    activeNgroupId: null, 
 };
 
 const authSlice = createSlice({
     name: 'auth',
     initialState,
     reducers: {
-        loginSuccess: (state, action) => {
+        /**
+         * Populates the entire auth state from a saved session.
+         */
+        sessionRestored: (state, action) => {
+            state.user = action.payload.user;
             state.accessToken = action.payload.accessToken;
-            state.refreshToken = action.payload.refreshToken;
+            state.activeNgroupId = action.payload.active_ngroup_id;
             state.isAuthenticated = true;
-            state.username = action.payload.username;
-            state.challengeName = null;
-            state.user = null;
             state.isLoading = false;
-            state.ngroupId = action.payload.ngroupId; // Store ngroupId
-            state.roleId = action.payload.roleId;     // Store roleId
         },
+        /**
+         * Clears all session information from the state on logout.
+         */
         logoutSuccess: (state) => {
-            state.accessToken = null;
-            state.refreshToken = null;
-            state.isAuthenticated = false;
-            state.username = null;
-            state.challengeName = null;
             state.user = null;
+            state.accessToken = null;
+            state.activeNgroupId = null;
+            state.isAuthenticated = false;
             state.isLoading = false;
-            state.ngroupId = null; // Clear ngroupId
-            state.roleId = null;   // Clear roleId
         },
+        /**
+         * Updates the active ngroupId when the user changes it in the UI.
+         */
+        setActiveNgroup: (state, action) => {
+            state.activeNgroupId = action.payload;
+        },
+        /**
+         * Updates the access token after a refresh.
+         */
         setAccessToken: (state, action) => {
             state.accessToken = action.payload;
-        },
-        setChallengeName: (state, action) => {
-            state.challengeName = action.payload;
-        },
-        setUser: (state, action) => {
-            state.user = action.payload;
         },
         setLoading: (state, action) => {
             state.isLoading = action.payload;
         },
-        // Add reducers for setting ngroupId and roleId if needed separately
-        setNgroupId: (state, action) => {
-          state.ngroupId = action.payload;
-        },
-        setRoleId: (state, action) => {
-          state.roleId = action.payload;
-        }
     },
 });
 
-export const { loginSuccess, logoutSuccess, setAccessToken, setChallengeName, setUser, setLoading, setNgroupId, setRoleId } = authSlice.actions;
+export const { 
+    sessionRestored, 
+    logoutSuccess, 
+    setActiveNgroup,
+    setAccessToken,
+    setLoading, 
+} = authSlice.actions;
+
 export default authSlice.reducer;
