@@ -6,6 +6,7 @@ import {
     TableSortLabel, CircularProgress
 } from '@mui/material';
 import { useOutletContext } from 'react-router-dom';
+import SideNav from "../components/SideNav";
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Autocomplete from "@mui/material/Autocomplete";
@@ -34,8 +35,7 @@ function Users() {
     const [openEditDialog, setOpenEditDialog] = useState(false);
     const [roles, setRoles] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [order, setOrder] = useState('asc');
-    const [orderBy, setOrderBy] = useState('name');
+
     
     const location = useLocation();
 
@@ -133,11 +133,6 @@ function Users() {
         }
     }, [isAuthLoading, activeNgroupId, fetchPageData]);
 
-    const handleRequestSort = (property) => {
-        const isAsc = orderBy === property && order === 'asc';
-        setOrder(isAsc ? 'desc' : 'asc');
-        setOrderBy(property);
-    };
 
     const sortedUsers = React.useMemo(() => {
         if (!users) return [];
@@ -227,7 +222,6 @@ function Users() {
     return (
         <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
 
-            <SideNav menuItems={usersMenuItems} open={open} onToggle={handleToggle} />
             <Box sx={{ flexGrow: 1, p: 3 }}>
 
                 {location.pathname === '/users' || location.pathname === '/users/' ? (

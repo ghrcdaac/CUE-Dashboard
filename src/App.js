@@ -1,7 +1,8 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import SideNav from "./components/SideNav";
 import Home from "./pages/Home";
 import Collections from "./pages/Collections";
 import Providers from "./pages/Providers";
@@ -26,7 +27,6 @@ import AuthCallback from './pages/AuthCallback'; // The new callback page
 import PendingApproval from './pages/PendingApproval'; // A simple new page
 
 import FilesByCost from './pages/metrics/FilesByCost';
-import { Box } from '@mui/material';
 import CollectionFileBrowser from "./pages/collections/CollectionFileBrowser";
 import CollectionOverview from "./pages/collections/CollectionOverview";
 import NotificationPreferences from "./pages/Profile/NotificationPreference";
