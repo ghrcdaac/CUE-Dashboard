@@ -10,10 +10,10 @@ import Users from "./pages/Users";
 import DAAC from "./pages/DAAC";
 import Profile from './pages/Profile';
 import SignupPage from './components/SignupPage';
-import CreateCollection from "./pages/collections/CreateCollection";
 import PendingRequests from "./pages/users/PendingRequests";
 import RejectedRequests from "./pages/users/RejectedRequests";
 import FilesByStatus from './pages/metrics/FilesByStatus';
+
 import ProtectedRoute from "./components/ProtectedRoute";
 import useAuth from "./hooks/useAuth";
 import { useSelector } from 'react-redux';
@@ -25,6 +25,13 @@ import LoginPage from "./components/LoginPage"; // The new login page
 import AuthCallback from './pages/AuthCallback'; // The new callback page
 import PendingApproval from './pages/PendingApproval'; // A simple new page
 
+import FilesByCost from './pages/metrics/FilesByCost';
+import { Box } from '@mui/material';
+import CollectionFileBrowser from "./pages/collections/CollectionFileBrowser";
+import CollectionOverview from "./pages/collections/CollectionOverview";
+import NotificationPreferences from "./pages/Profile/NotificationPreference";
+
+
 const theme = createTheme({
     palette: {
         primary: {
@@ -35,17 +42,59 @@ const theme = createTheme({
         },
     },
 });
+function SimpleLayout() {
+    return (
+        <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
+            <Header />
+            <Box
+                component="main"
+                sx={{
+                    flexGrow: 1,
+                    overflowY: 'auto',
+                    p: 3,
+                    backgroundColor: '#f4f6f8',
+                }}
+            >
+                <Outlet />
+            </Box>
+            <Footer />
+        </Box>
+    );
+}
+
 
 function Layout() {
-    // This component remains the same
+    const [sideNavOpen, setSideNavOpen] = useState(true);
+    const [menuItems, setMenuItems] = useState([]);
+
+    const handleToggleSideNav = () => {
+        setSideNavOpen(!sideNavOpen);
+    };
+
     return (
-        <div style={{ display: "flex", minHeight: "100vh" }}>
-            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                <Header />
-                <Outlet />
-                <Footer />
-            </div>
-        </div>
+        <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
+            <Header />
+            <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
+                <SideNav
+                    menuItems={menuItems}
+                    open={sideNavOpen}
+                    onToggle={handleToggleSideNav}
+                />
+                <Box
+                    component="main"
+                    sx={{
+                        flexGrow: 1,
+                        overflowY: 'auto',
+                        p: 3,
+                        backgroundColor: '#f4f6f8',
+                    }}
+                >
+                    <Outlet context={{ setMenuItems }} />
+                </Box>
+            </Box>
+            <Footer />
+        </Box>
+
     );
 }
 
@@ -68,32 +117,35 @@ function App() {
 
     return (
         <ThemeProvider theme={theme}>
-            <BrowserRouter>
-                <Routes>
-                    {/* Protected Routes */}
-                    <Route path="/" element={<Layout />}>
-                        <Route index element={<ProtectedRoute><Home /></ProtectedRoute>} />
-                        
-                        {/* --- CORRECTED NESTED ROUTES --- */}
-                        <Route path="collections" element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+
+            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                 <Routes>
+                    <Route element={<SimpleLayout />}>
+                        <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                    </Route>
+                    <Route element={<Layout />}>
+                        <Route path="collections" element={<ProtectedRoute><Collections /></ProtectedRoute>}>
+
                             <Route index element={<Collections />} />
-                            <Route path="create" element={<CreateCollection />} />
+                            <Route path="create" element={<CollectionOverview />} />
+                            <Route path="files" element={<CollectionFileBrowser />} />
                         </Route>
 
-                        <Route path="metrics" element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
-                            <Route index element={<Metrics />} />
-                            <Route path="files-by-status" element={<FilesByStatus />} />
-                        </Route>
-
-                        <Route path="users" element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
-                            <Route index element={<Users />} />
+                        <Route path="providers" element={<ProtectedRoute><Providers /></ProtectedRoute>} />
+                        <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />
+                        <Route path="files-by-status" element={<FilesByStatus />} />
+                        <Route path="files-by-cost" element={<FilesByCost/>} />
+                        <Route path="users" element={<ProtectedRoute><Users /></ProtectedRoute>}>
+                           <Route index element={<Users />} />
                             <Route path="pending-requests" element={<PendingRequests />} />
                             <Route path="rejected-requests" element={<RejectedRequests />} />
                         </Route>
-                        
-                        <Route path="providers" element={<ProtectedRoute><Providers /></ProtectedRoute>} />
+
                         <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />
-                        <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                        <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} >
+                            <Route index element={<Navigate to="notification" replace />} />
+                            <Route path="notification" element={<NotificationPreferences />} />
+                        </Route>
                     </Route>
 
                     {/* Public Authentication Routes */}

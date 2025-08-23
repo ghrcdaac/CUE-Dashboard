@@ -13,11 +13,11 @@ import dayjs from 'dayjs';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useOutletContext } from 'react-router-dom';
 
 // Hooks & Components
 import useAuth from '../hooks/useAuth';
 import usePageTitle from "../hooks/usePageTitle";
-import SideNav from "../components/SideNav";
 
 // API Imports
 import * as fileStatusApi from '../api/fileStatusApi';
@@ -30,6 +30,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ClearIcon from '@mui/icons-material/Clear';
 import FilePresentIcon from '@mui/icons-material/FilePresent';
+import MoneyIcon from '@mui/icons-material/Money';
 
 // --- Constants ---
 const DATE_FORMAT_API_DAYJS = 'YYYY-MM-DD';
@@ -76,7 +77,6 @@ function Metrics() {
     const hasNgroupId = useMemo(() => !!ngroupId, [ngroupId]);
 
     // --- State --- (Keep state variables as before)
-    const [openSideNav, setOpenSideNav] = useState(true);
     const [providerOptions, setProviderOptions] = useState([]);
     const [userOptions, setUserOptions] = useState([]);
     const [collectionOptions, setCollectionOptions] = useState([]);
@@ -97,12 +97,20 @@ function Metrics() {
     const [metricsFetched, setMetricsFetched] = useState(false);
 
     // --- Side Navigation ---
-    const handleToggleSideNav = () => { setOpenSideNav(!openSideNav); };
     // --- CHANGE: Updated SideNav Title ---
     const metricsMenuItems = [
         { text: 'Overview', path: '/metrics', icon: <AssessmentIcon /> },
         { text: 'Files by Status', path: '/files-by-status', icon: <FilePresentIcon /> },
+        { text: 'Cost', path: '/files-by-cost', icon: <MoneyIcon /> }
     ];
+
+    const { setMenuItems } = useOutletContext();
+
+    useEffect(() => {
+        setMenuItems(metricsMenuItems);
+        // Optional: clear the menu when the page is left
+        return () => setMenuItems([]);
+    }, [setMenuItems]);
 
     // --- Data Fetching Callbacks --- (fetchFilterOptions remains the same)
     const fetchFilterOptions = useCallback(async () => {
@@ -257,109 +265,103 @@ function Metrics() {
      // --- Render ---
     return (
         <LocalizationProvider dateAdapter={AdapterDayjs}>
-            <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)'  }}> {/* Adjust minHeight based on header */}
-                <SideNav menuItems={metricsMenuItems} open={openSideNav} onToggle={handleToggleSideNav} />
-
-                <Box component="main" sx={{ flexGrow: 1, p: 3, backgroundColor: '#f4f6f8' }}>
-                    {/* Filter Card */}
-                    <Card sx={{ marginBottom: 3 }}>
-                        <CardContent>
-                             {/* ... Filter Title, Alerts, Grid ... */}
-                             <Typography variant="h5" gutterBottom>Metrics Filters</Typography>
-                             {!hasNgroupId && <Alert severity="error" sx={{ mb: 2 }}>NGROUP ID not found. Cannot load filters or metrics.</Alert>}
-                             {errorOptions && <Alert severity="error" sx={{ mb: 2 }}>{errorOptions}</Alert>}
-                             <Grid container spacing={2} alignItems="center">
-                                <Grid item xs={12} sm={6} md={3}> <DatePicker label="Start Date" value={startDate} onChange={setStartDate} maxDate={endDate || undefined} disabled={loadingOptions || !hasNgroupId} slotProps={{ textField: { fullWidth: true, size: 'small' } }} /> </Grid>
-                                <Grid item xs={12} sm={6} md={3}> <DatePicker label="End Date" value={endDate} onChange={setEndDate} minDate={startDate || undefined} disableFuture disabled={loadingOptions || !hasNgroupId} slotProps={{ textField: { fullWidth: true, size: 'small' } }}/> </Grid>
-                                <Grid item xs={12} sm={6} md={2}> <Autocomplete options={providerOptions} getOptionLabel={(o) => o?.short_name || ''} value={selectedProvider} onChange={(e, v) => setSelectedProvider(v)} isOptionEqualToValue={(o, v) => o?.id === v?.id} renderInput={(params) => <TextField {...params} label="Provider" size="small" />} disabled={loadingOptions || !hasNgroupId} fullWidth /> </Grid>
-                                <Grid item xs={12} sm={6} md={2}> <Autocomplete options={userOptions} getOptionLabel={(o) => o?.name || o?.email || ''} value={selectedUser} onChange={(e, v) => setSelectedUser(v)} isOptionEqualToValue={(o, v) => o?.id === v?.id} renderInput={(params) => <TextField {...params} label="User" size="small" />} disabled={loadingOptions || !hasNgroupId} fullWidth /> </Grid>
-                                <Grid item xs={12} sm={6} md={2}> <Autocomplete options={collectionOptions} getOptionLabel={(o) => o?.short_name || ''} value={selectedCollection} onChange={(e, v) => setSelectedCollection(v)} isOptionEqualToValue={(o, v) => o?.id === v?.id} renderInput={(params) => <TextField {...params} label="Collection" size="small" />} disabled={loadingOptions || !hasNgroupId} fullWidth /> </Grid>
-                                <Grid item xs={12} sm={12} md={12} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                                     <Button variant="outlined" onClick={handleClearFilters} startIcon={<ClearIcon />} disabled={loadingMetrics || loadingOptions || !hasNgroupId}> Clear Filters </Button>
-                                     <Button variant="contained" onClick={handleApplyFilters} startIcon={<FilterListIcon />} disabled={loadingMetrics || loadingOptions || !hasNgroupId || !startDate?.isValid() || !endDate?.isValid()}> Apply Filters </Button>
-                                </Grid>
-                                {loadingOptions && hasNgroupId && <Grid item xs={12}><CircularProgress size={20} /> Loading filter options...</Grid>}
-                             </Grid>
-                        </CardContent>
-                    </Card>
-
-                    {/* Metrics Overview Section */}
-                    <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>Metrics Overview</Typography>
-                     {loadingMetrics && ( /* ... Skeletons ... */ <Grid container spacing={3} sx={{ mb: 3 }}><Grid item xs={12} md={6} lg={3}><Skeleton variant="rounded" height={100} /></Grid><Grid item xs={12} md={6} lg={3}><Skeleton variant="rounded" height={100} /></Grid><Grid item xs={12} md={6} lg={6}><Skeleton variant="rounded" height={100} /></Grid><Grid item xs={12} lg={6}><Skeleton variant="rounded" height={350} /></Grid><Grid item xs={12} lg={6}><Skeleton variant="rounded" height={350} /></Grid></Grid> )}
-                     {errorMetrics && !loadingMetrics && <Alert severity="warning" sx={{ my: 2 }}>{errorMetrics}</Alert>}
-                     {!hasNgroupId && <Alert severity="error">NGROUP ID not found. Cannot load metrics.</Alert>}
-                     {!metricsFetched && !loadingMetrics && !errorMetrics && hasNgroupId && <Alert severity="info">Loading initial metrics...</Alert>}
-                     {metricsFetched && !errorMetrics && !loadingMetrics && (
-                        <Grid container spacing={3} sx={{ mb: 3 }}>
-                            {/* --- CHANGE: Added height: 100% to Cards in first row --- */}
-                           <Grid item xs={12} md={6} lg={3}><Card sx={{ height: '100%' }}><CardContent><Typography variant="subtitle1" color="text.secondary" gutterBottom>Total Volume</Typography><Typography variant="h4">{overallVolumeData && typeof overallVolumeData.total_volume_gb === 'number' ? formatBytes(overallVolumeData.total_volume_gb * 1024 * 1024 * 1024) : 'N/A'}</Typography></CardContent></Card></Grid>
-                           <Grid item xs={12} md={6} lg={3}><Card sx={{ height: '100%' }}><CardContent><Typography variant="subtitle1" color="text.secondary" gutterBottom>Total Files</Typography><Typography variant="h4">{overallCountData && typeof overallCountData.total_count === 'number' ? overallCountData.total_count.toLocaleString() : 'N/A'}</Typography></CardContent></Card></Grid>
-                           <Grid item xs={12} md={12} lg={6}> {/* Changed md span for Status Card */}
-                               <Card sx={{ height: '100%' }}>
-                                     <CardContent>
-                                          <Typography variant="subtitle1" color="text.secondary" gutterBottom>Status Distribution</Typography>
-                                          {statusCountsData && statusCountsData.length > 0 ? (
-                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', /* Center vertically? */ minHeight: 50 /* Ensure some min height */ }}>
-                                                 {/* --- CHANGE: Updated Chip styling --- */}
-                                                 {statusCountsData.map(item => (
-                                                      <Chip key={item.status} label={`${item.status}: ${item.count.toLocaleString()}`} sx={{ backgroundColor: getStatusColor(item.status), fontWeight: 500 }} />
-                                                 ))}
-                                            </Box>
-                                           ) : (
-                                               <Typography variant="body2" color="text.secondary">No status count data available.</Typography>
-                                           )}
-                                     </CardContent>
-                                </Card>
-                             </Grid>
-                             {/* Charts remain in the next row */}
-                             <Grid item xs={12} lg={6}>
-                                 <Card>
-                                     <CardContent>
-                                         <Typography variant="subtitle1" color="text.secondary" gutterBottom>Daily Volume (GB)</Typography>
-                                         {dailyVolumeData.length > 0 ? (
-                                             <ResponsiveContainer width="100%" height={300}>
-                                                 <LineChart data={dailyVolumeData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                                     <CartesianGrid strokeDasharray="3 3" />
-                                                     <XAxis dataKey="day" />
-                                                     <YAxis />
-                                                     {/* --- CHANGE: Added formatter to Tooltip --- */}
-                                                     <Tooltip formatter={volumeTooltipFormatter} />
-                                                     <Legend />
-                                                     <Line type="monotone" dataKey="value" stroke="#8884d8" activeDot={{ r: 8 }} name="Volume (GB)"/>
-                                                 </LineChart>
-                                             </ResponsiveContainer>
-                                         ) : (<Typography variant="body2" color="text.secondary">No daily volume data available for selected period/filters.</Typography>)}
-                                     </CardContent>
-                                 </Card>
-                             </Grid>
-                             <Grid item xs={12} lg={6}>
-                                 <Card>
-                                     <CardContent>
-                                         <Typography variant="subtitle1" color="text.secondary" gutterBottom>Daily File Count</Typography>
-                                          {dailyCountData.length > 0 ? (
-                                             <ResponsiveContainer width="100%" height={300}>
-                                                 <LineChart data={dailyCountData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                                     <CartesianGrid strokeDasharray="3 3" />
-                                                     <XAxis dataKey="day" />
-                                                     <YAxis />
-                                                     {/* --- CHANGE: Added formatter to Tooltip (optional but good practice) --- */}
-                                                     <Tooltip formatter={countTooltipFormatter} />
-                                                     <Legend />
-                                                     <Line type="monotone" dataKey="value" stroke="#82ca9d" activeDot={{ r: 8 }} name="Files"/>
-                                                 </LineChart>
-                                             </ResponsiveContainer>
-                                          ) : (<Typography variant="body2" color="text.secondary">No daily file count data available for selected period/filters.</Typography>)}
-                                     </CardContent>
-                                 </Card>
-                             </Grid>
+            {/* Filter Card */}
+            <Card sx={{ marginBottom: 3 }}>
+                <CardContent>
+                        {/* ... Filter Title, Alerts, Grid ... */}
+                        <Typography variant="h5" gutterBottom>Metrics Filters</Typography>
+                        {!hasNgroupId && <Alert severity="error" sx={{ mb: 2 }}>NGROUP ID not found. Cannot load filters or metrics.</Alert>}
+                        {errorOptions && <Alert severity="error" sx={{ mb: 2 }}>{errorOptions}</Alert>}
+                        <Grid container spacing={2} alignItems="center">
+                        <Grid item xs={12} sm={6} md={3}> <DatePicker label="Start Date" value={startDate} onChange={setStartDate} maxDate={endDate || undefined} disabled={loadingOptions || !hasNgroupId} slotProps={{ textField: { fullWidth: true, size: 'small' } }} /> </Grid>
+                        <Grid item xs={12} sm={6} md={3}> <DatePicker label="End Date" value={endDate} onChange={setEndDate} minDate={startDate || undefined} disableFuture disabled={loadingOptions || !hasNgroupId} slotProps={{ textField: { fullWidth: true, size: 'small' } }}/> </Grid>
+                        <Grid item xs={12} sm={6} md={2}> <Autocomplete options={providerOptions} getOptionLabel={(o) => o?.short_name || ''} value={selectedProvider} onChange={(e, v) => setSelectedProvider(v)} isOptionEqualToValue={(o, v) => o?.id === v?.id} renderInput={(params) => <TextField {...params} label="Provider" size="small" />} disabled={loadingOptions || !hasNgroupId} fullWidth /> </Grid>
+                        <Grid item xs={12} sm={6} md={2}> <Autocomplete options={userOptions} getOptionLabel={(o) => o?.name || o?.email || ''} value={selectedUser} onChange={(e, v) => setSelectedUser(v)} isOptionEqualToValue={(o, v) => o?.id === v?.id} renderInput={(params) => <TextField {...params} label="User" size="small" />} disabled={loadingOptions || !hasNgroupId} fullWidth /> </Grid>
+                        <Grid item xs={12} sm={6} md={2}> <Autocomplete options={collectionOptions} getOptionLabel={(o) => o?.short_name || ''} value={selectedCollection} onChange={(e, v) => setSelectedCollection(v)} isOptionEqualToValue={(o, v) => o?.id === v?.id} renderInput={(params) => <TextField {...params} label="Collection" size="small" />} disabled={loadingOptions || !hasNgroupId} fullWidth /> </Grid>
+                        <Grid item xs={12} sm={12} md={12} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                                <Button variant="outlined" onClick={handleClearFilters} startIcon={<ClearIcon />} disabled={loadingMetrics || loadingOptions || !hasNgroupId}> Clear Filters </Button>
+                                <Button variant="contained" onClick={handleApplyFilters} startIcon={<FilterListIcon />} disabled={loadingMetrics || loadingOptions || !hasNgroupId || !startDate?.isValid() || !endDate?.isValid()}> Apply Filters </Button>
                         </Grid>
-                     )}
+                        {loadingOptions && hasNgroupId && <Grid item xs={12}><CircularProgress size={20} /> Loading filter options...</Grid>}
+                        </Grid>
+                </CardContent>
+            </Card>
 
-                    {/* Files by Status Section Removed */}
+            {/* Metrics Overview Section */}
+            <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>Metrics Overview</Typography>
+                {loadingMetrics && ( /* ... Skeletons ... */ <Grid container spacing={3} sx={{ mb: 3 }}><Grid item xs={12} md={6} lg={3}><Skeleton variant="rounded" height={100} /></Grid><Grid item xs={12} md={6} lg={3}><Skeleton variant="rounded" height={100} /></Grid><Grid item xs={12} md={6} lg={6}><Skeleton variant="rounded" height={100} /></Grid><Grid item xs={12} lg={6}><Skeleton variant="rounded" height={350} /></Grid><Grid item xs={12} lg={6}><Skeleton variant="rounded" height={350} /></Grid></Grid> )}
+                {errorMetrics && !loadingMetrics && <Alert severity="warning" sx={{ my: 2 }}>{errorMetrics}</Alert>}
+                {!hasNgroupId && <Alert severity="error">NGROUP ID not found. Cannot load metrics.</Alert>}
+                {!metricsFetched && !loadingMetrics && !errorMetrics && hasNgroupId && <Alert severity="info">Loading initial metrics...</Alert>}
+                {metricsFetched && !errorMetrics && !loadingMetrics && (
+                <Grid container spacing={3} sx={{ mb: 3 }}>
+                    {/* --- CHANGE: Added height: 100% to Cards in first row --- */}
+                    <Grid item xs={12} md={6} lg={3}><Card sx={{ height: '100%' }}><CardContent><Typography variant="subtitle1" color="text.secondary" gutterBottom>Total Volume</Typography><Typography variant="h4">{overallVolumeData && typeof overallVolumeData.total_volume_gb === 'number' ? formatBytes(overallVolumeData.total_volume_gb * 1024 * 1024 * 1024) : 'N/A'}</Typography></CardContent></Card></Grid>
+                    <Grid item xs={12} md={6} lg={3}><Card sx={{ height: '100%' }}><CardContent><Typography variant="subtitle1" color="text.secondary" gutterBottom>Total Files</Typography><Typography variant="h4">{overallCountData && typeof overallCountData.total_count === 'number' ? overallCountData.total_count.toLocaleString() : 'N/A'}</Typography></CardContent></Card></Grid>
+                    <Grid item xs={12} md={12} lg={6}> {/* Changed md span for Status Card */}
+                        <Card sx={{ height: '100%' }}>
+                                <CardContent>
+                                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Status Distribution</Typography>
+                                    {statusCountsData && statusCountsData.length > 0 ? (
+                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', /* Center vertically? */ minHeight: 50 /* Ensure some min height */ }}>
+                                            {/* --- CHANGE: Updated Chip styling --- */}
+                                            {statusCountsData.map(item => (
+                                                <Chip key={item.status} label={`${item.status}: ${item.count.toLocaleString()}`} sx={{ backgroundColor: getStatusColor(item.status), fontWeight: 500 }} />
+                                            ))}
+                                    </Box>
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary">No status count data available.</Typography>
+                                    )}
+                                </CardContent>
+                        </Card>
+                        </Grid>
+                        {/* Charts remain in the next row */}
+                        <Grid item xs={12} lg={6}>
+                            <Card>
+                                <CardContent>
+                                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Daily Volume (GB)</Typography>
+                                    {dailyVolumeData.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <LineChart data={dailyVolumeData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="day" />
+                                                <YAxis />
+                                                {/* --- CHANGE: Added formatter to Tooltip --- */}
+                                                <Tooltip formatter={volumeTooltipFormatter} />
+                                                <Legend />
+                                                <Line type="monotone" dataKey="value" stroke="#8884d8" activeDot={{ r: 8 }} name="Volume (GB)"/>
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    ) : (<Typography variant="body2" color="text.secondary">No daily volume data available for selected period/filters.</Typography>)}
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item xs={12} lg={6}>
+                            <Card>
+                                <CardContent>
+                                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Daily File Count</Typography>
+                                    {dailyCountData.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <LineChart data={dailyCountData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="day" />
+                                                <YAxis />
+                                                {/* --- CHANGE: Added formatter to Tooltip (optional but good practice) --- */}
+                                                <Tooltip formatter={countTooltipFormatter} />
+                                                <Legend />
+                                                <Line type="monotone" dataKey="value" stroke="#82ca9d" activeDot={{ r: 8 }} name="Files"/>
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    ) : (<Typography variant="body2" color="text.secondary">No daily file count data available for selected period/filters.</Typography>)}
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                </Grid>
+                )}
 
-                    <ToastContainer position="top-center" autoClose={3000} hideProgressBar />
-                </Box>
-            </Box>
+            {/* Files by Status Section Removed */}
+
+            <ToastContainer position="top-center" autoClose={3000} hideProgressBar />
         </LocalizationProvider>
     );
 }

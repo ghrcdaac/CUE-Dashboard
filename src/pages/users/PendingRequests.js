@@ -167,7 +167,7 @@ function PendingRequests() {
     }, [sortedApplications, page, rowsPerPage, searchTerm]);
 
     return (
-        <Box sx={{ p: 3 }}>
+        <Box>
             <ToastContainer position="top-center" />
             <Card>
                 <CardContent>
