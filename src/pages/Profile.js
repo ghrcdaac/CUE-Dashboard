@@ -1,19 +1,28 @@
 // src/pages/Profile.js
-import React from 'react';
+import React, {useEffect} from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import {Outlet, useOutletContext } from 'react-router-dom';
+import MarkEmailUnreadIcon from '@mui/icons-material/MarkEmailUnread';
 
 
 function Profile() {
 
+    const profileMenuItems = [
+        { text: 'Notification Preferences', path: '/profile/notification', icon: <MarkEmailUnreadIcon /> },
+    ];
+
+    const { setMenuItems } = useOutletContext();
+
+    useEffect(() => {
+            setMenuItems(profileMenuItems);
+            // Optional: clear the menu when the page is left
+            return () => setMenuItems([]);
+        }, [setMenuItems]);
+
     return (
-        <Box sx={{ flexGrow: 1, p: 3 }}>
-            <Typography variant="h4" gutterBottom>
-                Profile Page
-            </Typography>
-            <Typography>
-                This is a placeholder for the user profile page.  
-            </Typography>
+        <Box sx={{ flexGrow: 1 }}>
+            <Outlet/>
         </Box>
     );
 }

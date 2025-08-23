@@ -28,6 +28,7 @@ import FilesByCost from './pages/metrics/FilesByCost';
 import { Box } from '@mui/material';
 import CollectionFileBrowser from "./pages/collections/CollectionFileBrowser";
 import CollectionOverview from "./pages/collections/CollectionOverview";
+import NotificationPreferences from "./pages/Profile/NotificationPreference";
 
 const theme = createTheme({
     palette: {
@@ -131,7 +132,6 @@ function App() {
                  <Routes>
                     <Route element={<SimpleLayout />}>
                         <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-                        <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                     </Route>
                     <Route element={<AppLayout />}>
                         <Route path="collections" element={<ProtectedRoute><Collections /></ProtectedRoute>}>
@@ -149,6 +149,10 @@ function App() {
                             <Route path="rejected-requests" element={<RejectedRequests />} />
                         </Route>
                         <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />
+                        <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} >
+                            <Route index element={<Navigate to="notification" replace />} />
+                            <Route path="notification" element={<NotificationPreferences />} />
+                        </Route>
                     </Route>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/change-password" element={challengeName === 'NEW_PASSWORD_REQUIRED' ? <ChangePassword /> : <Navigate to="/login" />} />
