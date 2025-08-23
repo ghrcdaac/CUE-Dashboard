@@ -1,58 +1,33 @@
-// src/api/adminApi.js
-import { config } from '../config';
-
-const API_BASE_URL = config.apiBaseUrl;
+import apiClient from './apiClient';
 
 /**
- * Verifies the email of a specified user as an administrator.
- *
- * @param {string} username - The username of the user.
- * @returns {Promise<object>} The API response data.
- * @throws {Error} If the request fails or the user is not found/unauthorized.
+ * Retrieves the fully registered user's profile from the backend.
+ * This requires the user to exist in the CUE database.
  */
-export const verifyUserEmail = async (username) => {
-    if (!username) {
-        throw new Error("Username is required.");
-    }
+export const getUserInfo = () => {
+    return apiClient.get('/auth/userinfo');
+};
 
-    const url = `${API_BASE_URL}/v1/auth/verify-email`; // Use template literal
+/**
+ * Retrieves the basic claims (name, email, username) from a user's token.
+ * This does NOT require the user to be registered in the CUE database.
+ * It's used specifically for pre-filling the new user application form.
+ */
+export const getUserClaims = () => {
+    return apiClient.get('/auth/claims');
+};
 
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ username }),
-        });
+/**
+ * Initiates Keycloak's 'forgot password' flow for the currently logged-in user.
+ */
+export const initiatePasswordReset = () => {
+    return apiClient.post('/auth/initiate-password-reset');
+};
 
-        if (!response.ok) {
-            const errorData = await response.json(); // Always try to get JSON error
-            let errorMessage = 'Failed to verify user email.'; // Default message
-
-             if (response.status === 401) {
-                errorMessage = "Unauthorized: Invalid or expired admin access token.";
-            } else if (response.status === 403) {
-                 errorMessage = "Forbidden: Insufficient privileges to verify user email.";
-            } else if (response.status === 404) {
-                errorMessage = `Not Found: User '${username}' not found.`;
-            } else if (response.status === 500) {
-                errorMessage = "Internal Server Error: An unexpected error occurred.";
-            }else if (errorData && errorData.message) {
-                errorMessage = errorData.message; // Use API's message if available
-            } else if (errorData && errorData.detail){
-                errorMessage = errorData.detail;
-            }
-            throw new Error(errorMessage);
-        }
-
-        return await response.json(); // Parse JSON on success
-
-    } catch (error) {
-        // Catch network errors or errors thrown from the response handling
-        if (error instanceof TypeError && error.message === "Failed to fetch") {
-          throw new Error("Network Error: Could not connect to the server.");
-        }
-        throw error; // Re-throw other errors for handling upstream
-    }
+/**
+ * A debugging tool to check the status and claims of a given token.
+ * @param {string} token - The access or refresh token to inspect.
+ */
+export const introspectToken = (token) => {
+    return apiClient.post('/auth/introspect', { token });
 };
