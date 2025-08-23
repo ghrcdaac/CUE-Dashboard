@@ -25,6 +25,7 @@ import PendingRequests from "./pages/users/PendingRequests";
 import RejectedRequests from "./pages/users/RejectedRequests";
 import { CircularProgress } from "@mui/material";
 import FilesByStatus from './pages/metrics/FilesByStatus';
+import FilesByCost from './pages/metrics/FilesByCost';
 
 const theme = createTheme({
     palette: {
@@ -103,6 +104,7 @@ function App() {
                         <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />
                         <Route index element={<Metrics />} />
                         <Route path="files-by-status" element={<FilesByStatus />} />
+                        <Route path="files-by-cost" element={<FilesByCost/>} />
                         
                         <Route path="users" element={<ProtectedRoute><Users /></ProtectedRoute>}>
                             <Route index element={<Users />} />

@@ -30,6 +30,7 @@ import ClearIcon from '@mui/icons-material/Clear';
 import SearchIcon from '@mui/icons-material/Search';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import FilePresentIcon from '@mui/icons-material/FilePresent';
+import MoneyIcon from '@mui/icons-material/Money';
 
 // --- Constants ---
 const FILE_STATUSES = ["unscanned", "clean", "infected", "scan_failed", "distributed"];
@@ -102,6 +103,7 @@ function FilesByStatus() {
     const metricsMenuItems = [
         { text: 'Overview', path: '/metrics', icon: <AssessmentIcon /> },
         { text: 'Files by Status', path: '/files-by-status', icon: <FilePresentIcon /> },
+        { text: 'Cost', path: '/files-by-cost', icon: <MoneyIcon /> }
     ];
 
     // --- Data Fetching Callbacks ---
