@@ -16,6 +16,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import usePageTitle from "../hooks/usePageTitle";
 import CollectionsIcon from '@mui/icons-material/Collections';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import FolderIcon from '@mui/icons-material/Folder';
 import DoneIcon from '@mui/icons-material/Done';
 import CloseIcon from '@mui/icons-material/Close';
 // API Imports
@@ -47,7 +48,8 @@ function Collections() {
 
     const collectionsMenuItems = [
         { text: 'Collection', path: '/collections', icon: <CollectionsIcon /> },
-        { text: 'Files', path: '/collections/create', icon: <InsertDriveFileIcon /> },
+        { text: 'Overview', path: '/collections/create', icon: <FolderIcon /> },
+        { text: 'Files', path: '/collections/files', icon: <InsertDriveFileIcon /> },
     ];
 
     const { setMenuItems } = useOutletContext();
@@ -97,7 +99,8 @@ function Collections() {
                 logout();
                 return;
             }
-            const data = await collectionApi.listCollections(ngroupId, accessToken);
+            const response = await collectionApi.listCollections(ngroupId, accessToken);
+            const data = response.collections;
             const { egresses, providers } = await fetchOptions(ngroupId);
 
             setEgressOptions(egresses);
