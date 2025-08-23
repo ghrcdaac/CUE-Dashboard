@@ -5,42 +5,50 @@ import { Link as RouterLink, useLocation } from 'react-router-dom';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
+const SIDENAV_WIDTH_OPEN = 250;
+const SIDENAV_WIDTH_CLOSED = 60;
+
 function SideNav({ menuItems, open, onToggle }) {
     const location = useLocation();
 
     return (
-        <>
-            {open && (  // This was already correct, keeping it
-            <Box sx={{
-                width: '250px',
+        <Box
+            component="nav"
+            sx={{
+                width: open ? `${SIDENAV_WIDTH_OPEN}px` : `${SIDENAV_WIDTH_CLOSED}px`,
+                transition: 'width 0.2s ease-in-out',
+                flexShrink: 0, // Prevents the sidebar from shrinking
                 backgroundColor: '#d0d0d0',
-                transition: 'width 0.3s ease, opacity 0.3s ease',
-                position: 'sticky',
-                top: '150px',
-                height: 'calc(100vh - 150px - 30px)',
-                overflowY: 'auto',
+                height: '100%', // Fills the height of its parent container
+                overflowX: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
-            }}>
-                 <IconButton
-                        onClick={onToggle}
-                        sx={{
-                            width: "100%",
-                            justifyContent: 'flex-end',
-                            paddingRight: '10px',
-                        }}
-                        size="large">
-                        <ChevronLeftIcon />
-                    </IconButton>
-                <List sx={{ flexGrow: 1 }}>
-                    {menuItems.map((item) => (
-                        <ListItem key={item.path} disablePadding>
-                            <ListItemButton
-                                component={RouterLink}
-                                to={item.path}
-                                selected={location.pathname === item.path}
-                            >
-                                <ListItemIcon>{item.icon}</ListItemIcon>
+            }}
+        >
+            <IconButton
+                onClick={onToggle}
+                sx={{
+                    justifyContent: open ? 'flex-end' : 'center',
+                    paddingRight: open ? '10px' : 0,
+                    '&:hover': {
+                        backgroundColor: 'transparent',
+                    },
+                }}
+                size="large"
+            >
+                {open ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+            </IconButton>
+
+            <List sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+                {menuItems && menuItems.map((item) => (
+                    <ListItem key={item.path} disablePadding>
+                        <ListItemButton
+                            component={RouterLink}
+                            to={item.path}
+                            selected={location.pathname === item.path}
+                        >
+                            <ListItemIcon>{item.icon}</ListItemIcon>
+                            {open && (
                                 <ListItemText
                                     primary={item.text}
                                     primaryTypographyProps={{
@@ -48,31 +56,12 @@ function SideNav({ menuItems, open, onToggle }) {
                                         fontWeight: location.pathname === item.path ? 'bold' : 'normal',
                                     }}
                                 />
-                            </ListItemButton>
-                        </ListItem>
-                    ))}
-                </List>
-            </Box>
-        )}
-         {!open && ( // This was already correct, keeping it
-                <Box sx={{
-                    width: '60px', // Width when collapsed
-                    backgroundColor: '#d0d0d0', //keep the bg color.
-                    position: 'sticky',
-                    transition: 'opacity 0.3s ease', //transition
-                    top: '150px',
-                    height: 'calc(100vh - 150px - 30px)',
-                    display: 'flex',
-                    justifyContent: 'center', // Center the button
-                    alignItems: 'flex-start', // Align to the top
-
-                }}>
-                    <IconButton onClick={onToggle} size="large" >
-                        <ChevronRightIcon />
-                    </IconButton>
-                </Box>
-            )}
-        </>
+                            )}
+                        </ListItemButton>
+                    </ListItem>
+                ))}
+            </List>
+        </Box>
     );
 }
 

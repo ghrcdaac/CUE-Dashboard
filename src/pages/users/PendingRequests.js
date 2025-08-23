@@ -298,7 +298,7 @@ function PendingRequests() {
     const isSelected = (id) => selectedApplications.includes(id);
 
     return (
-        <Box sx={{ p: 3 }}>
+        <Box>
             <ToastContainer position="top-center" />
             <Card>
                 <CardContent>

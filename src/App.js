@@ -26,6 +26,7 @@ import RejectedRequests from "./pages/users/RejectedRequests";
 import { CircularProgress } from "@mui/material";
 import FilesByStatus from './pages/metrics/FilesByStatus';
 import FilesByCost from './pages/metrics/FilesByCost';
+import { Box } from '@mui/material';
 
 const theme = createTheme({
     palette: {
@@ -37,23 +38,57 @@ const theme = createTheme({
         },
     },
 });
+function SimpleLayout() {
+    return (
+        <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
+            <Header />
+            <Box
+                component="main"
+                sx={{
+                    flexGrow: 1,
+                    overflowY: 'auto',
+                    p: 3,
+                    backgroundColor: '#f4f6f8',
+                }}
+            >
+                <Outlet />
+            </Box>
+            <Footer />
+        </Box>
+    );
+}
 
-function Layout() {
-    const [selectedMenu, setSelectedMenu] = useState("Overview");
+function AppLayout() {
+    const [sideNavOpen, setSideNavOpen] = useState(true);
+    const [menuItems, setMenuItems] = useState([]);
 
-    const handleMenuClick = (menu) => {
-        setSelectedMenu(menu);
+    const handleToggleSideNav = () => {
+        setSideNavOpen(!sideNavOpen);
     };
 
     return (
-        <div style={{ display: "flex", minHeight: "100vh" }}>
-            {/* <SideNav selectedMenu={selectedMenu} /> */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                <Header  />
-                <Outlet />
-                <Footer />
-            </div>
-        </div>
+        <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
+            <Header />
+            <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
+                <SideNav
+                    menuItems={menuItems}
+                    open={sideNavOpen}
+                    onToggle={handleToggleSideNav}
+                />
+                <Box
+                    component="main"
+                    sx={{
+                        flexGrow: 1,
+                        overflowY: 'auto',
+                        p: 3,
+                        backgroundColor: '#f4f6f8',
+                    }}
+                >
+                    <Outlet context={{ setMenuItems }} />
+                </Box>
+            </Box>
+            <Footer />
+        </Box>
     );
 }
 
@@ -92,29 +127,26 @@ function App() {
     return (
         <ThemeProvider theme={theme}>
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <Routes>
-                    <Route path="/" element={<Layout />}>
-                        <Route index element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                 <Routes>
+                    <Route element={<SimpleLayout />}>
+                        <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                        <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                    </Route>
+                    <Route element={<AppLayout />}>
                         <Route path="collections" element={<ProtectedRoute><Collections /></ProtectedRoute>}>
-                            <Route index element={<Collections />} />
-                            <Route path="create" element={<CreateCollection />} />
+                           <Route index element={<Collections />} />
+                           <Route path="create" element={<CreateCollection />} />
                         </Route>
                         <Route path="providers" element={<ProtectedRoute><Providers /></ProtectedRoute>} />
-
                         <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />
-                        <Route index element={<Metrics />} />
                         <Route path="files-by-status" element={<FilesByStatus />} />
                         <Route path="files-by-cost" element={<FilesByCost/>} />
-                        
                         <Route path="users" element={<ProtectedRoute><Users /></ProtectedRoute>}>
-                            <Route index element={<Users />} />
+                           <Route index element={<Users />} />
                             <Route path="pending-requests" element={<PendingRequests />} />
                             <Route path="rejected-requests" element={<RejectedRequests />} />
                         </Route>
-
-
                         <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />
-                        <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                     </Route>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/change-password" element={challengeName === 'NEW_PASSWORD_REQUIRED' ? <ChangePassword /> : <Navigate to="/login" />} />

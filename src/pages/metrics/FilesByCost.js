@@ -11,10 +11,10 @@ import dayjs from 'dayjs';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { LineChart, BarChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useOutletContext } from 'react-router-dom';
 
 import useAuth from '../../hooks/useAuth';
 import usePageTitle from "../../hooks/usePageTitle";
-import SideNav from "../../components/SideNav";
 import MetricsFilter from './MetricsFilter';
 
 import * as costMetricsApi from '../../api/costApi';
@@ -47,7 +47,6 @@ function FilesByCost() {
     const { accessToken } = useAuth();
     const ngroupId = useMemo(() => localStorage.getItem('CUE_ngroup_id'), []);
 
-    const [openSideNav, setOpenSideNav] = useState(true);
 
     const [summary, setSummary] = useState(null);
     const [collectionCost, setCollectionCost] = useState([]);
@@ -73,12 +72,19 @@ function FilesByCost() {
     const [collectionsOrder, setCollectionsOrder] = useState('asc');
     const [collectionsOrderBy, setCollectionsOrderBy] = useState('name');
 
-    const handleToggleSideNav = () => setOpenSideNav(!openSideNav);
     const metricsMenuItems = [
         { text: 'Overview', path: '/metrics', icon: <AssessmentIcon /> },
         { text: 'Files by Status', path: '/files-by-status', icon: <FilePresentIcon /> },
         { text: 'Cost', path: '/files-by-cost', icon: <MoneyIcon /> }
     ];
+
+    const { setMenuItems } = useOutletContext();
+    
+    useEffect(() => {
+        setMenuItems(metricsMenuItems);
+        // Optional: clear the menu when the page is left
+        return () => setMenuItems([]);
+    }, [setMenuItems]);
 
     function handleDataFilter({provider, user, collection, startDate, endDate}) {
         setSelectedProvider(provider ?? null);
@@ -206,163 +212,158 @@ function FilesByCost() {
     }, [filteredFiles, filesSearchTerm, filesListPage, filesListRowsPerPage]);
 
     return (
-        <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
-            <SideNav menuItems={metricsMenuItems} open={openSideNav} onToggle={handleToggleSideNav} />
-            <Box component="main" sx={{ flexGrow: 1, p: 3, backgroundColor: '#f4f6f8' }}>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                    <MetricsFilter handleDataFilter={handleDataFilter} clearData={clearDataFilter} />
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <MetricsFilter handleDataFilter={handleDataFilter} clearData={clearDataFilter} />
 
-                    {loading ? <CircularProgress /> : error ? <Alert severity="error">{error}</Alert> : (
-                        <>
-                            <Grid container spacing={3} mb={3}>
-                                <Grid item xs={12} md={4}>
-                                    <Card sx={{ height: '100%' }}>
-                                        <CardContent>
-                                            <Typography variant="subtitle1" color="text.secondary" gutterBottom>Total Cost</Typography>
-                                            <Typography variant="h4">${summary?.total_cost?.cost || 0}</Typography>
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
-                                <Grid item xs={12} md={4}>
-                                    <Card sx={{ height: '100%' }}>
-                                        <CardContent>
-                                            <Typography variant="subtitle1" color="text.secondary" gutterBottom>Number of Files</Typography>
-                                            <Typography variant="h4">{summary?.files_metadata?.number_of_files || 0}</Typography>
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
-                                <Grid item xs={12} md={4}>
-                                    <Card sx={{ height: '100%' }}>
-                                        <CardContent>
-                                            <Typography variant="subtitle1" color="text.secondary" gutterBottom>Cost per Byte</Typography>
-                                            <Typography variant="h4">${summary?.files_metadata?.cost_per_byte || 0}</Typography>
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
-                            </Grid>
-
-                            <Grid container spacing={4}>
-                                <Grid item xs={12} md={6}>
-                                    <Card>
-                                    <CardContent sx={{ height: 400, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                                            <Typography variant="subtitle1" color="text.secondary" gutterBottom>Daily Cost</Typography>
-                                            {summary?.daily_cost?.length ? (
-                                                <ResponsiveContainer width="100%" height={350}>
-                                                    <LineChart data={summary.daily_cost}>
-                                                        <CartesianGrid strokeDasharray="3 3" />
-                                                        <XAxis dataKey="date" padding={{ left: 20, right: 20 }}/>
-                                                        <YAxis allowDataOverflow domain={[0, 'auto']} />
-                                                        <Tooltip />
-                                                        <Legend />
-                                                        <Line type="monotone" dataKey="cost" stroke="#8884d8" name="Daily Cost ($)" />
-                                                    </LineChart>
-                                                </ResponsiveContainer>
-                                            ) : (
-                                                <Typography variant="body2" color="text.secondary">No daily cost data available for selected period/filters.</Typography>
-                                            )}
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
-
-                                <Grid item xs={12} md={6}>
-                                    <Card>
-                                    <CardContent sx={{ height: 400, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Collection Cost</Typography>
-                                    {paginatedCollections.length > 0 ? (
-                                        <Box>
-                                            <ResponsiveContainer width="100%" height={300}>
-                                            <BarChart data={collectionCost}>
-                                                <CartesianGrid strokeDasharray="3 3" />
-                                                <XAxis dataKey="name" />
-                                                <YAxis />
-                                                <Tooltip 
-                                                    cursor={false} //remove the grey background from tooltip
-                                                    content={({ active, payload }) => {
-                                                        if (active && payload && payload.length) {
-                                                            const { name, cost, size } = payload[0].payload;
-                                                            return (
-                                                            <Box sx={{ p: 1, borderRadius: 1, boxShadow: 2, backgroundColor: 'white' }}>
-                                                                <Typography variant="body2"><b>{name}</b></Typography>
-                                                                <Typography variant="body2">Cost: ${cost}</Typography>
-                                                                <Typography variant="body2">Size: {size}</Typography>
-                                                            </Box>
-                                                            );
-                                                        }
-                                                        return null;
-                                                    }}/>
-                                                <Bar dataKey="cost" fill="#82ca9d" />
-                                            </BarChart>
-                                            </ResponsiveContainer>
-                                            <Pagination
-                                                count={collectionTotalPages}
-                                                page={collectionPage}
-                                                onChange={(e, value) => setCollectionPage(value)}
-                                                sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}
-                                            />
-                                        </Box>
-                                    ) : (
-                                        <Typography variant="body2" color="text.secondary">No collection cost data available.</Typography>
-                                    )}
-                                    {totalPages > 1 && (
-                                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                                            <Pagination count={totalPages} page={page} onChange={(e, val) => setPage(val)} />
-                                        </Box>
-                                    )}
-                                    </CardContent>
-                                    </Card>
-                                </Grid>
-                            </Grid>
-
-                            <Card sx={{ mt: 4 }}>
+            {loading ? <CircularProgress /> : error ? <Alert severity="error">{error}</Alert> : (
+                <>
+                    <Grid container spacing={3} mb={3}>
+                        <Grid item xs={12} md={4}>
+                            <Card sx={{ height: '100%' }}>
                                 <CardContent>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                        <Typography variant="h5">Files</Typography>
-                                        <TextField label="Search Files by Name" variant="outlined" size="small" value={filesSearchTerm} onChange={(e) => setFilesSearchTerm(e.target.value)} InputProps={{ startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1, color: 'action.active' }} /> }} sx={{ width: '300px' }} />
-                                    </Box>
-                                    <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
-                                        <Table stickyHeader sx={{ minWidth: 650 }}>
-                                        <TableHead>
-                                            <TableRow>
-                                            {["name", "cost", "size"].map((col) => (
-                                                <TableCell key={col} sortDirection={filesOrderBy === col ? filesOrder : false}>
-                                                <TableSortLabel
-                                                    active={filesOrderBy === col}
-                                                    direction={filesOrderBy === col ? filesOrder : 'asc'}
-                                                    onClick={(e) => handleRequestSort(e, col)}>
-                                                    {col.charAt(0).toUpperCase() + col.slice(1)}
-                                                </TableSortLabel>
-                                                </TableCell>
-                                            ))}
-                                            </TableRow>
-                                        </TableHead>
-                                        <TableBody>
-                                            {paginatedFiles.map((row, idx) => (
-                                                <TableRow key={idx} hover>
-                                                <TableCell>{row.name}</TableCell>
-                                                <TableCell>${row.cost}</TableCell>
-                                                <TableCell>{row.size}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                        </Table>
-                                    </TableContainer>
-                                    <TablePagination
-                                        rowsPerPageOptions={[10, 25, 50]}
-                                        component="div"
-                                        count={filesSearchTerm ? filteredFiles.length : filesListTotalCount}
-                                        rowsPerPage={filesListRowsPerPage}
-                                        page={filesListPage}
-                                        onPageChange={handleFilesPageChange}
-                                        onRowsPerPageChange={handleFilesRowsPerPageChange}
-                                    />
+                                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Total Cost</Typography>
+                                    <Typography variant="h4">${summary?.total_cost?.cost || 0}</Typography>
                                 </CardContent>
                             </Card>
-                        </>
-                    )}
-                    <ToastContainer position="top-center" autoClose={3000} hideProgressBar />
-                </LocalizationProvider>
-            </Box>
-        </Box>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                            <Card sx={{ height: '100%' }}>
+                                <CardContent>
+                                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Number of Files</Typography>
+                                    <Typography variant="h4">{summary?.files_metadata?.number_of_files || 0}</Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                            <Card sx={{ height: '100%' }}>
+                                <CardContent>
+                                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Cost per Byte</Typography>
+                                    <Typography variant="h4">${summary?.files_metadata?.cost_per_byte || 0}</Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    </Grid>
+
+                    <Grid container spacing={4}>
+                        <Grid item xs={12} md={6}>
+                            <Card>
+                            <CardContent sx={{ height: 400, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Daily Cost</Typography>
+                                    {summary?.daily_cost?.length ? (
+                                        <ResponsiveContainer width="100%" height={350}>
+                                            <LineChart data={summary.daily_cost}>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="date" padding={{ left: 20, right: 20 }}/>
+                                                <YAxis allowDataOverflow domain={[0, 'auto']} />
+                                                <Tooltip />
+                                                <Legend />
+                                                <Line type="monotone" dataKey="cost" stroke="#8884d8" name="Daily Cost ($)" />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary">No daily cost data available for selected period/filters.</Typography>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </Grid>
+
+                        <Grid item xs={12} md={6}>
+                            <Card>
+                            <CardContent sx={{ height: 400, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                            <Typography variant="subtitle1" color="text.secondary" gutterBottom>Collection Cost</Typography>
+                            {paginatedCollections.length > 0 ? (
+                                <Box>
+                                    <ResponsiveContainer width="100%" height={300}>
+                                    <BarChart data={collectionCost}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="name" />
+                                        <YAxis />
+                                        <Tooltip 
+                                            cursor={false} //remove the grey background from tooltip
+                                            content={({ active, payload }) => {
+                                                if (active && payload && payload.length) {
+                                                    const { name, cost, size } = payload[0].payload;
+                                                    return (
+                                                    <Box sx={{ p: 1, borderRadius: 1, boxShadow: 2, backgroundColor: 'white' }}>
+                                                        <Typography variant="body2"><b>{name}</b></Typography>
+                                                        <Typography variant="body2">Cost: ${cost}</Typography>
+                                                        <Typography variant="body2">Size: {size}</Typography>
+                                                    </Box>
+                                                    );
+                                                }
+                                                return null;
+                                            }}/>
+                                        <Bar dataKey="cost" fill="#82ca9d" />
+                                    </BarChart>
+                                    </ResponsiveContainer>
+                                    <Pagination
+                                        count={collectionTotalPages}
+                                        page={collectionPage}
+                                        onChange={(e, value) => setCollectionPage(value)}
+                                        sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}
+                                    />
+                                </Box>
+                            ) : (
+                                <Typography variant="body2" color="text.secondary">No collection cost data available.</Typography>
+                            )}
+                            {totalPages > 1 && (
+                                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                                    <Pagination count={totalPages} page={page} onChange={(e, val) => setPage(val)} />
+                                </Box>
+                            )}
+                            </CardContent>
+                            </Card>
+                        </Grid>
+                    </Grid>
+
+                    <Card sx={{ mt: 4 }}>
+                        <CardContent>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                <Typography variant="h5">Files</Typography>
+                                <TextField label="Search Files by Name" variant="outlined" size="small" value={filesSearchTerm} onChange={(e) => setFilesSearchTerm(e.target.value)} InputProps={{ startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1, color: 'action.active' }} /> }} sx={{ width: '300px' }} />
+                            </Box>
+                            <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
+                                <Table stickyHeader sx={{ minWidth: 650 }}>
+                                <TableHead>
+                                    <TableRow>
+                                    {["name", "cost", "size"].map((col) => (
+                                        <TableCell key={col} sortDirection={filesOrderBy === col ? filesOrder : false}>
+                                        <TableSortLabel
+                                            active={filesOrderBy === col}
+                                            direction={filesOrderBy === col ? filesOrder : 'asc'}
+                                            onClick={(e) => handleRequestSort(e, col)}>
+                                            {col.charAt(0).toUpperCase() + col.slice(1)}
+                                        </TableSortLabel>
+                                        </TableCell>
+                                    ))}
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {paginatedFiles.map((row, idx) => (
+                                        <TableRow key={idx} hover>
+                                        <TableCell>{row.name}</TableCell>
+                                        <TableCell>${row.cost}</TableCell>
+                                        <TableCell>{row.size}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                                </Table>
+                            </TableContainer>
+                            <TablePagination
+                                rowsPerPageOptions={[10, 25, 50]}
+                                component="div"
+                                count={filesSearchTerm ? filteredFiles.length : filesListTotalCount}
+                                rowsPerPage={filesListRowsPerPage}
+                                page={filesListPage}
+                                onPageChange={handleFilesPageChange}
+                                onRowsPerPageChange={handleFilesRowsPerPageChange}
+                            />
+                        </CardContent>
+                    </Card>
+                </>
+            )}
+            <ToastContainer position="top-center" autoClose={3000} hideProgressBar />
+        </LocalizationProvider>
     );
 }
 
