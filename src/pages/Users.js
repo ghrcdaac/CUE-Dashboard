@@ -5,13 +5,13 @@ import {
     DialogContent, DialogActions, TextField, Box, Card, CardContent,
     TableSortLabel, CircularProgress
 } from '@mui/material';
+import { useOutletContext } from 'react-router-dom';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Autocomplete from "@mui/material/Autocomplete";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Outlet, useLocation } from 'react-router-dom';
-import SideNav from "../components/SideNav";
 import PersonIcon from '@mui/icons-material/Person';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -38,6 +38,7 @@ function Users() {
     const [orderBy, setOrderBy] = useState('name');
     
     const location = useLocation();
+
     const [open, setOpen] = useState(true);
 
     const { activeNgroupId, isLoading: isAuthLoading } = useSelector((state) => state.auth);
@@ -47,10 +48,35 @@ function Users() {
     const handleToggle = () => setOpen(!open);
     
     const usersMenuItems = [
+
         { text: 'Users', path: '/users', icon: <PersonIcon /> },
         { text: 'Pending Requests', path: '/users/pending-requests', icon: <PendingActionsIcon /> },
         { text: 'Rejected Requests', path: '/users/rejected-requests', icon: <CancelIcon /> },
     ];
+
+
+    const { setMenuItems } = useOutletContext();
+
+    useEffect(() => {
+        setMenuItems(usersMenuItems);
+        // Optional: clear the menu when the page is left
+        return () => setMenuItems([]);
+    }, [setMenuItems]);
+
+
+    usePageTitle("Users");
+
+    // Sorting functionality
+    const [order, setOrder] = useState('asc');
+    const [orderBy, setOrderBy] = useState('name');
+
+    const handleRequestSort = (property) => {
+        const isAsc = orderBy === property && order === 'asc';
+        setOrder(isAsc ? 'desc' : 'asc');
+        setOrderBy(property);
+    };
+
+    // Date formatting function
 
     const formatDate = (dateString) => {
         if (!dateString) return '';
@@ -200,8 +226,10 @@ function Users() {
 
     return (
         <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
+
             <SideNav menuItems={usersMenuItems} open={open} onToggle={handleToggle} />
             <Box sx={{ flexGrow: 1, p: 3 }}>
+
                 {location.pathname === '/users' || location.pathname === '/users/' ? (
                     <>
                         {error && <Typography color="error">Error: {error}</Typography>}

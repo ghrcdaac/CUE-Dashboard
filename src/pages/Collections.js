@@ -9,14 +9,14 @@ import {
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import useAuth from '../hooks/useAuth';
-import { Outlet, useLocation } from 'react-router-dom';
-import SideNav from "../components/SideNav";
+import { Outlet, useLocation, useOutletContext } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import usePageTitle from "../hooks/usePageTitle";
 import CollectionsIcon from '@mui/icons-material/Collections';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import FolderIcon from '@mui/icons-material/Folder';
 import DoneIcon from '@mui/icons-material/Done';
 import CloseIcon from '@mui/icons-material/Close';
 // API Imports
@@ -44,17 +44,21 @@ function Collections() {
     const [selected, setSelected] = useState([]);
     const { accessToken, logout } = useAuth();
     const location = useLocation();
-    const [open, setOpen] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
-
-    const handleToggle = () => {
-        setOpen(!open);
-    };
 
     const collectionsMenuItems = [
         { text: 'Collection', path: '/collections', icon: <CollectionsIcon /> },
-        { text: 'Files', path: '/collections/create', icon: <InsertDriveFileIcon /> },
+        { text: 'Overview', path: '/collections/create', icon: <FolderIcon /> },
+        { text: 'Files', path: '/collections/files', icon: <InsertDriveFileIcon /> },
     ];
+
+    const { setMenuItems } = useOutletContext();
+
+    useEffect(() => {
+        setMenuItems(collectionsMenuItems);
+        // Optional: clear the menu when the page is left
+        return () => setMenuItems([]);
+    }, [setMenuItems]);
 
     const [order, setOrder] = useState('asc');
     const [orderBy, setOrderBy] = useState('short_name');
@@ -95,7 +99,8 @@ function Collections() {
                 logout();
                 return;
             }
-            const data = await collectionApi.listCollections(ngroupId, accessToken);
+            const response = await collectionApi.listCollections(ngroupId, accessToken);
+            const data = response.collections;
             const { egresses, providers } = await fetchOptions(ngroupId);
 
             setEgressOptions(egresses);
@@ -351,9 +356,7 @@ function Collections() {
 
     return (
         <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
-            <SideNav menuItems={collectionsMenuItems} open={open} onToggle={handleToggle} />
-
-            <Box sx={{ flexGrow: 1, p: 3 }}>
+            <Box sx={{ flexGrow: 1 }}>
                 {location.pathname === '/collections' || location.pathname === '/collections/' ? (
                     <>
                         <Card sx={{ marginBottom: 2 }}>

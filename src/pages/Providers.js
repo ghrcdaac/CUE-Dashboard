@@ -9,8 +9,7 @@ import {
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import useAuth from '../hooks/useAuth';
-import { Outlet, useLocation } from 'react-router-dom';  // For nested routes
-import SideNav from '../components/SideNav'; // Import SideNav
+import { Outlet, useLocation,useOutletContext } from 'react-router-dom';  // For nested routes
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -41,17 +40,20 @@ function Providers() {
     const [selected, setSelected] = useState([]);
     const { accessToken, logout } = useAuth();
     const location = useLocation();
-    const [open, setOpen] = useState(true); // For SideNav
     const [isCreating, setIsCreating] = useState(false);
 
-
-    const handleToggle = () => {
-        setOpen(!open);
-    };
-
+    //--- Side Navigation ---
     const providersMenuItems = [
         { text: 'Providers', path: '/providers', icon: <AccountBoxIcon /> },
     ];
+
+    const { setMenuItems } = useOutletContext();
+    
+    useEffect(() => {
+        setMenuItems(providersMenuItems);
+        // Optional: clear the menu when the page is left
+        return () => setMenuItems([]);
+    }, [setMenuItems]);
 
 
     const [order, setOrder] = useState('asc');
@@ -316,9 +318,8 @@ function Providers() {
     };
     return (
         <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
-            <SideNav menuItems={providersMenuItems} open={open} onToggle={handleToggle} />
 
-            <Box sx={{ flexGrow: 1, p: 3 }}>
+            <Box sx={{ flexGrow: 1}}>
                 {location.pathname === '/providers' || location.pathname === '/providers/' ? (
                     <>
                         <Card sx={{ marginBottom: 2 }}>

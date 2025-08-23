@@ -33,11 +33,12 @@ const getEnvConfig = () => {
 const envConfig = getEnvConfig();
 
 export const config = {
+
     // Spread the environment-specific settings
     ...envConfig,
 
     // Static settings that are the same across all environments
-    version: "0.0.20",
+    version: "0.0.21",
     keycloakRealm: "cue",
 };
 

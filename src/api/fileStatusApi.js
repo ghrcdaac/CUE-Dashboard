@@ -353,3 +353,4 @@ export async function getMetricsSummary(params, accessToken) {
     // Uses the existing handleResponse helper
     return handleResponse(response, "Failed to get metrics summary");
 }
+
