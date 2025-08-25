@@ -59,11 +59,11 @@ export default function Header() {
                                 <Typography variant="h4" sx={{ fontWeight: "bold" }}>CUE</Typography>
                             </Box>
                             <Box sx={{ display: "flex", alignItems: "center" }}>
-                                {hasPrivilege("view_collection") && <Button color="inherit" component={RouterLink} to="/collections">Collections</Button>}
-                                {hasPrivilege("view_provider") && <Button color="inherit" component={RouterLink} to="/providers">Providers</Button>}
-                                {hasPrivilege("metrics") && <Button color="inherit" component={RouterLink} to="/metrics">Metrics</Button>}
-                                {hasPrivilege("approve_user") && <Button color="inherit" component={RouterLink} to="/users">Users</Button>}
-                                {hasPrivilege("admin") && <Button color="inherit" component={RouterLink} to="/daac">DAAC</Button>}
+                                {hasPrivilege("collection:read") && <Button color="inherit" component={RouterLink} to="/collections">Collections</Button>}
+                                {hasPrivilege("provider:read") && <Button color="inherit" component={RouterLink} to="/providers">Providers</Button>}
+                                {hasPrivilege("metrics:read") && <Button color="inherit" component={RouterLink} to="/metrics">Metrics</Button>}
+                                {hasPrivilege("user:read") && <Button color="inherit" component={RouterLink} to="/users">Users</Button>}
+                                {hasPrivilege("egress:read") && <Button color="inherit" component={RouterLink} to="/daac">DAAC</Button>}
                             </Box>
                         </Box>
                         <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", width: "100%" }}>
