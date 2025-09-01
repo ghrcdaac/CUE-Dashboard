@@ -1,6 +1,6 @@
 import React from "react";
 import Box from "@mui/material/Box";
-import Grid2 from "@mui/material/Grid2";
+import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
@@ -20,7 +20,7 @@ export default function Home() {
         paddingTop: "2rem", 
       }}
     >
-      <Grid2 
+      <Grid 
         container 
         spacing={3} 
         rowSpacing={4} 
@@ -29,7 +29,7 @@ export default function Home() {
           justifyContent: "center",
         }}
       >
-        <Grid2  xs={12} sm={6} md={4}>
+        <Grid  xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
               <Typography variant="h5" component="div">
@@ -40,8 +40,8 @@ export default function Home() {
               </Typography>
             </CardContent>
           </Card>
-        </Grid2>
-        <Grid2  xs={12} sm={6} md={4}>
+        </Grid>
+        <Grid  xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
               <Typography variant="h5" component="div">
@@ -52,8 +52,8 @@ export default function Home() {
               </Typography>
             </CardContent>
           </Card>
-        </Grid2>
-        <Grid2  xs={12} sm={6} md={4}>
+        </Grid>
+        <Grid  xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
               <Typography variant="h5" component="div">
@@ -64,8 +64,8 @@ export default function Home() {
               </Typography>
             </CardContent>
           </Card>
-        </Grid2>
-      </Grid2>
+        </Grid>
+      </Grid>
     </Box>
   );
 }

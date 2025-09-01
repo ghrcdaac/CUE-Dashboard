@@ -1,3 +1,5 @@
+// src/api/providerApi.js
+
 import apiClient from './apiClient';
 
 /**
@@ -10,11 +12,13 @@ export const getProvidersForApplication = (ngroupId) => {
 };
 
 /**
- * Retrieves all provider records for a specific ngroup. Requires 'view_provider' privilege.
- * @param {string} ngroupId - The UUID of the ngroup to filter providers by.
+ * --- UPDATED ---
+ * Retrieves all provider records for the user's currently active ngroup.
+ * This function now relies on the apiClient to automatically add the 
+ * X-Active-Ngroup-Id header instead of using a query parameter.
  */
-export const listProviders = (ngroupId) => {
-    return apiClient.get(`/providers/?ngroup_id=${ngroupId}`);
+export const listProviders = () => {
+    return apiClient.get('/providers/');
 };
 
 /**

@@ -75,3 +75,12 @@ export const updateCueuser = (userId, updates) => {
 export const deleteCueuser = (userId) => {
     return apiClient.delete(`/cueusers/${userId}`);
 };
+
+/**
+ * Assigns a new role to a user. Requires 'user:assign_role' privilege.
+ * @param {string} userId - The UUID of the user to update.
+ * @param {string} roleId - The UUID of the role to assign.
+ */
+export const assignUserRole = (userId, roleId) => {
+  return apiClient.patch(`/cueusers/${userId}/role`, { role_id: roleId });
+};

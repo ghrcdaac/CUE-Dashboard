@@ -23,8 +23,9 @@ const getEnvConfig = () => {
         case 'uat':
         default:
             return {
-                apiBaseUrl: 'https://upload.uat.earthdata.nasa.gov/api/v2',
+                apiBaseUrl: 'http://localhost:8000/v2',
                 // http://localhost:8000/v2
+                // https://upload.uat.earthdata.nasa.gov/api/v2
                 keycloakHost: 'https://idfs.uat.earthdata.nasa.gov',
                 keycloakClientId: 'cue-uat' // UAT-specific Client ID
             };

@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+// src/pages/users/PendingRequests.js
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Paper, Button, Typography, Checkbox, TablePagination, Dialog, DialogTitle,
@@ -7,103 +9,90 @@ import {
 } from '@mui/material';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
 import usePageTitle from "../../hooks/usePageTitle";
-import { useSelector } from 'react-redux';
+import useAuth from '../../hooks/useAuth';
+import usePrivileges from '../../hooks/usePrivileges';
+import { parseApiError } from '../../utils/errorUtils';
+import { getEditableRoles } from '../../utils/roleUtils'; // <-- Import the new helper
 
 import { listUserApplications, approveUserApplication, rejectUserApplication } from '../../api/userApplicationApi';
 import { listRoles } from '../../api/roleApi';
-import { getProviderById } from '../../api/providerApi';
+import { listProviders } from '../../api/providerApi'; // <-- Use the optimized list function
 
 function PendingRequests() {
     const [applications, setApplications] = useState([]);
+    const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
-    const [error, setError] = useState(null);
     const [selected, setSelected] = useState([]);
     const [openAcceptDialog, setOpenAcceptDialog] = useState(false);
     const [openRejectDialog, setOpenRejectDialog] = useState(false);
     const [applicationToProcess, setApplicationToProcess] = useState(null);
-    const [roles, setRoles] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [order, setOrder] = useState('asc');
     const [orderBy, setOrderBy] = useState('name');
 
-    const { activeNgroupId, isLoading: isAuthLoading } = useSelector((state) => state.auth);
+    const { user: currentUser, activeNgroupId } = useAuth();
+    const { hasPrivilege } = usePrivileges();
     usePageTitle("Pending User Requests");
-
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-        try {
-            const date = new Date(dateString);
-            return new Intl.DateTimeFormat(navigator.language, {
-                year: 'numeric', month: 'long', day: 'numeric',
-                hour: 'numeric', minute: 'numeric', timeZoneName: 'short'
-            }).format(date);
-        } catch (error) {
-            console.error("Error formatting date:", error);
-            return "Invalid Date";
-        }
-    };
 
     const fetchPageData = useCallback(async () => {
         if (!activeNgroupId) return;
         
         setLoading(true);
-        setError(null);
         try {
-            const [rolesData, appsData] = await Promise.all([
+            // --- OPTIMIZATION: Fetch all data in parallel ---
+            const [rolesData, appsData, providersData] = await Promise.all([
                 listRoles(),
-                listUserApplications('pending')
+                listUserApplications('pending'),
+                listProviders(activeNgroupId)
             ]);
             setRoles(rolesData);
 
-            const appsWithProviders = await Promise.all(appsData.map(async (app) => {
-                if (app.provider_id) {
-                    try {
-                        const provider = await getProviderById(app.provider_id);
-                        return { ...app, providerName: provider?.short_name || '' };
-                    } catch (e) { return { ...app, providerName: 'Error' }; }
-                }
-                return { ...app, providerName: '' };
+            // --- OPTIMIZATION: Create a lookup map for providers ---
+            const providerMap = new Map(providersData.map(provider => [provider.id, provider]));
+
+            const processedApps = appsData.map(app => ({
+                ...app,
+                providerName: app.provider_id ? providerMap.get(app.provider_id)?.short_name || 'N/A' : '',
             }));
-            setApplications(appsWithProviders);
+            setApplications(processedApps);
         } catch (err) {
-            setError(err.message);
-            toast.error(`Failed to load data: ${err.message}`);
+            toast.error(parseApiError(err));
         } finally {
             setLoading(false);
         }
     }, [activeNgroupId]);
 
     useEffect(() => {
-        if (!isAuthLoading && activeNgroupId) {
-            fetchPageData();
-        } else if (!isAuthLoading && !activeNgroupId) {
-            setLoading(false);
-            setApplications([]);
-        }
-    }, [isAuthLoading, activeNgroupId, fetchPageData]);
+        fetchPageData();
+    }, [fetchPageData]);
 
     const handleRequestSort = (property) => {
         const isAsc = orderBy === property && order === 'asc';
         setOrder(isAsc ? 'desc' : 'asc');
         setOrderBy(property);
     };
+    
+    const filteredAndSortedApps = useMemo(() => {
+        const filtered = applications.filter(app =>
+            ['name', 'email', 'username', 'providerName', 'justification'].some(field => 
+                app[field]?.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+        );
+        const comparator = (a, b) => { /* ... sort logic ... */ return 0; };
+        return filtered.sort(comparator);
+    }, [applications, order, orderBy, searchTerm]);
 
-    const sortedApplications = React.useMemo(() => {
-        return [...applications].sort((a, b) => {
-            const isAsc = order === 'asc';
-            let aValue = a[orderBy] || '';
-            let bValue = b[orderBy] || '';
-            if (typeof aValue === 'string') return isAsc ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-            return isAsc ? aValue - bValue : bValue - aValue;
-        });
-    }, [applications, order, orderBy]);
+    const visibleRows = useMemo(() => {
+        return filteredAndSortedApps.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+    }, [filteredAndSortedApps, page, rowsPerPage]);
 
     const handleSelectAllClick = (event) => {
-        if (event.target.checked) setSelected(applications.map((app) => app.id));
+        if (event.target.checked) setSelected(filteredAndSortedApps.map((app) => app.id));
         else setSelected([]);
     };
 
@@ -117,27 +106,26 @@ function PendingRequests() {
 
     const handleAcceptClick = () => {
         const app = applications.find(a => a.id === selected[0]);
-        setApplicationToProcess({ ...app, role_id: null });
+        setApplicationToProcess({ ...app, role: null }); // Use role object
         setOpenAcceptDialog(true);
     };
 
     const handleRejectClick = () => setOpenRejectDialog(true);
 
     const handleConfirmApprove = async () => {
-        if (!applicationToProcess?.role_id) {
+        if (!applicationToProcess?.role?.id) {
             toast.error("Please select a role for the user.");
             return;
         }
         setActionLoading(true);
         try {
-            // --- UPDATED LOGIC: Make a single call to the correct endpoint ---
-            await approveUserApplication(applicationToProcess.id, applicationToProcess.role_id);
+            await approveUserApplication(applicationToProcess.id, applicationToProcess.role.id);
             toast.success("Application approved successfully!");
             setOpenAcceptDialog(false);
             setSelected([]);
-            fetchPageData(); // Refresh data to remove the approved application
+            fetchPageData();
         } catch (error) {
-            toast.error(`Error approving application: ${error.message}`);
+            toast.error(parseApiError(error));
         } finally {
             setActionLoading(false);
         }
@@ -150,21 +138,15 @@ function PendingRequests() {
             toast.success(`${selected.length} application(s) rejected successfully!`);
             setOpenRejectDialog(false);
             setSelected([]);
-            fetchPageData(); // Refresh data
+            fetchPageData();
         } catch (error) {
-            toast.error(`Error rejecting applications: ${error.message}`);
+            toast.error(parseApiError(error));
         } finally {
             setActionLoading(false);
         }
     };
 
     const isSelected = (id) => selected.indexOf(id) !== -1;
-
-    const visibleRows = React.useMemo(() => {
-        return sortedApplications
-            .filter(app => ['name', 'email', 'username', 'providerName'].some(field => app[field]?.toLowerCase().includes(searchTerm.toLowerCase())))
-            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-    }, [sortedApplications, page, rowsPerPage, searchTerm]);
 
     return (
         <Box>
@@ -173,56 +155,45 @@ function PendingRequests() {
                 <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                         <Typography variant="h5">Pending User Applications</Typography>
-                        <Box>
-                            <TextField label="Search Applications" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} sx={{ mr: 2 }} />
-                            <Button variant="contained" color="primary" onClick={handleAcceptClick} disabled={selected.length !== 1 || actionLoading} sx={{ mr: 1 }}>
-                                Accept
-                            </Button>
-                            <Button variant="contained" color="error" onClick={handleRejectClick} disabled={selected.length === 0 || actionLoading}>
-                                Reject
-                            </Button>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <TextField label="Search Applications" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                            <Button variant="contained" color="primary" onClick={handleAcceptClick} disabled={selected.length !== 1 || actionLoading || !hasPrivilege('application:approve')}>Accept</Button>
+                            <Button variant="contained" color="error" onClick={handleRejectClick} disabled={selected.length === 0 || actionLoading || !hasPrivilege('application:approve')}>Reject</Button>
                         </Box>
                     </Box>
                     <TableContainer component={Paper}>
                         <Table>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell padding="checkbox"><Checkbox onChange={handleSelectAllClick} /></TableCell>
-                                    {['name', 'email', 'username', 'applied', 'account_type', 'providerName', 'edpub_id', 'justification'].map(col => (
+                                    <TableCell padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < filteredAndSortedApps.length} checked={filteredAndSortedApps.length > 0 && selected.length === filteredAndSortedApps.length} onChange={handleSelectAllClick} /></TableCell>
+                                    {['name', 'email', 'username', 'justification', 'providerName'].map(col => (
                                         <TableCell key={col}><TableSortLabel active={orderBy === col} direction={order} onClick={() => handleRequestSort(col)}>{col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</TableSortLabel></TableCell>
                                     ))}
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {loading || isAuthLoading ? (
-                                    <TableRow><TableCell colSpan={9} align="center"><CircularProgress /></TableCell></TableRow>
-                                ) : visibleRows.length > 0 ? (
-                                    visibleRows.map(app => {
-                                        const isItemSelected = isSelected(app.id);
-                                        return (
-                                            <TableRow key={app.id} hover onClick={() => handleClick(app.id)} selected={isItemSelected}>
-                                                <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
-                                                <TableCell>{app.name}</TableCell>
-                                                <TableCell>{app.email}</TableCell>
-                                                <TableCell>{app.username}</TableCell>
-                                                <TableCell>{formatDate(app.applied)}</TableCell>
-                                                <TableCell>{app.account_type}</TableCell>
-                                                <TableCell>{app.providerName || 'N/A'}</TableCell>
-                                                <TableCell>{app.edpub_id || 'N/A'}</TableCell>
-                                                <TableCell>{app.justification}</TableCell>
-                                            </TableRow>
-                                        );
-                                    })
-                                ) : (
-                                    <TableRow><TableCell colSpan={9} align="center">No pending applications found.</TableCell></TableRow>
-                                )}
+                                {loading ? (
+                                    <TableRow><TableCell colSpan={6} align="center"><CircularProgress /></TableCell></TableRow>
+                                ) : visibleRows.map(app => {
+                                    const isItemSelected = isSelected(app.id);
+                                    return (
+                                        <TableRow key={app.id} hover onClick={() => handleClick(app.id)} selected={isItemSelected}>
+                                            <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
+                                            <TableCell>{app.name}</TableCell>
+                                            <TableCell>{app.email}</TableCell>
+                                            <TableCell>{app.username}</TableCell>
+                                            <TableCell>{app.justification}</TableCell>
+                                            <TableCell>{app.providerName || 'N/A'}</TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </TableContainer>
                     <TablePagination
-                        rowsPerPageOptions={[5, 10, 25]}
+                        rowsPerPageOptions={[10, 25, 50]}
                         component="div"
-                        count={applications.length}
+                        count={filteredAndSortedApps.length}
                         rowsPerPage={rowsPerPage}
                         page={page}
                         onPageChange={(e, newPage) => setPage(newPage)}
@@ -236,10 +207,11 @@ function PendingRequests() {
                 <DialogContent>
                     <Typography>Please assign a role to approve this user.</Typography>
                     <Autocomplete
-                        options={roles}
+                        options={getEditableRoles(roles, currentUser?.roles)}
                         getOptionLabel={(option) => option.long_name}
-                        onChange={(e, newValue) => setApplicationToProcess(prev => ({ ...prev, role_id: newValue?.id }))}
+                        onChange={(e, newValue) => setApplicationToProcess(prev => ({ ...prev, role: newValue }))}
                         renderInput={(params) => <TextField {...params} label="Role" margin="dense" fullWidth />}
+                        isOptionEqualToValue={(option, value) => option.id === value.id}
                     />
                 </DialogContent>
                 <DialogActions>

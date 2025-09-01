@@ -1,28 +1,36 @@
 // src/pages/Profile.js
-import React, {useEffect} from 'react';
+
+import React, { useEffect } from 'react';
+import { Outlet, useOutletContext } from 'react-router-dom';
 import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import {Outlet, useOutletContext } from 'react-router-dom';
+
+// Import desired icons from Material-UI
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import MarkEmailUnreadIcon from '@mui/icons-material/MarkEmailUnread';
 
+const profileMenuItems = [
+    { text: 'Profile Info', path: '/profile', icon: <AccountCircleIcon /> },
+    { text: 'API Keys', path: '/profile/api-keys', icon: <VpnKeyIcon /> },
+    { text: 'Notification Preferences', path: '/profile/notification', icon: <MarkEmailUnreadIcon /> },
+];
 
 function Profile() {
+    // Define the new, ordered side navigation menu for the profile section
 
-    const profileMenuItems = [
-        { text: 'Notification Preferences', path: '/profile/notification', icon: <MarkEmailUnreadIcon /> },
-    ];
 
     const { setMenuItems } = useOutletContext();
 
     useEffect(() => {
-            setMenuItems(profileMenuItems);
-            // Optional: clear the menu when the page is left
-            return () => setMenuItems([]);
-        }, [setMenuItems]);
+        setMenuItems(profileMenuItems);
+        // Clean up the menu when the component unmounts
+        return () => setMenuItems([]);
+    }, [setMenuItems]);
 
     return (
         <Box sx={{ flexGrow: 1 }}>
-            <Outlet/>
+            {/* This Outlet will render the active sub-page (e.g., ProfileInfo, ApiKeys) */}
+            <Outlet />
         </Box>
     );
 }
