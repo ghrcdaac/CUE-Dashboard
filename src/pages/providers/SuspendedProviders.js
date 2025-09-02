@@ -8,55 +8,27 @@ import {
 } from '@mui/material';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import useAuth from '../hooks/useAuth';
-import { Outlet, useLocation,useOutletContext } from 'react-router-dom';  // For nested routes
-import AddIcon from '@mui/icons-material/Add';
+import useAuth from '../../hooks/useAuth';
 import EditIcon from '@mui/icons-material/Edit';
-import NoAccountsIcon from '@mui/icons-material/NoAccounts';
 import DeleteIcon from '@mui/icons-material/Delete';
-import AccountBoxIcon from '@mui/icons-material/AccountBox'; // Example icon for Providers
-import usePageTitle from '../hooks/usePageTitle';
+import usePageTitle from '../../hooks/usePageTitle';
 
 
 // API Imports
-import * as providerApi from '../api/providerApi'; // Corrected import
-import { listCueusers } from '../api/cueUser'; // Corrected import
+import * as providerApi from '../../api/providerApi'; // Corrected import
+import { listCueusers } from '../../api/cueUser'; // Corrected import
 
 
-function Providers() {
-    usePageTitle("Providers");
+function SuspendedProviders() {
+    usePageTitle("Suspended Providers");
     const [providers, setProviders] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [openCreateDialog, setOpenCreateDialog] = useState(false);
-    const [createFormData, setCreateFormData] = useState({
-        short_name: '',
-        long_name: '',
-        can_upload: true,
-        point_of_contact: null,
-        reason: null
-    });
     const [userOptions, setUserOptions] = useState([]); // For point of contact dropdown
     const [editProvider, setEditProvider] = useState(null);
     const [openEditDialog, setOpenEditDialog] = useState(false);
     const [selected, setSelected] = useState([]);
     const { accessToken, logout } = useAuth();
-    const location = useLocation();
-    const [isCreating, setIsCreating] = useState(false);
-
-    //--- Side Navigation ---
-    const providersMenuItems = [
-        { text: 'Providers', path: '/providers', icon: <AccountBoxIcon /> },
-        { text: 'Suspended Providers', path: '/providers/suspended-providers', icon: <NoAccountsIcon /> },
-    ];
-
-    const { setMenuItems } = useOutletContext();
-    
-    useEffect(() => {
-        setMenuItems(providersMenuItems);
-        // Optional: clear the menu when the page is left
-        return () => setMenuItems([]);
-    }, [setMenuItems]);
 
 
     const [order, setOrder] = useState('asc');
@@ -90,7 +62,7 @@ function Providers() {
                 logout();
                 return;
             }
-            let data = await providerApi.listProviders(accessToken, { ngroup_id: ngroupId });
+            let data = await providerApi.listProviders(accessToken, { ngroup_id: ngroupId, can_upload: false });
 
             // Fetch user options *once*
             const users = await fetchUserOptions(ngroupId);
@@ -118,59 +90,6 @@ function Providers() {
     useEffect(() => {
         fetchProviders();
     }, [fetchProviders]);
-
-
-    // --- Event Handlers ---
-
-    const handlePOCChange = (event, newValue) => {
-        setCreateFormData(prev => ({ ...prev, point_of_contact: newValue ? newValue.id : null }));
-    };
-
-
-    const handleCreateOpen = () => {
-        setOpenCreateDialog(true);
-    };
-
-    const handleCreateClose = () => {
-        setCreateFormData({ // Reset form
-            short_name: '',
-            long_name: '',
-            can_upload: true,
-            point_of_contact: null,
-        });
-        setOpenCreateDialog(false);
-    };
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setCreateFormData(prev => ({
-            ...prev,
-            [name]: name === 'can_upload' ? value === 'true' : value,
-        }));
-    };
-
-    const handleCreateSubmit = async (e) => {
-        e.preventDefault();
-        setIsCreating(true);
-        try {
-            const ngroupId = localStorage.getItem('CUE_ngroup_id');
-            if (!ngroupId) throw new Error("Ngroup ID is missing.");
-
-            const requestData = {
-                ...createFormData,
-                ngroup_id: ngroupId
-            };
-
-            const newProvider = await providerApi.createProvider(requestData, accessToken);
-            toast.success("Provider created successfully!");
-            fetchProviders(); // Refresh
-            handleCreateClose();
-        } catch (error) {
-            toast.error(`Error creating provider: ${error.message}`);
-        } finally {
-            setIsCreating(false);
-        }
-    };
 
     const handleEditClick = () => {
         if (selected.length !== 1) {
@@ -324,8 +243,6 @@ function Providers() {
         <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
 
             <Box sx={{ flexGrow: 1}}>
-                {location.pathname === '/providers' || location.pathname === '/providers/' ? (
-                    <>
                         <Card sx={{ marginBottom: 2 }}>
                             <CardContent>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -340,10 +257,7 @@ function Providers() {
                                                 onChange={(e) => setSearchTerm(e.target.value)}
                                                 sx={{ mb: 2, mr: 2 }}
                                             />
-                                            {/* Create Button */}
-                                            <Button variant="contained" color="success" onClick={handleCreateOpen} startIcon={<AddIcon />}>
-                                                Add
-                                            </Button>
+                                            
                                             {/* Edit Button */}
                                             <Button
                                                 variant="contained"
@@ -413,6 +327,11 @@ function Providers() {
                                                                 Point of Contact
                                                             </TableSortLabel>
                                                         </TableCell>
+                                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>
+                                                            <TableSortLabel>
+                                                                Reason
+                                                            </TableSortLabel>
+                                                        </TableCell>
                                                     </TableRow>
                                                 </TableHead>
                                                 <TableBody>
@@ -438,6 +357,7 @@ function Providers() {
                                                                     <TableCell>{provider.long_name}</TableCell>
                                                                     <TableCell>{provider.can_upload ? 'Yes' : 'No'}</TableCell>
                                                                     <TableCell>{provider.point_of_contact_name}</TableCell>
+                                                                    <TableCell>{provider.reason? provider.reason : 'N/A'}</TableCell>
                                                                 </TableRow>
                                                             );
                                                         })) : ( <TableRow>
@@ -460,96 +380,7 @@ function Providers() {
                             </CardContent>
                         </Card>
                         <ToastContainer position="top-center" />
-                    </>
-                ) : (
-                    <Outlet key={location.pathname} />
-                )}
             </Box>
-
-            {/* Create Provider Dialog */}
-            <Dialog open={openCreateDialog} onClose={handleCreateClose} fullWidth maxWidth="sm">
-                <DialogTitle>Create New Provider</DialogTitle>
-                <DialogContent>
-                    <TextField
-                        autoFocus
-                        margin="dense"
-                        name="short_name"
-                        label="Provider Short Name"
-                        type="text"
-                        fullWidth
-                        variant="outlined"
-                        value={createFormData.short_name}
-                        onChange={handleInputChange}
-                        required
-                    />
-                    <TextField
-                        margin="dense"
-                        name="long_name"
-                        label="Provider Long Name"
-                        type="text"
-                        fullWidth
-                        variant="outlined"
-                        value={createFormData.long_name}
-                        onChange={handleInputChange}
-                    />
-
-                    <Autocomplete
-                        fullWidth
-                        margin="normal"
-                        options={userOptions}
-                        getOptionLabel={(option) => option.name}
-                        value={userOptions.find(option => option.id === createFormData.point_of_contact) || null}
-                        onChange={(event, newValue) => {
-                          setCreateFormData({ ...createFormData, point_of_contact: newValue ? newValue.id : null });
-                        }}
-                        isOptionEqualToValue={(option, value) => option.id === value?.id}
-                        renderInput={(params) => (
-                            <TextField
-                                {...params}
-                                label="Point of Contact"
-                                name="point_of_contact"
-                                margin="dense"
-                                required
-                            />
-                        )}
-                    />
-
-
-                    <TextField
-                        fullWidth
-                        select
-                        label="Can Upload"
-                        name="can_upload"
-                        value={createFormData.can_upload.toString()}
-                        onChange={handleInputChange}
-                        margin="dense"
-                    >
-                        <MenuItem value="true">Yes</MenuItem>
-                        <MenuItem value="false">No</MenuItem>
-                    </TextField>
-                    {!createFormData.can_upload && (
-                        <TextField
-                            margin="dense"
-                            name="reason"
-                            label="Provider Suspension Reason"
-                            type="text"
-                            fullWidth
-                            variant="outlined"
-                            value={createFormData.reason || ""}
-                            onChange={handleInputChange}
-                            required
-                        />
-                    )}
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleCreateClose} color="primary">
-                        Cancel
-                    </Button>
-                    <Button onClick={handleCreateSubmit} color="primary" disabled={isCreating}>
-                        {isCreating ? <CircularProgress size={24} color="inherit" /> : 'Create'}
-                    </Button>
-                </DialogActions>
-            </Dialog>
 
             {/* Edit Provider Dialog */}
            <Dialog open={openEditDialog} onClose={handleEditClose} fullWidth maxWidth="sm">
@@ -614,20 +445,17 @@ function Providers() {
                                 <MenuItem value="true">Yes</MenuItem>
                                 <MenuItem value="false">No</MenuItem>
                             </TextField>
-                            {!editProvider.can_upload && (
-                                <TextField
-                                    margin="dense"
-                                    name="reason"
-                                    label="Provider Suspension Reason"
-                                    type="text"
-                                    fullWidth
-                                    variant="outlined"
-                                    value={editProvider.reason || ""}
-                                    onChange={(e) =>
-                                    setEditProvider({ ...editProvider, reason: e.target.value })
-                                    }
-                                />
-                            )}
+                            <TextField
+                                autoFocus
+                                margin="dense"
+                                name="reason"
+                                label="Provider Suspended Reason"
+                                type="text"
+                                fullWidth
+                                variant="outlined"
+                                value={editProvider.reason}
+                                onChange={(e) => setEditProvider({ ...editProvider, reason: e.target.value })}
+                            />
                         </>
                     )}
                 </DialogContent>
@@ -659,4 +487,4 @@ function Providers() {
     );
 }
 
-export default Providers;
+export default SuspendedProviders;
