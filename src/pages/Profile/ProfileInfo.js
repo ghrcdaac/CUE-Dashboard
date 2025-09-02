@@ -55,7 +55,7 @@ function ProfileInfo() {
           </Grid>
           <Grid item xs>
             <Typography variant="h4" component="h1">{user.name}</Typography>
-            <Typography color="text.secondary">@{user.cueusername}</Typography>
+            <Typography color="text.secondary">-- {user.cueusername}</Typography>
           </Grid>
         </Grid>
         

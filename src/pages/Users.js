@@ -21,24 +21,13 @@ import usePageTitle from "../hooks/usePageTitle";
 import useAuth from '../hooks/useAuth';
 import usePrivileges from '../hooks/usePrivileges';
 import { parseApiError } from '../utils/errorUtils';
+import { getEditableRoles } from '../utils/roleUtils'; // --- UPDATED: Import the shared helper ---
 
 import { listCueusers, assignUserRole, deleteCueuser } from '../api/cueUser';
 import { listProviders } from '../api/providerApi';
 import { listRoles } from '../api/roleApi';
 
-const getEditableRoles = (allRoles, currentUserRoles = []) => {
-    if (currentUserRoles.includes('admin')) {
-        return allRoles;
-    }
-    const allowedRoleNames = new Set();
-    if (currentUserRoles.includes('daac_manager')) {
-        ['DAAC Staff', 'DAAC Observer', 'Provider'].forEach(r => allowedRoleNames.add(r));
-    }
-    if (currentUserRoles.includes('security')) {
-        allowedRoleNames.add('Security');
-    }
-    return allRoles.filter(role => allowedRoleNames.has(role.long_name));
-};
+// --- REMOVED: The local getEditableRoles function is no longer needed here ---
 
 function Users() {
     const [users, setUsers] = useState([]);
@@ -127,7 +116,6 @@ function Users() {
         return filteredAndSortedUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
     }, [filteredAndSortedUsers, page, rowsPerPage]);
 
-    // --- FUNCTION RE-ADDED ---
     const handleRequestSort = (property) => {
         const isAsc = orderBy === property && order === 'asc';
         setOrder(isAsc ? 'desc' : 'asc');

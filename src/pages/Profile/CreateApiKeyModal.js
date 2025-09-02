@@ -33,7 +33,7 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   const [ownerType, setOwnerType] = useState('self');
   const [selectedUser, setSelectedUser] = useState(null);
   const [proxyUserName, setProxyUserName] = useState('');
-  const [expirationType, setExpirationType] = useState('90');
+  const [expirationType, setExpirationType] = useState('5');
   const [customExpirationDate, setCustomExpirationDate] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [users, setUsers] = useState([]);
@@ -58,7 +58,7 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
     setOwnerType('self');
     setSelectedUser(null);
     setProxyUserName('');
-    setExpirationType('90');
+    setExpirationType('5');
     setCustomExpirationDate(null);
     setNewKey(null);
     onClose();
@@ -160,8 +160,8 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
         <FormControl component="fieldset" sx={{ mb: 3 }}>
           <FormLabel component="legend">Expiration</FormLabel>
           <RadioGroup row value={expirationType} onChange={(e) => setExpirationType(e.target.value)}>
-            <FormControlLabel value="30" control={<Radio />} label="30 Days" />
-            <FormControlLabel value="90" control={<Radio />} label="90 Days" />
+            <FormControlLabel value="5" control={<Radio />} label="5 Days" />
+            <FormControlLabel value="10" control={<Radio />} label="10 Days" />
             <FormControlLabel value="custom" control={<Radio />} label="Custom Date" />
           </RadioGroup>
         </FormControl>

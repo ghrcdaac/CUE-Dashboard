@@ -7,6 +7,12 @@
  * @returns {Array} The filtered list of role objects.
  */
 export const getEditableRoles = (allRoles, currentUserRoles = []) => {
+    // --- NEW: Guard clause to prevent crashes ---
+    // If the input isn't a valid array, return an empty array.
+    if (!Array.isArray(allRoles)) {
+        return [];
+    }
+
     if (currentUserRoles.includes('admin')) {
         return allRoles; // Admins can assign any role
     }
