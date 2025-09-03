@@ -119,6 +119,11 @@ function Providers() {
         fetchProviders();
     }, [fetchProviders]);
 
+    useEffect(() => {
+        if (location.pathname.startsWith("/providers")) {
+            fetchProviders();
+        }
+    }, [fetchProviders, location.pathname]);
 
     // --- Event Handlers ---
 
@@ -152,7 +157,14 @@ function Providers() {
     const handleCreateSubmit = async (e) => {
         e.preventDefault();
         setIsCreating(true);
+        
         try {
+            // Validation: reason required if can_upload = false
+            if (!createFormData.can_upload && !createFormData.reason?.trim()) {
+                toast.error("Reason is required when provider cannot upload.");
+                setIsCreating(false);
+                return;
+            }
             const ngroupId = localStorage.getItem('CUE_ngroup_id');
             if (!ngroupId) throw new Error("Ngroup ID is missing.");
 
@@ -190,6 +202,11 @@ function Providers() {
     const handleEditSubmit = async (e) => {
         e.preventDefault();
         try {
+            // Validation: reason required if can_upload = false
+            if (!editProvider.can_upload && !editProvider.reason?.trim()) {
+                toast.error("Reason is required when provider cannot upload.");
+                return;
+            }
             const updatedProvider = await providerApi.updateProvider(
                 editProvider.id,
                 {

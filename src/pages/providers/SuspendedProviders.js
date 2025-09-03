@@ -120,22 +120,25 @@ function SuspendedProviders() {
                 },
                 accessToken
             );
-
+             if (updatedProvider.can_upload) {
+               // If provider can now upload, remove from suspended list 
+                setProviders((prev) => prev.filter((p) => p.id !== updatedProvider.id));
+            } else {
             // Update local state *including the point_of_contact_name*
-            setProviders(providers.map((provider) => {
-                if (provider.id === updatedProvider.id) {
-                    console.log(userOptions)
-                    // Find the updated user's name
-                    const updatedUserName = userOptions.find(u => u.id === updatedProvider.point_of_contact)?.name || '';
-                    console.log(updatedUserName)
-                    return {
-                        ...updatedProvider,
-                        point_of_contact_name: updatedUserName
+                setProviders(providers.map((provider) => {
+                    if (provider.id === updatedProvider.id) {
+                        console.log(userOptions)
+                        // Find the updated user's name
+                        const updatedUserName = userOptions.find(u => u.id === updatedProvider.point_of_contact)?.name || '';
+                        console.log(updatedUserName)
+                        return {
+                            ...updatedProvider,
+                            point_of_contact_name: updatedUserName
+                        }
                     }
-                }
-                return provider;
-            }));
-
+                    return provider;
+                }));
+            }
             toast.success("Provider updated successfully");
             setSelected([]);
             handleEditClose();
