@@ -29,7 +29,6 @@ import { Box } from '@mui/material';
 import CollectionFileBrowser from "./pages/collections/CollectionFileBrowser";
 import CollectionOverview from "./pages/collections/CollectionOverview";
 import NotificationPreferences from "./pages/Profile/NotificationPreference";
-import SuspendedProviders from "./pages/providers/SuspendedProviders"
 
 const theme = createTheme({
     palette: {
@@ -142,7 +141,6 @@ function App() {
                         </Route>
                         <Route path="providers" element={<ProtectedRoute><Providers /></ProtectedRoute>}>
                             <Route index element={<Providers />} />
-                            <Route path="suspended-providers" element={<SuspendedProviders />}/>
                         </Route>
                         <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />
                         <Route path="files-by-status" element={<FilesByStatus />} />

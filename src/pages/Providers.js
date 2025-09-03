@@ -46,8 +46,7 @@ function Providers() {
 
     //--- Side Navigation ---
     const providersMenuItems = [
-        { text: 'Providers', path: '/providers', icon: <AccountBoxIcon /> },
-        { text: 'Suspended Providers', path: '/providers/suspended-providers', icon: <NoAccountsIcon /> },
+        { text: 'Providers', path: '/providers', icon: <AccountBoxIcon /> }
     ];
 
     const { setMenuItems } = useOutletContext();
@@ -65,6 +64,7 @@ function Providers() {
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [searchTerm, setSearchTerm] = useState('');
     const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+    const [filter, setFilter] = useState("all"); 
 
     // --- Data Fetching ---
     // Fetch Users for Point of Contact Dropdown *and* Provider Mapping - Memoized
@@ -118,12 +118,6 @@ function Providers() {
     useEffect(() => {
         fetchProviders();
     }, [fetchProviders]);
-
-    useEffect(() => {
-        if (location.pathname.startsWith("/providers")) {
-            fetchProviders();
-        }
-    }, [fetchProviders, location.pathname]);
 
     // --- Event Handlers ---
 
@@ -318,16 +312,33 @@ function Providers() {
         });
     }, [providers, order, orderBy]);
 
+    // const visibleRows = React.useMemo(() => {
+    //     return sortedProviders.filter(
+    //         (p) =>
+    //             p.short_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    //             p.long_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    //             p.point_of_contact_name.toLowerCase().includes(searchTerm.toLowerCase())
+
+    //     ).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+    // }, [sortedProviders, searchTerm, page, rowsPerPage]);
+
+     const filteredProviders = React.useMemo(() => {
+        if (filter === "active") {
+            return sortedProviders.filter((p) => p.can_upload);
+        } else if (filter === "suspended") {
+            return sortedProviders.filter((p) => !p.can_upload);
+        }
+        return sortedProviders; // "all"
+    }, [sortedProviders, filter]);
+
     const visibleRows = React.useMemo(() => {
-        return sortedProviders.filter(
+        return filteredProviders.filter(
             (p) =>
-                p.short_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                p.long_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                p.point_of_contact_name.toLowerCase().includes(searchTerm.toLowerCase())
-
-        ).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-    }, [sortedProviders, searchTerm, page, rowsPerPage]);
-
+            p.short_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.long_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.point_of_contact_name.toLowerCase().includes(searchTerm.toLowerCase())
+        ).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+    }, [filteredProviders, searchTerm, page, rowsPerPage]);
 
     const handleChangePage = (event, newPage) => {
         setPage(newPage);
@@ -336,7 +347,7 @@ function Providers() {
     const handleChangeRowsPerPage = (event) => {
         setRowsPerPage(parseInt(event.target.value, 10));
         setPage(0);
-    };
+    };    
     return (
         <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
 
@@ -383,6 +394,19 @@ function Providers() {
                                             >
                                                 Delete
                                             </Button>
+                                            {/* filters */}
+                                            <TextField
+                                                select
+                                                label="Filter"
+                                                value={filter}
+                                                onChange={(e) => setFilter(e.target.value)}
+                                                size="small"
+                                                sx={{ ml:1, minWidth: 180 }}
+                                                >
+                                                <MenuItem value="all">All Providers</MenuItem>
+                                                <MenuItem value="active">Active Providers</MenuItem>
+                                                <MenuItem value="suspended">Suspended Providers</MenuItem>
+                                            </TextField>
                                         </Box>
                                     </Box>
 
@@ -430,6 +454,11 @@ function Providers() {
                                                                 Point of Contact
                                                             </TableSortLabel>
                                                         </TableCell>
+                                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>
+                                                            <TableSortLabel>
+                                                                Reason
+                                                            </TableSortLabel>
+                                                        </TableCell>
                                                     </TableRow>
                                                 </TableHead>
                                                 <TableBody>
@@ -455,6 +484,7 @@ function Providers() {
                                                                     <TableCell>{provider.long_name}</TableCell>
                                                                     <TableCell>{provider.can_upload ? 'Yes' : 'No'}</TableCell>
                                                                     <TableCell>{provider.point_of_contact_name}</TableCell>
+                                                                    <TableCell>{provider.reason? provider.reason : ''}</TableCell>
                                                                 </TableRow>
                                                             );
                                                         })) : ( <TableRow>
