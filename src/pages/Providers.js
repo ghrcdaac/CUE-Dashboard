@@ -16,6 +16,8 @@ import NoAccountsIcon from '@mui/icons-material/NoAccounts';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AccountBoxIcon from '@mui/icons-material/AccountBox'; // Example icon for Providers
 import usePageTitle from '../hooks/usePageTitle';
+import ExportMenu from "./reports/ExportMenu";
+import { generatePDFReport } from "./reports/PdfReport";
 
 
 // API Imports
@@ -347,7 +349,22 @@ function Providers() {
     const handleChangeRowsPerPage = (event) => {
         setRowsPerPage(parseInt(event.target.value, 10));
         setPage(0);
-    };    
+    };
+
+    const handleExportProviders = (format) => {
+        if (format === "pdf") {
+            const suspended = providers.filter((p) => !p.can_upload);
+
+            const columns = [
+            { header: "Short Name", dataKey: "short_name" },
+            { header: "Long Name", dataKey: "long_name" },
+            { header: "Point of Contact", dataKey: "point_of_contact_name" },
+            { header: "Reason", dataKey: "reason" },
+            ];
+
+            generatePDFReport("Suspended Providers Report", columns, suspended);
+        }
+    };
     return (
         <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 150px - 30px)' }}>
 
@@ -407,6 +424,7 @@ function Providers() {
                                                 <MenuItem value="active">Active Providers</MenuItem>
                                                 <MenuItem value="suspended">Suspended Providers</MenuItem>
                                             </TextField>
+                                            <ExportMenu onExport={handleExportProviders} />
                                         </Box>
                                     </Box>
 

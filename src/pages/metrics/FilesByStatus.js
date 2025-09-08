@@ -31,6 +31,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import FilePresentIcon from '@mui/icons-material/FilePresent';
 import MoneyIcon from '@mui/icons-material/Money';
+import ExportMenu from '../reports/ExportMenu';
+import { generatePDFReport } from '../reports/PdfReport';
 
 // --- Constants ---
 const FILE_STATUSES = ["unscanned", "clean", "infected", "scan_failed", "distributed"];
@@ -207,15 +209,17 @@ function FilesByStatus() {
            (filesListPage !== prevPage.current || filesListRowsPerPage !== prevRowsPerPage.current)
        ) {
            console.log(">>> Triggering Pagination/Rows Fetch <<<");
-           prevPage.current = filesListPage; // Update refs *before* fetch call
-           prevRowsPerPage.current = filesListRowsPerPage;
+           
            fetchFilesByStatus();
+          prevPage.current = filesListPage; // Update refs *after* fetch call
+            prevRowsPerPage.current = filesListRowsPerPage;
        }
        // Update refs even if fetch doesn't run, to track current state for next check
        prevPage.current = filesListPage;
        prevRowsPerPage.current = filesListRowsPerPage;
 
    }, [filesListPage, filesListRowsPerPage, filesFetched, loadingFilesTable, fetchFilesByStatus]);
+
 
 
     // --- Event Handlers ---
@@ -267,6 +271,45 @@ function FilesByStatus() {
         [filteredAndSortedFiles, filesListPage, filesListRowsPerPage]
     );
 
+    const handleDownloadFilesReport = async () => {
+        try {
+            let allFiles = [];
+            let page = 1;
+            const pageSize = 100;
+            let total = 0;
+
+            do {
+            const params = {
+                ngroup_id: ngroupId,
+                status: selectedStatusTab,
+                provider_id: selectedProvider?.id,
+                user_id: selectedUser?.id,
+                collection_id: selectedCollection?.id,
+                start_date: startDate?.isValid() ? startDate.format("YYYY-MM-DD") : undefined,
+                end_date: endDate?.isValid() ? endDate.format("YYYY-MM-DD") : undefined,
+                page,
+                page_size: pageSize,
+            };
+
+            const res = await fileStatusApi.listFilesByStatus(params, accessToken);
+            allFiles = allFiles.concat(res?.items || []);
+            total = res?.total || 0;
+            page++;
+            } while (allFiles.length < total);
+
+            const columns = [
+            { header: "File Name", dataKey: "name" },
+            { header: "Collection", dataKey: "collection_id" },
+            { header: "Size (Bytes)", dataKey: "size_bytes" },
+            ];
+
+            generatePDFReport(`Files Report - ${selectedStatusTab}`, columns, allFiles);
+        } catch (err) {
+            toast.error("Failed to download files report: " + err.message);
+        }
+    };
+
+
 
      // --- Render ---
     return (
@@ -298,8 +341,11 @@ function FilesByStatus() {
             <Card>
                 <CardContent>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                        <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>Files</Typography>
-                        <TextField label="Search Files by Name" variant="outlined" size="small" value={filesSearchTerm} onChange={handleFilesSearchChange} InputProps={{ startAdornment: ( <SearchIcon fontSize="small" sx={{ mr: 1, color: 'action.active' }} /> ) }} sx={{ width: '300px' }} />
+                            <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>Files</Typography>
+                            <Box>
+                                <TextField label="Search Files by Name" variant="outlined" size="small" value={filesSearchTerm} onChange={handleFilesSearchChange} InputProps={{ startAdornment: ( <SearchIcon fontSize="small" sx={{ mr: 1, color: 'action.active' }} /> ) }} sx={{ width: '300px' }} />
+                                <ExportMenu onExport={handleDownloadFilesReport} />
+                            </Box>
                         </Box>
                         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
                         <Tabs value={selectedStatusTab} onChange={handleStatusTabChange} aria-label="File status tabs" variant="scrollable" scrollButtons="auto" >
@@ -471,7 +517,7 @@ function FilesByStatus() {
                             </TableContainer>
                             <TablePagination
                                 rowsPerPageOptions={[10, 25, 50, 100]} component="div"
-                                count={filteredAndSortedFiles.length} rowsPerPage={filesListRowsPerPage} page={filesListPage}
+                                count={filesListTotalCount} rowsPerPage={filesListRowsPerPage} page={filesListPage}
                                 onPageChange={handleFilesPageChange} onRowsPerPageChange={handleFilesRowsPerPageChange}
                             />
                         </>
@@ -480,6 +526,7 @@ function FilesByStatus() {
             </Card>
 
             <ToastContainer position="top-center" autoClose={3000} hideProgressBar />
+            
         </LocalizationProvider>
     );
 }
