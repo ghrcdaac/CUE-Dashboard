@@ -266,10 +266,7 @@ function FilesByStatus() {
         return filtered;
     }, [filesByStatusData, filesSearchTerm, filesOrder, filesOrderBy, collectionNameMap]);
 
-    const visibleFiles = useMemo(() =>
-        filteredAndSortedFiles.slice( filesListPage * filesListRowsPerPage, filesListPage * filesListRowsPerPage + filesListRowsPerPage, ),
-        [filteredAndSortedFiles, filesListPage, filesListRowsPerPage]
-    );
+    const visibleFiles = useMemo(() => filteredAndSortedFiles, [filteredAndSortedFiles]);
 
     const handleDownloadFilesReport = async () => {
         try {
@@ -297,19 +294,50 @@ function FilesByStatus() {
             page++;
             } while (allFiles.length < total);
 
-            const columns = [
+            // Dynamic column selection
+            let columns = [
             { header: "File Name", dataKey: "name" },
             { header: "Collection", dataKey: "collection_id" },
             { header: "Size (Bytes)", dataKey: "size_bytes" },
             ];
 
-            generatePDFReport(`Files Report - ${selectedStatusTab}`, columns, allFiles);
+            if (selectedStatusTab === "failed") {
+                columns.push({ header: "Failure Reason", dataKey: "failure_reason" });
+            }
+
+            if (selectedStatusTab === "infected" || selectedStatusTab === "scan_failed") {
+                columns.push({ header: "Scan Result", dataKey: "scan_result" });
+            }
+
+            if (selectedStatusTab === "suspended") {
+                columns.push({ header: "Suspension Reason", dataKey: "reason" });
+            }
+
+            if (selectedStatusTab === "distributed"){
+                columns.push({ header: "Distributed Time", dataKey: "egress_start" });
+            }
+            if (selectedStatusTab === "clean"){
+                columns.push({header:"Scan Start", dataKey: "scan_start"});
+                columns.push({header:"Scan End", dataKey: "scan_end"});
+            }
+            if (selectedStatusTab === "unscanned") {
+                columns.push({header:"Upload Time", dataKey: "upload_time"});
+            }
+
+            // Map into rows (handle nested / missing values)
+            const rows = allFiles.map((f) => {
+            const row = {};
+            columns.forEach((c) => {
+                row[c.dataKey] = f[c.dataKey] ?? "";
+            });
+            return row;
+            });
+
+            generatePDFReport(`Files Report - ${selectedStatusTab}`, columns, rows);
         } catch (err) {
             toast.error("Failed to download files report: " + err.message);
         }
     };
-
-
 
      // --- Render ---
     return (
