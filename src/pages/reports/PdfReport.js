@@ -50,7 +50,7 @@ export function generateCostReport(summary, daily, collections, files) {
   doc.setFontSize(14);
   Object.entries(summary).forEach(([key, value]) => {
     doc.text(`${key}: ${value}`, 14, y);
-    y += 10;
+    y += 7;
   });
 
   // ====== Daily Cost ======
@@ -77,7 +77,7 @@ export function generateCostReport(summary, daily, collections, files) {
     autoTable(doc, {
       startY: y + 5,
       head: [["Collection", "Cost ($)"]],
-      body: collections.map((c) => [c.collection_id, c.cost]),
+      body: collections.map((c) => [c.name, c.cost,c.size]),
     });
     y = doc.lastAutoTable.finalY + 50;
   }

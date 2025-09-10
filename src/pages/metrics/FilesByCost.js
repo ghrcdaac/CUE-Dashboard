@@ -230,20 +230,10 @@ function FilesByCost() {
             let page = 1;
             const pageSize = 100;
             let total = 0;
-            do {
-            const res = await costMetricsApi.getCostSummary(
-                { ...summaryParams, page, page_size: pageSize },
-                accessToken
-            );
-            daily = daily.concat(res?.items || []);
-            total = res?.total || 0;
-            page++;
-            } while (daily.length < total);
+            daily = daily.concat(summary?.daily_cost || []);
 
             //  Collection cost (fetch all pages)
             let collections = [];
-            page = 1;
-            total = 0;
             do {
             const res = await costMetricsApi.getCollectionByCost(
                 { ...summaryParams, page, page_size: pageSize },
