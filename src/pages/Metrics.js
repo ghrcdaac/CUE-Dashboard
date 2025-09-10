@@ -265,6 +265,13 @@ function Metrics() {
     };
 
     const handleExportMetricsReport = () => {
+        const userInfo = {
+            name: localStorage.getItem('CUE_username'),
+            // ngroup: localStorage.getItem('CUE_ngroup_id'), // need to replace to name
+            // role: localStorage.getItem('CUE_role_id'), //need to replace to name
+            start: startDate.format(DATE_FORMAT_API_DAYJS),
+            end: endDate.format(DATE_FORMAT_API_DAYJS)
+        };
         const summaryData = {
             "Total Volume": overallVolumeData?.total_volume_gb
             ? `${overallVolumeData.total_volume_gb.toFixed(2)} GB`
@@ -274,7 +281,7 @@ function Metrics() {
             : "N/A",
         };
 
-        generateMetricsReport(summaryData, statusCountsData, dailyVolumeData, dailyCountData);
+        generateMetricsReport(summaryData, statusCountsData, dailyVolumeData, dailyCountData, userInfo);
     };
 
 

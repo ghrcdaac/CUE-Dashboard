@@ -351,18 +351,56 @@ function Providers() {
         setPage(0);
     };
 
-    const handleExportProviders = (format) => {
-        if (format === "pdf") {
-            const suspended = providers.filter((p) => !p.can_upload);
+    const handleExportProviders = async(format) => {
 
+        const userInfo = {
+                name: localStorage.getItem('CUE_username'),
+                // ngroup: localStorage.getItem('CUE_ngroup_id'), // need to replace to name
+                // role: localStorage.getItem('CUE_role_id'), //need to replace to name
+                start: 'N/A',
+                end: 'N/A'
+        };
+
+        if (format === "pdf") {
+            try {
+            let suspended = [];
+            let page = 1;
+            const pageSize = 100;
+            let total = 0;
+
+            //  Fetch all pages of suspended providers
+            do {
+                const ngroupId = localStorage.getItem('CUE_ngroup_id');
+                const res = await providerApi.listProviders(accessToken, {
+                can_upload: false, // only suspended
+                page,
+                page_size: pageSize,
+                ngroup_id: ngroupId
+                });
+
+                suspended = suspended.concat(res);
+                total = res?.total || 0;
+                page++;
+            } while (suspended.length < total);
+
+            //  Define columns
             const columns = [
-            { header: "Short Name", dataKey: "short_name" },
-            { header: "Long Name", dataKey: "long_name" },
-            { header: "Point of Contact", dataKey: "point_of_contact_name" },
-            { header: "Reason", dataKey: "reason" },
+                { header: "Short Name", dataKey: "short_name" },
+                { header: "Long Name", dataKey: "long_name" },
+                { header: "Point of Contact", dataKey: "point_of_contact_name" },
+                { header: "Reason", dataKey: "reason" },
             ];
 
-            generatePDFReport("Suspended Providers Report", columns, suspended);
+            generatePDFReport(
+                "Suspended Providers",
+                columns,
+                suspended,
+                null,
+                userInfo
+            );
+            } catch (err) {
+            toast.error("Failed to fetch suspended providers: " + err.message);
+            }
         }
     };
     return (

@@ -270,6 +270,15 @@ function FilesByStatus() {
 
     const handleDownloadFilesReport = async () => {
         try {
+
+            const userInfo = {
+                name: localStorage.getItem('CUE_username'),
+                // ngroup: localStorage.getItem('CUE_ngroup_id'), // need to replace to name
+                // role: localStorage.getItem('CUE_role_id'), //need to replace to name
+                start: startDate.format(DATE_FORMAT_API_DAYJS),
+                end: endDate.format(DATE_FORMAT_API_DAYJS)
+            };
+
             let allFiles = [];
             let page = 1;
             const pageSize = 100;
@@ -333,7 +342,7 @@ function FilesByStatus() {
             return row;
             });
 
-            generatePDFReport(`Files Report - ${selectedStatusTab}`, columns, rows);
+            generatePDFReport(`${selectedStatusTab} Files`, columns, rows, null,  userInfo);
         } catch (err) {
             toast.error("Failed to download files report: " + err.message);
         }

@@ -217,6 +217,14 @@ function FilesByCost() {
         try {
             toast.info("Generating Files by Cost report. This may take a moment...");
 
+            const userInfo = {
+                name: localStorage.getItem('CUE_username'),
+                // ngroup: localStorage.getItem('CUE_ngroup_id'), // need to replace to name
+                // role: localStorage.getItem('CUE_role_id'), //need to replace to name
+                start: startDate.format(DATE_FORMAT_API_DAYJS),
+                end: endDate.format(DATE_FORMAT_API_DAYJS)
+            };
+
             //  Summary
             const summaryParams = {
             ngroup_id: ngroupId,
@@ -266,7 +274,7 @@ function FilesByCost() {
             "Cost per Byte": `$${summary?.files_metadata?.cost_per_byte || 0}`,
             };
 
-            generateCostReport(summaryData, daily, collections, files);
+            generateCostReport(summaryData, daily, collections, files, userInfo);
 
             toast.success("Files by Cost report downloaded successfully!");
         } catch (err) {
