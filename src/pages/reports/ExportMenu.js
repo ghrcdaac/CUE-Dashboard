@@ -26,11 +26,21 @@ export default function ExportMenu({ onExport }) {
         color="secondary"
         onClick={handleClick}
         endIcon={<ArrowDropDownIcon />}
-        sx = {{ml:1, mr:1}}
+        sx={{ ml: 1, mr: 1 }}
       >
         Export
       </Button>
-      <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        PaperProps={{
+          sx: {
+            minWidth: anchorEl ? anchorEl.offsetWidth : undefined, // match button width
+          },
+        }}
+      >
         <MenuItem onClick={() => handleExport("pdf")}>PDF</MenuItem>
         {/* Later more can be added:
         <MenuItem onClick={() => handleExport("csv")}>CSV</MenuItem>

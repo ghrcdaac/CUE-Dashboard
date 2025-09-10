@@ -19,6 +19,9 @@ import { useOutletContext } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import usePageTitle from "../hooks/usePageTitle";
 
+import { generateMetricsReport } from "./reports/PdfReport";
+import ExportDropdown from './reports/ExportMenu';
+
 // API Imports
 import * as fileStatusApi from '../api/fileStatusApi';
 import * as providerApi from '../api/providerApi';
@@ -261,6 +264,19 @@ function Metrics() {
         return [value, name];
     };
 
+    const handleExportMetricsReport = () => {
+        const summaryData = {
+            "Total Volume": overallVolumeData?.total_volume_gb
+            ? `${overallVolumeData.total_volume_gb.toFixed(2)} GB`
+            : "N/A",
+            "Total Files": overallCountData?.total_count
+            ? overallCountData.total_count.toLocaleString()
+            : "N/A",
+        };
+
+        generateMetricsReport(summaryData, statusCountsData, dailyVolumeData, dailyCountData);
+    };
+
 
      // --- Render ---
     return (
@@ -286,9 +302,15 @@ function Metrics() {
                         </Grid>
                 </CardContent>
             </Card>
-
             {/* Metrics Overview Section */}
-            <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>Metrics Overview</Typography>
+            <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                <Typography variant="h5" gutterBottom>
+                    Metrics Overview
+                </Typography>
+
+                <ExportDropdown onExport={handleExportMetricsReport} />
+            </Box>
+            
                 {loadingMetrics && ( /* ... Skeletons ... */ <Grid container spacing={3} sx={{ mb: 3 }}><Grid item xs={12} md={6} lg={3}><Skeleton variant="rounded" height={100} /></Grid><Grid item xs={12} md={6} lg={3}><Skeleton variant="rounded" height={100} /></Grid><Grid item xs={12} md={6} lg={6}><Skeleton variant="rounded" height={100} /></Grid><Grid item xs={12} lg={6}><Skeleton variant="rounded" height={350} /></Grid><Grid item xs={12} lg={6}><Skeleton variant="rounded" height={350} /></Grid></Grid> )}
                 {errorMetrics && !loadingMetrics && <Alert severity="warning" sx={{ my: 2 }}>{errorMetrics}</Alert>}
                 {!hasNgroupId && <Alert severity="error">NGROUP ID not found. Cannot load metrics.</Alert>}

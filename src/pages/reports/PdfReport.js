@@ -101,3 +101,67 @@ export function generateCostReport(summary, daily, collections, files) {
   doc.save("FilesByCostReport.pdf");
 }
 
+
+export function generateMetricsReport(summary, statusCounts, dailyVolume, dailyCount) {
+  const doc = new jsPDF();
+  let y = 20;
+
+  // ===== Title =====
+  doc.setFontSize(16);
+  doc.text("Metrics Overview Report", 14, y);
+  y += 10;
+
+  // ===== Summary (Cards) =====
+  doc.setFontSize(12);
+  Object.entries(summary).forEach(([key, value]) => {
+    doc.text(`${key}: ${value}`, 14, y);
+    y += 7;
+  });
+
+  // ===== Status Counts =====
+  if (statusCounts?.length) {
+    y += 10;
+    doc.setFontSize(14);
+    doc.text("Status Distribution", 14, y);
+    autoTable(doc, {
+      startY: y + 5,
+      head: [["Status", "Count"]],
+      body: statusCounts.map((s) => [s.status, s.count]),
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // ===== Daily Volume =====
+  if (dailyVolume?.length) {
+    if (y > 250) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFontSize(14);
+    doc.text("Daily Volume (GB)", 14, y);
+    autoTable(doc, {
+      startY: y + 5,
+      head: [["Day", "Volume (GB)"]],
+      body: dailyVolume.map((d) => [d.day, d.value]),
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // ===== Daily Count =====
+  if (dailyCount?.length) {
+    if (y > 250) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFontSize(14);
+    doc.text("Daily File Count", 14, y);
+    autoTable(doc, {
+      startY: y + 5,
+      head: [["Day", "Files"]],
+      body: dailyCount.map((d) => [d.day, d.value]),
+    });
+  }
+
+  doc.save("MetricsOverviewReport.pdf");
+}
+
