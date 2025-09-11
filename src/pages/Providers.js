@@ -314,16 +314,6 @@ function Providers() {
         });
     }, [providers, order, orderBy]);
 
-    // const visibleRows = React.useMemo(() => {
-    //     return sortedProviders.filter(
-    //         (p) =>
-    //             p.short_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    //             p.long_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    //             p.point_of_contact_name.toLowerCase().includes(searchTerm.toLowerCase())
-
-    //     ).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-    // }, [sortedProviders, searchTerm, page, rowsPerPage]);
-
      const filteredProviders = React.useMemo(() => {
         if (filter === "active") {
             return sortedProviders.filter((p) => p.can_upload);
