@@ -14,11 +14,20 @@ import usePageTitle from "../../hooks/usePageTitle";
 import useAuth from '../../hooks/useAuth';
 import usePrivileges from '../../hooks/usePrivileges';
 import { parseApiError } from '../../utils/errorUtils';
-import { getEditableRoles } from '../../utils/roleUtils'; // <-- Import the new helper
+import { getEditableRoles } from '../../utils/permissionUtils';
 
 import { listUserApplications, approveUserApplication, rejectUserApplication } from '../../api/userApplicationApi';
 import { listRoles } from '../../api/roleApi';
-import { listProviders } from '../../api/providerApi'; // <-- Use the optimized list function
+import { listProviders } from '../../api/providerApi';
+
+// --- IMPROVEMENT: Defined table columns here for easier maintenance ---
+const headCells = [
+    { id: 'name', label: 'Name' },
+    { id: 'email', label: 'Email' },
+    { id: 'username', label: 'Username' },
+    { id: 'justification', label: 'Justification' },
+    { id: 'providerName', label: 'Provider' },
+];
 
 function PendingRequests() {
     const [applications, setApplications] = useState([]);
@@ -35,8 +44,9 @@ function PendingRequests() {
     const [order, setOrder] = useState('asc');
     const [orderBy, setOrderBy] = useState('name');
 
-    const { user: currentUser, activeNgroupId } = useAuth();
-    const { hasPrivilege } = usePrivileges();
+    const { activeNgroupId } = useAuth();
+    // --- CHANGE: Get the full list of privileges for the current user ---
+    const { privileges, hasPrivilege } = usePrivileges();
     usePageTitle("Pending User Requests");
 
     const fetchPageData = useCallback(async () => {
@@ -44,7 +54,6 @@ function PendingRequests() {
         
         setLoading(true);
         try {
-            // --- OPTIMIZATION: Fetch all data in parallel ---
             const [rolesData, appsData, providersData] = await Promise.all([
                 listRoles(),
                 listUserApplications('pending'),
@@ -52,7 +61,6 @@ function PendingRequests() {
             ]);
             setRoles(rolesData);
 
-            // --- OPTIMIZATION: Create a lookup map for providers ---
             const providerMap = new Map(providersData.map(provider => [provider.id, provider]));
 
             const processedApps = appsData.map(app => ({
@@ -83,7 +91,17 @@ function PendingRequests() {
                 app[field]?.toLowerCase().includes(searchTerm.toLowerCase())
             )
         );
-        const comparator = (a, b) => { /* ... sort logic ... */ return 0; };
+
+        // --- IMPROVEMENT: Implemented full sorting logic ---
+        const comparator = (a, b) => {
+            const isAsc = order === 'asc';
+            let aValue = a[orderBy] || '';
+            let bValue = b[orderBy] || '';
+
+            if (aValue < bValue) return isAsc ? -1 : 1;
+            if (aValue > bValue) return isAsc ? 1 : -1;
+            return 0;
+        };
         return filtered.sort(comparator);
     }, [applications, order, orderBy, searchTerm]);
 
@@ -106,7 +124,7 @@ function PendingRequests() {
 
     const handleAcceptClick = () => {
         const app = applications.find(a => a.id === selected[0]);
-        setApplicationToProcess({ ...app, role: null }); // Use role object
+        setApplicationToProcess({ ...app, role: null });
         setOpenAcceptDialog(true);
     };
 
@@ -166,18 +184,22 @@ function PendingRequests() {
                             <TableHead>
                                 <TableRow>
                                     <TableCell padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < filteredAndSortedApps.length} checked={filteredAndSortedApps.length > 0 && selected.length === filteredAndSortedApps.length} onChange={handleSelectAllClick} /></TableCell>
-                                    {['name', 'email', 'username', 'justification', 'providerName'].map(col => (
-                                        <TableCell key={col}><TableSortLabel active={orderBy === col} direction={order} onClick={() => handleRequestSort(col)}>{col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</TableSortLabel></TableCell>
+                                    {headCells.map((headCell) => (
+                                        <TableCell key={headCell.id}>
+                                            <TableSortLabel active={orderBy === headCell.id} direction={order} onClick={() => handleRequestSort(headCell.id)}>
+                                                {headCell.label}
+                                            </TableSortLabel>
+                                        </TableCell>
                                     ))}
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow><TableCell colSpan={6} align="center"><CircularProgress /></TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={headCells.length + 1} align="center"><CircularProgress /></TableCell></TableRow>
                                 ) : visibleRows.map(app => {
                                     const isItemSelected = isSelected(app.id);
                                     return (
-                                        <TableRow key={app.id} hover onClick={() => handleClick(app.id)} selected={isItemSelected}>
+                                        <TableRow key={app.id} hover onClick={() => handleClick(app.id)} selected={isItemSelected} role="checkbox" tabIndex={-1} sx={{ cursor: 'pointer' }}>
                                             <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
                                             <TableCell>{app.name}</TableCell>
                                             <TableCell>{app.email}</TableCell>
@@ -202,12 +224,13 @@ function PendingRequests() {
                 </CardContent>
             </Card>
 
-            <Dialog open={openAcceptDialog} onClose={() => setOpenAcceptDialog(false)}>
+            <Dialog open={openAcceptDialog} onClose={() => setOpenAcceptDialog(false)} fullWidth maxWidth="xs">
                 <DialogTitle>Accept User Application</DialogTitle>
                 <DialogContent>
-                    <Typography>Please assign a role to approve this user.</Typography>
+                    <Typography gutterBottom>Please assign a role to approve this user.</Typography>
                     <Autocomplete
-                        options={getEditableRoles(roles, currentUser?.roles)}
+                        // --- CHANGE: Pass the current user's PRIVILEGES, not their roles ---
+                        options={getEditableRoles(roles, privileges)}
                         getOptionLabel={(option) => option.long_name}
                         onChange={(e, newValue) => setApplicationToProcess(prev => ({ ...prev, role: newValue }))}
                         renderInput={(params) => <TextField {...params} label="Role" margin="dense" fullWidth />}
