@@ -23,7 +23,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import * as collectionApi from '../api/collectionApi';
 import { listProviders } from '../api/providerApi';
 import { listEgresses } from '../api/egressAPI';
-import { fetchNgroups } from "../api/ngroup";
+import { fetchNgroups } from "../api/ngroupApi";
 
 function Collections() {
     usePageTitle("Collections");

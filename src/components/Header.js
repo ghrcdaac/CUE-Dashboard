@@ -1,134 +1,107 @@
 import React, { useState } from "react";
+import { useSelector } from 'react-redux';
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
-import { Link as RouterLink, useLocation } from "react-router-dom"; // Import useLocation
+import { Link as RouterLink, useLocation } from "react-router-dom";
 import Divider from "@mui/material/Divider";
 import MenuItem from '@mui/material/MenuItem';
 import Menu from '@mui/material/Menu';
+import Select from '@mui/material/Select';
+import FormControl from '@mui/material/FormControl';
 import AccountCircle from '@mui/icons-material/AccountCircle';
-import useAuth from '../hooks/useAuth';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import { useNavigate } from 'react-router-dom';
+import useAuth from '../hooks/useAuth';
 import usePageTitle from "../hooks/usePageTitle";
-
+import usePrivileges from "../hooks/usePrivileges";
 
 export default function Header() {
-    const { isAuthenticated, logout, username } = useAuth();
+    const { isAuthenticated, user, logout, activeNgroupId, setActiveNgroup } = useAuth();
+    const { hasPrivilege } = usePrivileges();
+    
     const [anchorEl, setAnchorEl] = useState(null);
-    const navigate = useNavigate();
-    const location = useLocation(); // Get current location
+    const location = useLocation();
 
-    const handleMenu = (event) => {
-        setAnchorEl(event.currentTarget);
-    };
-
-    const handleClose = () => {
-        setAnchorEl(null);
-    };
-
+    const handleMenu = (event) => setAnchorEl(event.currentTarget);
+    const handleClose = () => setAnchorEl(null);
     const handleLogout = () => {
-        logout(navigate);
+        logout();
         handleClose();
     };
 
-    // Determine the section title based on the route
-    let sectionTitle = "Home"; // Default title
-    if (location.pathname.startsWith("/collections")) {
-        sectionTitle = "Collections";
-    } else if (location.pathname.startsWith("/providers")) {
-        sectionTitle = "Providers";
-    } else if (location.pathname.startsWith("/metrics")) {
-        sectionTitle = "Metrics";
-    } else if (location.pathname.startsWith("/users")) {
-        sectionTitle = "Users";
-    } else if (location.pathname.startsWith("/daac")) {
-        sectionTitle = "DAAC";
-    }
-       else if (location.pathname.startsWith("/profile")) { //added profile
-        sectionTitle = "Profile";
-    }
-    const pageTitle = usePageTitle(sectionTitle);
+    const handleNgroupChange = (event) => {
+        const newNgroupId = event.target.value;
+        setActiveNgroup(newNgroupId);
+        window.location.reload();
+    };
+
+    let sectionTitle = "Home";
+    if (location.pathname.startsWith("/collections")) sectionTitle = "Collections";
+    else if (location.pathname.startsWith("/providers")) sectionTitle = "Providers";
+    else if (location.pathname.startsWith("/metrics")) sectionTitle = "Metrics";
+    else if (location.pathname.startsWith("/users")) sectionTitle = "Users";
+    else if (location.pathname.startsWith("/daac")) sectionTitle = "DAAC";
+    else if (location.pathname.startsWith("/profile")) sectionTitle = "Profile";
+    
+    usePageTitle(sectionTitle);
 
     return (
         <Box>
             <AppBar position="static" sx={{ height: "150px" }}>
-                <Toolbar
-                    sx={{
-                        alignItems: "flex-start",
-                        pt: 2,
-                        justifyContent: "space-between",
-                        flexDirection: "column",
-                    }}
-                >
-                    <Box
-                        sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            width: "100%",
-                            mb: 1,
-                        }}
-                    >
+                <Toolbar sx={{ alignItems: "flex-start", pt: 2, justifyContent: "space-between", flexDirection: "column" }}>
+                    <Box sx={{ display: "flex", alignItems: "center", width: "100%", mb: 1 }}>
                         <img src="/nasa_logo.png" alt="NASA Logo" height="60" />
                         <Box sx={{ display: "flex", alignItems: "center", ml: 2 }}>
                             <Box sx={{ mr: 5 }}>
-                                <Typography variant="h4" sx={{ fontWeight: "bold" }}>
-                                    CUE
-                                </Typography>
+                                <Typography variant="h4" sx={{ fontWeight: "bold" }}>CUE</Typography>
                             </Box>
-                            {/* Navigation Buttons */}
                             <Box sx={{ display: "flex", alignItems: "center" }}>
-                                <Button color="inherit" component={RouterLink} to="/collections">Collections</Button>
-                                <Button color="inherit" component={RouterLink} to="/providers">Providers</Button>
-                                <Button color="inherit" component={RouterLink} to="/metrics">Metrics</Button>
-                                <Button color="inherit" component={RouterLink} to="/users">Users</Button>
-                                <Button color="inherit" component={RouterLink} to="/daac">DAAC</Button>
+                                {hasPrivilege("collection:read") && <Button color="inherit" component={RouterLink} to="/collections">Collections</Button>}
+                                {hasPrivilege("provider:read") && <Button color="inherit" component={RouterLink} to="/providers">Providers</Button>}
+                                {hasPrivilege("metrics:read") && <Button color="inherit" component={RouterLink} to="/metrics">Metrics</Button>}
+                                {hasPrivilege("user:read") && <Button color="inherit" component={RouterLink} to="/users">Users</Button>}
+                                {hasPrivilege("egress:read") && <Button color="inherit" component={RouterLink} to="/daac">DAAC</Button>}
                             </Box>
                         </Box>
-
-                        {/* User/Login Section */}
-                        <Box
-                            sx={{
-                                display: "flex",
-                                justifyContent: "flex-end",
-                                alignItems: "center",
-                                width: "100%",
-                            }}
-                        >
+                        <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", width: "100%" }}>
                             {isAuthenticated ? (
                                 <>
-                                    <IconButton
-                                        size="large"
-                                        aria-label="account of current user"
-                                        aria-controls="menu-appbar"
-                                        aria-haspopup="true"
-                                        onClick={handleMenu}
-                                        color="inherit"
-                                        sx={{ padding: 0 }}
-                                    >
+                                    {/* --- UPDATED: DAAC SELECTOR / DISPLAY --- */}
+                                    {user?.ngroups && user.ngroups.length > 0 && (
+                                        user.ngroups.length === 1 ? (
+                                            // If only one group, display it as text
+                                            <Typography sx={{ color: 'white', mr: 2, border: '1px solid rgba(255, 255, 255, 0.5)', borderRadius: 1, px: 1.5, py: 0.5, fontSize: '0.875rem' }}>
+                                                {/* This handles if the backend sends a string or an object */}
+                                                {typeof user.ngroups[0] === 'object' ? user.ngroups[0].short_name : user.ngroups[0]}
+                                            </Typography>
+                                        ) : (
+                                            // If multiple groups, display the selector dropdown
+                                            <FormControl sx={{ m: 1, minWidth: 120, mr: 2 }} size="small">
+                                                <Select
+                                                    value={activeNgroupId || ''}
+                                                    onChange={handleNgroupChange}
+                                                    sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.5)' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'white' }, '.MuiSvgIcon-root': { color: 'white' } }}
+                                                >
+                                                    {user.ngroups.map((ngroup) => (
+                                                        // This assumes the backend will send an object with id and short_name for multi-group users
+                                                        <MenuItem key={ngroup.id} value={ngroup.id}>
+                                                            {ngroup.short_name}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        )
+                                    )}
+                                    <IconButton size="large" aria-controls="menu-appbar" aria-haspopup="true" onClick={handleMenu} color="inherit" sx={{ padding: 0 }}>
                                         <AccountCircle />
-                                        <Typography sx={{ ml: 1, textTransform: 'none' }}>{username}</Typography>
+                                        <Typography sx={{ ml: 1, textTransform: 'none' }}>{user?.username}</Typography>
                                         <ArrowDropDownIcon />
                                     </IconButton>
-                                    <Menu
-                                        id="menu-appbar"
-                                        anchorEl={anchorEl}
-                                        anchorOrigin={{
-                                            vertical: 'bottom',
-                                            horizontal: 'right',
-                                        }}
-                                        keepMounted
-                                        transformOrigin={{
-                                            vertical: 'top',
-                                            horizontal: 'right',
-                                        }}
-                                        open={Boolean(anchorEl)}
-                                        onClose={handleClose}
-                                    >
-                                         <MenuItem component={RouterLink} to="/profile" onClick={handleClose}>Profile</MenuItem>
+                                    <Menu id="menu-appbar" anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
+                                        <MenuItem component={RouterLink} to="/profile" onClick={handleClose}>Profile</MenuItem>
                                         <MenuItem onClick={handleLogout}>Logout</MenuItem>
                                     </Menu>
                                 </>
@@ -137,10 +110,9 @@ export default function Header() {
                             )}
                         </Box>
                     </Box>
-
                     <Divider sx={{ my: 1, width: "100%" }} />
                     <Typography variant="h5" sx={{ fontWeight: "bold", textAlign: "left", ml: 11 }}>
-                    {pageTitle}
+                        {sectionTitle}
                     </Typography>
                 </Toolbar>
             </AppBar>

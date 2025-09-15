@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import Grid2 from "@mui/material/Grid2";
+import Grid from "@mui/material/Grid";
 import Button from "@mui/material/Button";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -309,8 +309,8 @@ export default function DAAC() {
                 {loading && <Typography>Loading DAAC egress data...</Typography>}
                 {error && <Typography color="error">Error: {error}</Typography>}
 
-                <Grid2 container spacing={2} direction="column">
-                    <Grid2 xs={12}>
+                < Grid container spacing={2} direction="column">
+                    < Grid xs={12}>
                         <Card>
                             <CardContent sx={{ pb: 0 }}>
                                 <Box
@@ -468,8 +468,8 @@ export default function DAAC() {
                                 />
                             </CardContent>
                         </Card>
-                    </Grid2>
-                </Grid2>
+                    </ Grid>
+                </ Grid>
 
                 {/* Add Egress Dialog */}
                 <Dialog open={openAddDialog} onClose={handleCloseAddDialog}>

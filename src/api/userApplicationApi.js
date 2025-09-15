@@ -1,129 +1,70 @@
-// src/api/userApplicationApi.js (Corrected)
-import { config } from '../config';
+import apiClient from './apiClient';
+// --- ADDED: Import sessionService for logging ---
+import sessionService from '../services/sessionService';
 
-const API_BASE_URL = config.apiBaseUrl; // Use the apiUrl from your config
-
-export const createUserApplication = async (applicationData) => {
-    const response = await fetch(`${API_BASE_URL}/v1/user_application/`, { // Added /v1/
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            // 'Authorization': `Bearer ${localStorage.getItem('CUE_accessToken')}`, // Get token
-        },
-        body: JSON.stringify(applicationData),
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to create user application');
+/**
+ * Creates a new user application. This endpoint requires a valid token
+ * to prove the user has authenticated with Keycloak.
+ * @param {object} applicationData - The data for the new user application.
+ */
+export const createUserApplication = (applicationData) => {
+    // --- ADDED: Logging for verification ---
+    const session = sessionService.getSession();
+    const token = session ? session.accessToken : null;
+    console.log("Attempting to create user application. Token found in session:", !!token);
+    if (!token) {
+        console.error("No access token found in the current session. The request will likely fail.");
     }
 
-    return await response.json();
+    // This correctly uses the apiClient to send the Authorization header
+    return apiClient.post('/user_application/', applicationData);
 };
 
-export const getNgroups = async () => {
-    const response = await fetch(`${API_BASE_URL}/v1/user_application/ngroups`, { // Added /v1/
-        headers: {
-            // 'Authorization': `Bearer ${localStorage.getItem('CUE_accessToken')}`,
-        },
-    });
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to fetch ngroups');
+// --- All other functions use the apiClient for protected routes ---
+
+/**
+ * Lists user applications, optionally filtered by status. Requires 'approve_user' privilege.
+ * @param {string} [status] - The status to filter by (e.g., "pending", "rejected").
+ */
+export const listUserApplications = (status) => {
+    let url = `/user_application/`;
+    if (status) {
+        url += `?status=${status}`;
     }
-
-    return await response.json();
+    return apiClient.get(url);
 };
 
-export const getProvidersForNgroup = async (ngroupId) => {
-    const response = await fetch(`${API_BASE_URL}/v1/user_application/ngroups/${ngroupId}/providers`, { // Added /v1/
-        headers: {
-            // 'Authorization': `Bearer ${localStorage.getItem('CUE_accessToken')}`, // Get token
-        },
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to fetch providers');
-    }
-
-    return await response.json();
+/**
+ * Approves a user application. Requires 'approve_user' privilege.
+ * @param {string} applicationId - The UUID of the application.
+ * @param {string} roleId - The UUID of the role to assign.
+ */
+export const approveUserApplication = (applicationId, roleId) => {
+    return apiClient.post(`/user_application/${applicationId}/approve?role_id=${roleId}`);
 };
 
-// New API functions below
-
-export const getUserApplication = async (userApplicationId, ngroupId) => {
-    let url = `${API_BASE_URL}/v1/user_application/${userApplicationId}`; // Added /v1/
-    if (ngroupId) {
-        url += `?ngroup_id=${ngroupId}`;
-    }
-    const response = await fetch(url, {
-        headers: {
-            // 'Authorization': `Bearer ${localStorage.getItem('CUE_accessToken')}`,
-        },
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to fetch user application');
-    }
-
-    return await response.json();
+/**
+ * Rejects a user application. Requires 'approve_user' privilege.
+ * @param {string} applicationId - The UUID of the application.
+ */
+export const rejectUserApplication = (applicationId) => {
+    return apiClient.post(`/user_application/${applicationId}/reject`);
 };
 
-export const updateUserApplication = async (userApplicationId, updatedData) => {
-    const response = await fetch(`${API_BASE_URL}/v1/user_application/${userApplicationId}`, { // Added /v1/
-        method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-            // 'Authorization': `Bearer ${localStorage.getItem('CUE_accessToken')}`,
-        },
-        body: JSON.stringify(updatedData),
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to update user application');
-    }
-
-    return await response.json();
+/**
+ * Updates a user application.
+ * @param {string} userApplicationId - The UUID of the application.
+ * @param {object} updatedData - The data to update.
+ */
+export const updateUserApplication = (userApplicationId, updatedData) => {
+    return apiClient.patch(`/user_application/${userApplicationId}`, updatedData);
 };
 
-export const deleteUserApplication = async (userApplicationId, ngroupId) => {
-    let url = `${API_BASE_URL}/v1/user_application/${userApplicationId}`; // Added /v1/
-      if (ngroupId) {
-        url += `?ngroup_id=${ngroupId}`;
-    }
-    const response = await fetch(url, {
-        method: 'DELETE',
-        headers: {
-            // 'Authorization': `Bearer ${localStorage.getItem('CUE_accessToken')}`,
-        },
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to delete user application');
-    }
-    return true; //  API returns boolean on success.
-};
-
-export const listUserApplications = async (ngroupId) => {
-    let url = `${API_BASE_URL}/v1/user_application/`; // Added /v1/
-    if (ngroupId) {
-        url += `?ngroup_id=${ngroupId}`;
-    }
-    const response = await fetch(url, {
-        headers: {
-            // 'Authorization': `Bearer ${localStorage.getItem('CUE_accessToken')}`,
-        },
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to list user applications');
-    }
-
-    return await response.json();
+/**
+ * Deletes a user application.
+ * @param {string} userApplicationId - The UUID of the application.
+ */
+export const deleteUserApplication = (userApplicationId) => {
+    return apiClient.delete(`/user_application/${userApplicationId}`);
 };

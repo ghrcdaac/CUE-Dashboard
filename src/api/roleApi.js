@@ -1,143 +1,62 @@
-// src/api/roleApi.js
-import { config } from '../config';
+import apiClient from './apiClient';
 
-const API_BASE_URL = config.apiBaseUrl;
+/**
+ * Creates a new role. Requires 'admin' privilege.
+ * @param {{short_name: string, long_name: string}} roleData - The data for the new role.
+ */
+export const createRole = (roleData) => {
+    return apiClient.post('/roles/', roleData);
+};
 
-// 1. Create Role (POST /v1/role/)
-export async function createRole(roleData, accessToken) {
-    if (!accessToken) {
-        throw new Error("No access token provided");
-    }
-    const response = await fetch(`${API_BASE_URL}/v1/role/`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(roleData),
-    });
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to create role: ${response.status}`);
-    }
-    return await response.json();
-}
+/**
+ * Retrieves all role records. Requires 'admin' privilege.
+ */
+export const listRoles = () => {
+    return apiClient.get('/roles/');
+};
 
-// 2. Lookup Role (GET /v1/role/find)
-export async function findRole(params, accessToken) {
-    if (!accessToken) {
-        throw new Error("No access token provided");
-    }
-    const url = new URL(`${API_BASE_URL}/v1/role/find`);
-    Object.keys(params).forEach(key => {
-        if (params[key] != null) {
-            url.searchParams.append(key, params[key]);
-        }
-    });
+/**
+ * Finds a role by its short or long name. Requires 'admin' privilege.
+ * @param {{short_name?: string, long_name?: string}} params - The search parameters.
+ */
+export const findRole = (params) => {
+    const query = new URLSearchParams(params).toString();
+    return apiClient.get(`/roles/find?${query}`);
+};
 
-    const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-        },
-    });
+/**
+ * Retrieves a single role by its ID. Requires 'admin' privilege.
+ * @param {string} roleId - The UUID of the role.
+ */
+export const getRoleById = (roleId) => {
+    return apiClient.get(`/roles/${roleId}`);
+};
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to find role: ${response.status}`);
-    }
-    return await response.json();
-}
+/**
+ * Updates an existing role. Requires 'admin' privilege.
+ * @param {string} roleId - The UUID of the role to update.
+ * @param {{short_name?: string, long_name?: string}} updateData - The fields to update.
+ */
+export const updateRole = (roleId, updateData) => {
+    return apiClient.patch(`/roles/${roleId}`, updateData);
+};
 
-// 3. Get Role (GET /v1/role/{role_id})
-export async function getRoleById(roleId, accessToken) {
-    if (!accessToken) {
-        throw new Error("No access token provided");
-    }
-    const url = `${API_BASE_URL}/v1/role/${roleId}`;
-    const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-        },
-    });
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to fetch role by ID: ${response.status}`);
-    }
-    return await response.json();
-}
+/**
+ * Deletes a role. Requires 'admin' privilege.
+ * @param {string} roleId - The UUID of the role to delete.
+ */
+export const deleteRole = (roleId) => {
+    return apiClient.delete(`/roles/${roleId}`);
+};
 
-// 4. Update Role (PATCH /v1/role/{role_id})
-export async function updateRole(roleId, roleData, accessToken) {
-    if (!accessToken) {
-        throw new Error("No access token provided");
-    }
-    const response = await fetch(`${API_BASE_URL}/v1/role/${roleId}`, {
-        method: 'PATCH',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(roleData),
-    });
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to update role: ${response.status}`);
-    }
-    return await response.json();
-}
-
-// 5. Delete Role (DELETE /v1/role/{role_id})
-export async function deleteRole(roleId, accessToken) {
-    if (!accessToken) {
-        throw new Error("No access token provided");
-    }
-    const url = `${API_BASE_URL}/v1/role/${roleId}`;
-    const response = await fetch(url, {
-        method: 'DELETE',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-        },
-    });
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to delete role: ${response.status}`);
-    }
-    return true; // Return true on success
-}
-
-// 6. List Roles (GET /v1/role/)
-export async function listRoles(accessToken) {
-    if (!accessToken) {
-        throw new Error("No access token provided");
-    }
-    const url = `${API_BASE_URL}/v1/role/`;
-    const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-        },
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to list roles: ${response.status}`);
-    }
-    return await response.json();
-}
-
-// (Optional, but good practice)  Export a single object for all functions:
+// Default export for convenience
 const roleApi = {
     createRole,
+    listRoles,
     findRole,
     getRoleById,
     updateRole,
     deleteRole,
-    listRoles,
 };
 
-export default roleApi; // Use a default export for the object
+export default roleApi;
