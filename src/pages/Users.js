@@ -34,15 +34,15 @@ const canModifyUser = (currentUser, targetUser) => {
     
     const currentUserIsAdmin = currentUser.roles.includes('admin');
     const targetUserIsAdmin = targetUser.roles.includes('admin');
-    const targetUserIsManager = targetUser.roles.includes('daac_manager');
+   // const targetUserIsManager = targetUser.roles.includes('daac_manager');
     
     // An admin can manage ANY user, including other admins.
     if (currentUserIsAdmin) {
         return true;
     }
     
-    // A non-admin cannot manage admins or managers.
-    if (targetUserIsAdmin || targetUserIsManager) {
+    // A non-admin cannot manage admins.
+    if (targetUserIsAdmin) {
         return false;
     }
     
