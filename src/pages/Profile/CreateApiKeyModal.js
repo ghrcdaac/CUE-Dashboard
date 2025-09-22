@@ -16,19 +16,9 @@ import useAuth from '../../hooks/useAuth';
 import usePrivileges from '../../hooks/usePrivileges';
 import { createApiKey } from '../../api/apiKeys';
 import { listCueusers } from '../../api/cueUser';
-
-// Helper for date calculation
-const calculateDaysUntil = (futureDate) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  futureDate.setHours(0, 0, 0, 0);
-  const diffTime = futureDate.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
-};
+import { parseApiError } from '../../utils/errorUtils'; // Added for better error messages
 
 export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
-  // All state and functions remain the same
   const [keyName, setKeyName] = useState('');
   const [ownerType, setOwnerType] = useState('self');
   const [selectedUser, setSelectedUser] = useState(null);
@@ -39,8 +29,13 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   const [users, setUsers] = useState([]);
   const [isUsersLoading, setIsUsersLoading] = useState(false);
   const [newKey, setNewKey] = useState(null);
+  
   const { hasPrivilege } = usePrivileges();
   const { user, activeNgroupId } = useAuth(); 
+
+  // --- NEW: Calculate the maximum selectable date for the custom option ---
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + 30);
 
   useEffect(() => {
     if (open && hasPrivilege('api-key:create')) {
@@ -65,6 +60,12 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   };
 
   const handleSubmit = async () => {
+    // Basic validation is handled by the disabled button, but this is a final check.
+    if (!keyName.trim()) {
+        toast.error("A key name is required.");
+        return;
+    }
+
     const payload = {
       name: keyName.trim(),
       scopes: ["file:upload"]
@@ -73,31 +74,19 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
     if (ownerType === 'self') {
       payload.target_user_id = user.id;
     } else if (ownerType === 'user') {
-        if (!selectedUser) {
-            toast.error("Please select a CUE user.");
-            return;
-        }
       payload.target_user_id = selectedUser.id;
     } else if (ownerType === 'proxy') {
-        if (!proxyUserName.trim()) {
-            toast.error("Proxy User Name is required.");
-            return;
-        }
       payload.proxy_user_name = proxyUserName.trim();
       payload.ngroup_id = activeNgroupId;
     }
     
+    // --- UPDATED: This logic correctly sends either expires_at OR expires_in_days ---
     if (expirationType === 'custom') {
       if (!customExpirationDate) {
         toast.error("Please select a custom expiration date.");
         return;
       }
-      const days = calculateDaysUntil(customExpirationDate);
-      if (days <= 0) {
-        toast.error("Custom date must be in the future.");
-        return;
-      }
-      payload.expires_in_days = days;
+      payload.expires_at = customExpirationDate.toISOString();
     } else {
       payload.expires_in_days = parseInt(expirationType, 10);
     }
@@ -108,7 +97,7 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
       setNewKey(result.key);
       onKeyCreated();
     } catch (error) {
-      toast.error(`Failed to create key: ${error.response?.detail || error.message}`);
+      toast.error(parseApiError(error));
     } finally {
       setIsSubmitting(false);
     }
@@ -144,7 +133,6 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
         {ownerType === 'user' && (
           <Autocomplete
             options={users}
-            // --- THE FIX: Use 'cueusername' instead of 'username' ---
             getOptionLabel={(option) => `${option.name} (@${option.cueusername})`}
             loading={isUsersLoading}
             value={selectedUser}
@@ -166,13 +154,15 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
           </RadioGroup>
         </FormControl>
         {expirationType === 'custom' && (
-           <Box sx={{ mb: 3 }}>
+          <Box sx={{ mb: 3 }}>
             <LocalizationProvider dateAdapter={AdapterDateFns}>
               <DatePicker
                 label="Expiration Date"
                 value={customExpirationDate}
                 onChange={(newValue) => setCustomExpirationDate(newValue)}
                 minDate={new Date(new Date().setDate(new Date().getDate() + 1))}
+                // --- NEW: Add the maxDate prop to limit selection ---
+                maxDate={maxDate}
               />
             </LocalizationProvider>
           </Box>
@@ -184,11 +174,7 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={isSubmitting}>Cancel</Button>
-                <Button
-          onClick={handleSubmit}
-          variant="contained"
-          disabled={isFormInvalid || isSubmitting}
-        >
+        <Button onClick={handleSubmit} variant="contained" disabled={isFormInvalid || isSubmitting}>
           {isSubmitting ? <CircularProgress size={24} /> : "Create Key"}
         </Button>
       </DialogActions>

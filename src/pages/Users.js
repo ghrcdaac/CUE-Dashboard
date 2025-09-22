@@ -16,18 +16,39 @@ import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import CancelIcon from '@mui/icons-material/Cancel';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+// --- CHANGE: Removed unused icons ---
 
 import usePageTitle from "../hooks/usePageTitle";
 import useAuth from '../hooks/useAuth';
 import usePrivileges from '../hooks/usePrivileges';
 import { parseApiError } from '../utils/errorUtils';
-import { getEditableRoles } from '../utils/roleUtils'; // --- UPDATED: Import the shared helper ---
+import { getEditableRoles } from '../utils/permissionUtils'; 
 
 import { listCueusers, assignUserRole, deleteCueuser } from '../api/cueUser';
 import { listProviders } from '../api/providerApi';
 import { listRoles } from '../api/roleApi';
 
-// --- REMOVED: The local getEditableRoles function is no longer needed here ---
+// --- CHANGE: Updated canModifyUser logic for admin permissions ---
+const canModifyUser = (currentUser, targetUser) => {
+    if (!currentUser || !targetUser?.role) return false;
+    
+    const currentUserIsAdmin = currentUser.roles.includes('admin');
+    const targetUserIsAdmin = targetUser.roles.includes('admin');
+    const targetUserIsManager = targetUser.roles.includes('daac_manager');
+    
+    // An admin can manage ANY user, including other admins.
+    if (currentUserIsAdmin) {
+        return true;
+    }
+    
+    // A non-admin cannot manage admins or managers.
+    if (targetUserIsAdmin || targetUserIsManager) {
+        return false;
+    }
+    
+    return true;
+};
+
 
 function Users() {
     const [users, setUsers] = useState([]);
@@ -44,7 +65,7 @@ function Users() {
     const [openEditDialog, setOpenEditDialog] = useState(false);
 
     const { user: currentUser, activeNgroupId } = useAuth();
-    const { hasPrivilege } = usePrivileges();
+    const { privileges, hasPrivilege } = usePrivileges();
     const { setMenuItems } = useOutletContext();
     const location = useLocation();
     usePageTitle("Users");
@@ -80,7 +101,7 @@ function Users() {
                 };
             });
             setUsers(processedUsers);
-        } catch (err) {
+        } catch (err){
             toast.error(parseApiError(err));
         } finally {
             setLoading(false);
@@ -124,7 +145,9 @@ function Users() {
 
     const handleSelectAllClick = (event) => {
         if (event.target.checked) {
-            const newSelected = filteredAndSortedUsers.map((user) => user.id);
+            const newSelected = filteredAndSortedUsers
+                .filter(user => canModifyUser(currentUser, user))
+                .map((user) => user.id);
             setSelected(newSelected);
             return;
         }
@@ -167,6 +190,7 @@ function Users() {
             toast.success("User role updated successfully!");
             setOpenEditDialog(false);
             fetchPageData();
+            setSelected([]);
         } catch (error) {
             toast.error(parseApiError(error));
         }
@@ -184,13 +208,6 @@ function Users() {
         }
     };
     
-    const canManageUser = useCallback((user) => {
-        if (!currentUser || !user?.role) return false;
-        if (currentUser.roles.includes('admin')) return true;
-        if (user.roles.includes('admin') || user.roles.includes('daac_manager')) return false;
-        return true;
-    }, [currentUser]);
-
     const isSelected = (id) => selected.indexOf(id) !== -1;
     
     if (location.pathname !== '/users' && location.pathname !== '/users/') {
@@ -208,7 +225,8 @@ function Users() {
                             <Typography variant="h5">Users</Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <TextField label="Search Users" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                                <Button variant="contained" onClick={handleEditClick} disabled={selected.length !== 1 || !hasPrivilege('user:update')} startIcon={<EditIcon />}>Modify</Button>
+                                <Button variant="contained" onClick={handleEditClick} disabled={selected.length !== 1 || !hasPrivilege('user:assign_role')} startIcon={<EditIcon />}>Modify Role</Button>
+                                {/* --- CHANGE: Removed the Suspend/Reactivate buttons --- */}
                                 <Button variant="contained" color="error" onClick={handleDeleteClick} disabled={selected.length === 0 || !hasPrivilege('user:delete')} startIcon={<DeleteIcon />}>Delete</Button>
                             </Box>
                         </Box>
@@ -227,7 +245,7 @@ function Users() {
                                 <TableBody>
                                     {visibleRows.map((user) => {
                                         const isItemSelected = isSelected(user.id);
-                                        const isManageable = canManageUser(user);
+                                        const isManageable = canModifyUser(currentUser, user);
                                         return (
                                             <TableRow key={user.id} hover onClick={(event) => isManageable && handleClick(event, user.id)} role="checkbox" tabIndex={-1} selected={isItemSelected} sx={{ cursor: isManageable ? 'pointer' : 'default' }}>
                                                 <TableCell padding="checkbox">
@@ -258,12 +276,12 @@ function Users() {
             )}
 
             {/* Dialogs */}
-            <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
+            <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} fullWidth maxWidth="xs">
                 <DialogTitle>Modify User Role</DialogTitle>
                 <DialogContent>
                     <TextField margin="dense" label="Name" fullWidth value={editUser?.name || ''} InputProps={{ readOnly: true }} />
                     <Autocomplete
-                        options={getEditableRoles(roles, currentUser?.roles)}
+                        options={getEditableRoles(roles, privileges)}
                         getOptionLabel={(option) => option.long_name}
                         value={editUser?.role || null}
                         onChange={(event, newValue) => setEditUser({ ...editUser, role: newValue })}
