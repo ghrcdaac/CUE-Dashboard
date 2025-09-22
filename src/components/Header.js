@@ -32,10 +32,12 @@ export default function Header() {
         handleClose();
     };
 
+    // === MODIFIED FUNCTION ===
+    // This now only updates the state. The components will react automatically.
     const handleNgroupChange = (event) => {
         const newNgroupId = event.target.value;
         setActiveNgroup(newNgroupId);
-        window.location.reload();
+        // REMOVED: window.location.reload();
     };
 
     let sectionTitle = "Home";
@@ -69,16 +71,12 @@ export default function Header() {
                         <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", width: "100%" }}>
                             {isAuthenticated ? (
                                 <>
-                                    {/* --- UPDATED: DAAC SELECTOR / DISPLAY --- */}
                                     {user?.ngroups && user.ngroups.length > 0 && (
                                         user.ngroups.length === 1 ? (
-                                            // If only one group, display it as text
                                             <Typography sx={{ color: 'white', mr: 2, border: '1px solid rgba(255, 255, 255, 0.5)', borderRadius: 1, px: 1.5, py: 0.5, fontSize: '0.875rem' }}>
-                                                {/* This handles if the backend sends a string or an object */}
                                                 {typeof user.ngroups[0] === 'object' ? user.ngroups[0].short_name : user.ngroups[0]}
                                             </Typography>
                                         ) : (
-                                            // If multiple groups, display the selector dropdown
                                             <FormControl sx={{ m: 1, minWidth: 120, mr: 2 }} size="small">
                                                 <Select
                                                     value={activeNgroupId || ''}
@@ -86,7 +84,6 @@ export default function Header() {
                                                     sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.5)' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'white' }, '.MuiSvgIcon-root': { color: 'white' } }}
                                                 >
                                                     {user.ngroups.map((ngroup) => (
-                                                        // This assumes the backend will send an object with id and short_name for multi-group users
                                                         <MenuItem key={ngroup.id} value={ngroup.id}>
                                                             {ngroup.short_name}
                                                         </MenuItem>
@@ -119,3 +116,4 @@ export default function Header() {
         </Box>
     );
 }
+

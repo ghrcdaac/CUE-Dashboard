@@ -80,7 +80,7 @@ function buildQueryString(params) {
  */
 export async function listCollectionsWithPagination(params, accessToken) {
     const queryString = buildQueryString(params)
-    const url = `${API_BASE_URL}/v1/collection${queryString}`;
+    const url = `${API_BASE_URL}/collection${queryString}`;
     const response = await fetch(url, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${accessToken}` },
@@ -93,7 +93,7 @@ export async function listCollectionsWithPagination(params, accessToken) {
  * @deprecated This function uses a V1 endpoint.
  */
 export async function listFilesForCollection(collectionId, ngroupId, page, pageSize, accessToken) {
-    const url = `${API_BASE_URL}/v1/collection/${collectionId}/files?ngroup_id=${ngroupId}&page=${page}&page_size=${pageSize}`;
+    const url = `${API_BASE_URL}/collection/${collectionId}/files?ngroup_id=${ngroupId}&page=${page}&page_size=${pageSize}`;
     const response = await fetch(url, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${accessToken}` },
@@ -107,7 +107,7 @@ export async function listFilesForCollection(collectionId, ngroupId, page, pageS
  */
 export async function collectionFilesCount(params, accessToken) {
     const queryString = buildQueryString(params)
-    const url = `${API_BASE_URL}/v1/collection/files/overview${queryString}`
+    const url = `${API_BASE_URL}/collection/files/overview${queryString}`
     const response = await fetch(url, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${accessToken}` },

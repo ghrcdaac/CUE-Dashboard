@@ -1,5 +1,3 @@
-// src/pages/Profile/CreateApiKeyModal.js
-
 import React, { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, RadioGroup,
@@ -16,7 +14,7 @@ import useAuth from '../../hooks/useAuth';
 import usePrivileges from '../../hooks/usePrivileges';
 import { createApiKey } from '../../api/apiKeys';
 import { listCueusers } from '../../api/cueUser';
-import { parseApiError } from '../../utils/errorUtils'; // Added for better error messages
+import { parseApiError } from '../../utils/errorUtils';
 
 export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   const [keyName, setKeyName] = useState('');
@@ -30,10 +28,9 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   const [isUsersLoading, setIsUsersLoading] = useState(false);
   const [newKey, setNewKey] = useState(null);
   
-  const { hasPrivilege } = usePrivileges();
-  const { user, activeNgroupId } = useAuth(); 
+  const { user, hasPrivilege } = usePrivileges();
+  const { activeNgroupId } = useAuth(); 
 
-  // --- NEW: Calculate the maximum selectable date for the custom option ---
   const maxDate = new Date();
   maxDate.setDate(maxDate.getDate() + 30);
 
@@ -60,10 +57,15 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   };
 
   const handleSubmit = async () => {
-    // Basic validation is handled by the disabled button, but this is a final check.
     if (!keyName.trim()) {
         toast.error("A key name is required.");
         return;
+    }
+    
+    // This is the active DAAC. It's required for ALL key types now.
+    if (!activeNgroupId) {
+      toast.error("An active DAAC must be selected to create a key.");
+      return;
     }
 
     const payload = {
@@ -72,15 +74,20 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
     };
 
     if (ownerType === 'self') {
-      payload.target_user_id = user.id;
+      payload.key_type = 'personal';
+      // --- THIS IS THE FIX ---
+      // A personal key must now be associated with the active group.
+      payload.ngroup_id = activeNgroupId;
     } else if (ownerType === 'user') {
+      payload.key_type = 'managed_user';
       payload.target_user_id = selectedUser.id;
+      payload.ngroup_id = activeNgroupId;
     } else if (ownerType === 'proxy') {
+      payload.key_type = 'proxy';
       payload.proxy_user_name = proxyUserName.trim();
       payload.ngroup_id = activeNgroupId;
     }
     
-    // --- UPDATED: This logic correctly sends either expires_at OR expires_in_days ---
     if (expirationType === 'custom') {
       if (!customExpirationDate) {
         toast.error("Please select a custom expiration date.");
@@ -112,91 +119,91 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
 
   const isFormInvalid =
     !keyName.trim() ||
+    !activeNgroupId || // Cannot create a key without a DAAC context
     (ownerType === 'user' && !selectedUser) ||
     (ownerType === 'proxy' && !proxyUserName.trim()) ||
     (expirationType === 'custom' && !customExpirationDate);
 
   const renderForm = () => (
      <>
-      <DialogTitle>Create New API Key</DialogTitle>
-      <DialogContent dividers>
-        <TextField autoFocus label="Key Name" fullWidth value={keyName} onChange={(e) => setKeyName(e.target.value)} sx={{ mb: 3 }} />
-        <FormControl component="fieldset" sx={{ mb: 3 }}>
-          <FormLabel component="legend">Key Owner</FormLabel>
-          <RadioGroup row value={ownerType} onChange={(e) => setOwnerType(e.target.value)}>
-            <FormControlLabel value="self" control={<Radio />} label="My Account" />
-            {isManager && <FormControlLabel value="user" control={<Radio />} label="Another CUE User" />}
-            {isManager && <FormControlLabel value="proxy" control={<Radio />} label="An External (Proxy) User" />}
-          </RadioGroup>
-        </FormControl>
+       <DialogTitle>Create New API Key</DialogTitle>
+       <DialogContent dividers>
+         <TextField autoFocus label="Key Name" fullWidth value={keyName} onChange={(e) => setKeyName(e.target.value)} sx={{ mb: 3 }} />
+         <FormControl component="fieldset" sx={{ mb: 3 }}>
+           <FormLabel component="legend">Key Owner</FormLabel>
+           <RadioGroup row value={ownerType} onChange={(e) => setOwnerType(e.target.value)}>
+             <FormControlLabel value="self" control={<Radio />} label="My Account" />
+             {isManager && <FormControlLabel value="user" control={<Radio />} label="Another CUE User" />}
+             {isManager && <FormControlLabel value="proxy" control={<Radio />} label="An External (Proxy) User" />}
+           </RadioGroup>
+         </FormControl>
 
-        {ownerType === 'user' && (
-          <Autocomplete
-            options={users}
-            getOptionLabel={(option) => `${option.name} (@${option.cueusername})`}
-            loading={isUsersLoading}
-            value={selectedUser}
-            onChange={(event, newValue) => setSelectedUser(newValue)}
-            renderInput={(params) => <TextField {...params} label="Search for a user..." variant="outlined" />}
-            sx={{ mb: 3 }}
-          />
-        )}
-        
-        {ownerType === 'proxy' && (
-          <TextField label="Proxy User Name" fullWidth value={proxyUserName} onChange={(e) => setProxyUserName(e.target.value)} sx={{ mb: 3 }} />
-        )}
-        <FormControl component="fieldset" sx={{ mb: 3 }}>
-          <FormLabel component="legend">Expiration</FormLabel>
-          <RadioGroup row value={expirationType} onChange={(e) => setExpirationType(e.target.value)}>
-            <FormControlLabel value="5" control={<Radio />} label="5 Days" />
-            <FormControlLabel value="10" control={<Radio />} label="10 Days" />
-            <FormControlLabel value="custom" control={<Radio />} label="Custom Date" />
-          </RadioGroup>
-        </FormControl>
-        {expirationType === 'custom' && (
-          <Box sx={{ mb: 3 }}>
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
-                label="Expiration Date"
-                value={customExpirationDate}
-                onChange={(newValue) => setCustomExpirationDate(newValue)}
-                minDate={new Date(new Date().setDate(new Date().getDate() + 1))}
-                // --- NEW: Add the maxDate prop to limit selection ---
-                maxDate={maxDate}
-              />
-            </LocalizationProvider>
-          </Box>
-        )}
-        <FormControl component="fieldset" sx={{ mt: 2 }}>
-          <FormLabel component="legend">Permissions</FormLabel>
-          <FormControlLabel control={<Checkbox checked disabled />} label="File Upload (file:upload)" />
-        </FormControl>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} disabled={isSubmitting}>Cancel</Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={isFormInvalid || isSubmitting}>
-          {isSubmitting ? <CircularProgress size={24} /> : "Create Key"}
-        </Button>
-      </DialogActions>
-    </>
+         {ownerType === 'user' && (
+           <Autocomplete
+             options={users}
+             getOptionLabel={(option) => `${option.name} (@${option.cueusername})`}
+             loading={isUsersLoading}
+             value={selectedUser}
+             onChange={(event, newValue) => setSelectedUser(newValue)}
+             renderInput={(params) => <TextField {...params} label="Search for a user..." variant="outlined" />}
+             sx={{ mb: 3 }}
+           />
+         )}
+         
+         {ownerType === 'proxy' && (
+           <TextField label="Proxy User Name" fullWidth value={proxyUserName} onChange={(e) => setProxyUserName(e.target.value)} sx={{ mb: 3 }} />
+         )}
+         <FormControl component="fieldset" sx={{ mb: 3 }}>
+           <FormLabel component="legend">Expiration</FormLabel>
+           <RadioGroup row value={expirationType} onChange={(e) => setExpirationType(e.target.value)}>
+             <FormControlLabel value="5" control={<Radio />} label="5 Days" />
+             <FormControlLabel value="10" control={<Radio />} label="10 Days" />
+             <FormControlLabel value="custom" control={<Radio />} label="Custom Date" />
+           </RadioGroup>
+         </FormControl>
+         {expirationType === 'custom' && (
+           <Box sx={{ mb: 3 }}>
+             <LocalizationProvider dateAdapter={AdapterDateFns}>
+               <DatePicker
+                 label="Expiration Date"
+                 value={customExpirationDate}
+                 onChange={(newValue) => setCustomExpirationDate(newValue)}
+                 minDate={new Date(new Date().setDate(new Date().getDate() + 1))}
+                 maxDate={maxDate}
+               />
+             </LocalizationProvider>
+           </Box>
+         )}
+         <FormControl component="fieldset" sx={{ mt: 2 }}>
+           <FormLabel component="legend">Permissions</FormLabel>
+           <FormControlLabel control={<Checkbox checked disabled />} label="File Upload (file:upload)" />
+         </FormControl>
+       </DialogContent>
+       <DialogActions>
+         <Button onClick={handleClose} disabled={isSubmitting}>Cancel</Button>
+         <Button onClick={handleSubmit} variant="contained" disabled={isFormInvalid || isSubmitting}>
+           {isSubmitting ? <CircularProgress size={24} /> : "Create Key"}
+         </Button>
+       </DialogActions>
+     </>
   );
 
   const renderSuccess = () => (
      <>
-      <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>API Key Created Successfully</DialogTitle>
-      <DialogContent dividers>
-        <Typography variant="body1" sx={{ mb: 2 }}>
-          Please copy this key and store it in a secure location.<br /><strong>For security reasons, you will not be able to see it again.</strong>
-        </Typography>
-        <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 1, display: 'flex', alignItems: 'center', my: 2 }}>
-          <Typography variant="body2" sx={{ fontFamily: 'monospace', flexGrow: 1, wordBreak: 'break-all' }}>{newKey}</Typography>
-          <Button startIcon={<ContentCopyIcon />} onClick={handleCopyToClipboard} sx={{ ml: 2 }}>Copy</Button>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} variant="contained">Close</Button>
-      </DialogActions>
-    </>
+       <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>API Key Created Successfully</DialogTitle>
+       <DialogContent dividers>
+         <Typography variant="body1" sx={{ mb: 2 }}>
+           Please copy this key and store it in a secure location.<br /><strong>For security reasons, you will not be able to see it again.</strong>
+         </Typography>
+         <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 1, display: 'flex', alignItems: 'center', my: 2 }}>
+           <Typography variant="body2" sx={{ fontFamily: 'monospace', flexGrow: 1, wordBreak: 'break-all' }}>{newKey}</Typography>
+           <Button startIcon={<ContentCopyIcon />} onClick={handleCopyToClipboard} sx={{ ml: 2 }}>Copy</Button>
+         </Box>
+       </DialogContent>
+       <DialogActions>
+         <Button onClick={handleClose} variant="contained">Close</Button>
+       </DialogActions>
+     </>
   );
 
   return (
@@ -205,3 +212,4 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
     </Dialog>
   );
 }
+

@@ -32,7 +32,6 @@ import CollectionFileBrowser from "./pages/collections/CollectionFileBrowser";
 import CollectionOverview from "./pages/collections/CollectionOverview";
 import NotificationPreferences from "./pages/Profile/NotificationPreference";
 
-// --- NEW IMPORTS FOR PROFILE SECTION ---
 import ProfileInfo from "./pages/Profile/ProfileInfo";
 import ApiKeys from "./pages/Profile/ApiKeys";
 
@@ -88,7 +87,9 @@ function Layout() {
                 <Box
                     component="main"
                     sx={{
-                        flexGrow: 1,
+                        // UPDATED: This is the definitive fix for the content area
+                        flex: 1,
+                        minWidth: 0, // A flexbox failsafe to allow shrinking
                         overflowY: 'auto',
                         p: 3,
                         backgroundColor: '#f4f6f8',
@@ -145,7 +146,6 @@ function App() {
 
                         <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />
 
-                            {/* --- UPDATED PROFILE ROUTES --- */}
                         <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} >
                             <Route index element={<ProfileInfo />} />
                             <Route path="api-keys" element={<ApiKeys />} />
@@ -159,9 +159,8 @@ function App() {
                     <Route path="/signup" element={<SignupPage />} />
                     <Route path="/pending-approval" element={<PendingApproval />} />
 
-                    {/* Fallback route */}
                     <Route path="*" element={<Navigate to="/" replace />} />
-        _        </Routes>
+                 </Routes>
             </BrowserRouter>
         </ThemeProvider>
     );

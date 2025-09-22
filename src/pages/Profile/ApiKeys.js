@@ -1,5 +1,3 @@
-// src/pages/Profile/ApiKeys.js
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box, Card, CardContent, Typography, Button, TextField, Table, TableBody,
@@ -13,11 +11,11 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-import { getApiKeys, deleteApiKey, updateApiKey } from '../../api/apiKeys';
+// MODIFIED: Imported 'revokeApiKey' to match the updated API client
+import { getApiKeys, revokeApiKey, updateApiKey } from '../../api/apiKeys';
 import { parseApiError } from '../../utils/errorUtils';
 import CreateApiKeyModal from './CreateApiKeyModal';
 
-// UPDATED: More robust date formatter
 const formatDate = (isoString, emptyText = 'N/A') => {
   if (!isoString) return emptyText;
   return new Date(isoString).toLocaleString('en-US', {
@@ -60,6 +58,7 @@ function ApiKeys() {
   const filteredAndSortedKeys = useMemo(() => {
     const filtered = apiKeys.filter(key =>
       key.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (key.key_type && key.key_type.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (key.user_name && key.user_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (key.proxy_user_name && key.proxy_user_name.toLowerCase().includes(searchTerm.toLowerCase()))
     );
@@ -84,7 +83,6 @@ function ApiKeys() {
     setOrderBy(property);
   };
   
-  // UPDATED: Selects all filtered rows
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
       const newSelected = filteredAndSortedKeys.map((n) => n.id);
@@ -115,7 +113,8 @@ function ApiKeys() {
   const handleConfirmRevoke = async () => {
     setIsSubmitting(true);
     try {
-      await Promise.all(selected.map(keyId => deleteApiKey(keyId)));
+      // MODIFIED: Calls 'revokeApiKey' for the soft delete operation
+      await Promise.all(selected.map(keyId => revokeApiKey(keyId)));
       toast.success(`${selected.length} key(s) revoked successfully!`);
       setRevokeDialogOpen(false);
       fetchApiKeys();
@@ -159,35 +158,36 @@ function ApiKeys() {
                 <TableRow>
                   <TableCell padding="checkbox" sx={{ bgcolor: "#E5E8EB" }}><Checkbox color="primary" indeterminate={selected.length > 0 && selected.length < filteredAndSortedKeys.length} checked={filteredAndSortedKeys.length > 0 && selected.length === filteredAndSortedKeys.length} onChange={handleSelectAllClick} /></TableCell>
                   <TableCell sx={{ bgcolor: "#E5E8EB" }}><TableSortLabel active={orderBy === 'name'} direction={order} onClick={() => handleRequestSort('name')}>Name</TableSortLabel></TableCell>
+                  {/* --- ADDED: Key Type column --- */}
+                  <TableCell sx={{ bgcolor: "#E5E8EB" }}><TableSortLabel active={orderBy === 'key_type'} direction={order} onClick={() => handleRequestSort('key_type')}>Key Type</TableSortLabel></TableCell>
                   <TableCell sx={{ bgcolor: "#E5E8EB" }}>Key Suffix</TableCell>
                   <TableCell sx={{ bgcolor: "#E5E8EB" }}>Owner</TableCell>
                   <TableCell sx={{ bgcolor: "#E5E8EB" }}>Created By</TableCell>
                   <TableCell sx={{ bgcolor: "#E5E8EB" }}><TableSortLabel active={orderBy === 'is_active'} direction={order} onClick={() => handleRequestSort('is_active')}>Status</TableSortLabel></TableCell>
                   <TableCell sx={{ bgcolor: "#E5E8EB" }}><TableSortLabel active={orderBy === 'expires_at'} direction={order} onClick={() => handleRequestSort('expires_at')}>Expires At</TableSortLabel></TableCell>
-                  {/* --- ADDED: Last Used column header --- */}
                   <TableCell sx={{ bgcolor: "#E5E8EB" }}><TableSortLabel active={orderBy === 'last_used_at'} direction={order} onClick={() => handleRequestSort('last_used_at')}>Last Used</TableSortLabel></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {loading ? <TableRow><TableCell colSpan={8} align="center"><CircularProgress /></TableCell></TableRow>
-                 : visibleRows.length > 0 ? visibleRows.map((row) => {
+                {loading ? <TableRow><TableCell colSpan={9} align="center"><CircularProgress /></TableCell></TableRow>
+                  : visibleRows.length > 0 ? visibleRows.map((row) => {
                     const isItemSelected = isSelected(row.id);
                     return (
                       <TableRow hover onClick={(event) => handleClick(event, row.id)} role="checkbox" tabIndex={-1} key={row.id} selected={isItemSelected}>
                         <TableCell padding="checkbox"><Checkbox color="primary" checked={isItemSelected} /></TableCell>
                         <TableCell>{row.name}</TableCell>
+                        {/* --- ADDED: Key Type data cell --- */}
+                        <TableCell>{row.key_type}</TableCell>
                         <TableCell><code>...{row.key_display_suffix}</code></TableCell>
                         <TableCell>{row.proxy_user_name || row.user_name || 'N/A'}</TableCell>
                         <TableCell>{row.created_by_user_name || 'N/A'}</TableCell>
-                        {/* --- UPDATED: Label is now "Suspended" --- */}
                         <TableCell><Chip label={row.is_active ? 'Active' : 'Suspended'} color={row.is_active ? 'success' : 'default'} size="small"/></TableCell>
                         <TableCell>{formatDate(row.expires_at)}</TableCell>
-                        {/* --- ADDED: Last Used data cell --- */}
                         <TableCell>{formatDate(row.last_used_at, 'Never')}</TableCell>
                       </TableRow>
                     );
                   })
-                 : <TableRow><TableCell colSpan={8} align="center"><Typography color="text.secondary">No API keys found.</Typography></TableCell></TableRow>
+                  : <TableRow><TableCell colSpan={9} align="center"><Typography color="text.secondary">No API keys found.</Typography></TableCell></TableRow>
                 }
               </TableBody>
             </Table>
@@ -230,3 +230,4 @@ function ApiKeys() {
 }
 
 export default ApiKeys;
+
