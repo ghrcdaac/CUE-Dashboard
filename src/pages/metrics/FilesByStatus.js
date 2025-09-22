@@ -25,6 +25,8 @@ import { listFiles } from '../../api/fileApi';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import FilePresentIcon from '@mui/icons-material/FilePresent';
 import MoneyIcon from '@mui/icons-material/Money';
+import ExportMenu from '../reports/ExportMenu';
+import { generatePDFReport } from '../reports/PdfReport';
 
 const FILE_STATUSES = ["unscanned", "clean", "infected", "scan_failed", "distributed"];
 
@@ -92,12 +94,14 @@ function FilesByStatus() {
     }, [activeFilters, selectedStatusTab, pagination.page, pagination.pageSize]);
     
     useEffect(() => {
+
         fetchFiles();
     }, [fetchFiles]);
     
     const handleApplyFilters = (filters) => {
         setPagination(prev => ({ ...prev, page: 0 }));
         setActiveFilters(filters);
+
     };
 
     const handleClearFilters = () => {
@@ -110,15 +114,18 @@ function FilesByStatus() {
         setSelectedStatusTab(newValue);
     };
 
+
     const handlePageChange = (event, newPage) => {
         setPagination(prev => ({ ...prev, page: newPage }));
     };
 
     const handleRowsPerPageChange = (event) => {
         setPagination(prev => ({ ...prev, pageSize: parseInt(event.target.value, 10), page: 0 }));
+
     };
 
     return (
+
         <Container maxWidth={false} disableGutters>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <ToastContainer position="top-center" />
@@ -131,6 +138,7 @@ function FilesByStatus() {
                 <Card>
                     <CardContent>
                         <Typography variant="h5" gutterBottom>Files by Status</Typography>
+
                         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
                             <Tabs value={selectedStatusTab} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
                                 {FILE_STATUSES.map(status => <Tab label={status.replace('_', ' ').toUpperCase()} value={status} key={status} />)}
@@ -167,6 +175,7 @@ function FilesByStatus() {
                                                         </TableCell>
                                                     }
                                                 </TableRow>
+
                                             )) : (
                                                 <TableRow>
                                                     <TableCell colSpan={5} align="center">No files found for this status and filter combination.</TableCell>
@@ -190,6 +199,7 @@ function FilesByStatus() {
                 </Card>
             </LocalizationProvider>
         </Container>
+
     );
 }
 

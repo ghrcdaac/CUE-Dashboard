@@ -35,6 +35,9 @@ import usePageTitle from '../hooks/usePageTitle';
 import sessionService from '../services/sessionService';
 import MetricsFilter from './metrics/MetricsFilter';
 
+import { generateMetricsReport } from "./reports/PdfReport";
+import ExportDropdown from './reports/ExportMenu';
+
 // API Imports
 import * as fileMetricsApi from '../api/fileMetricsApi';
 import { parseApiError } from '../utils/errorUtils';
@@ -155,6 +158,7 @@ function Metrics() {
   const volumeTooltipFormatter = (value) => [`${value.toFixed(2)} GB`, 'Volume'];
   const countTooltipFormatter = (value) => [value.toLocaleString(), 'Files'];
 
+
   return (
     <Container maxWidth={false} disableGutters>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -187,6 +191,7 @@ function Metrics() {
             {errorMetrics}
           </Alert>
         )}
+
 
         {!loadingMetrics && !errorMetrics && (
           <Box>

@@ -13,6 +13,7 @@ import { useOutletContext, Outlet, useLocation } from 'react-router-dom';
 
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
+import NoAccountsIcon from '@mui/icons-material/NoAccounts';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AccountBoxIcon from '@mui/icons-material/AccountBox';
 
@@ -23,7 +24,8 @@ import { parseApiError } from '../utils/errorUtils';
 
 import * as providerApi from '../api/providerApi';
 import { listCueusers } from '../api/cueUser';
-
+import ExportMenu from "./reports/ExportMenu";
+import { generatePDFReport } from "./reports/PdfReport";
 
 function Providers() {
     usePageTitle("Providers");
@@ -35,6 +37,7 @@ function Providers() {
         long_name: '',
         can_upload: true,
         point_of_contact: null,
+        reason: null
     });
     const [userOptions, setUserOptions] = useState([]);
     const [editProvider, setEditProvider] = useState(null);
@@ -46,7 +49,9 @@ function Providers() {
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [searchTerm, setSearchTerm] = useState('');
+    const [filter, setFilter] = useState('all');
     const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+    const [error, setError] = useState(null);
 
     const { activeNgroupId } = useAuth();
     const { hasPrivilege } = usePrivileges();
@@ -101,14 +106,28 @@ function Providers() {
             long_name: '',
             can_upload: true,
             point_of_contact: null,
+            reason: ''
         });
         setOpenCreateDialog(false);
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setCreateFormData(prev => ({
+            ...prev,
+            [name]: name === 'can_upload' ? value === 'true' : value,
+        }));
     };
 
     const handleCreateSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
+            if (!createFormData.can_upload && !createFormData.reason?.trim()) {
+                toast.error("Reason is required when provider cannot upload.");
+                setIsSubmitting(false);
+                return;
+            }
             // --- FIX: Add the activeNgroupId to the request payload ---
             const payload = {
                 ...createFormData,
@@ -142,8 +161,14 @@ function Providers() {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            const { id, short_name, long_name, can_upload, point_of_contact } = editProvider;
-            const updateData = { short_name, long_name, can_upload, point_of_contact };
+            if (!editProvider) throw new Error("No provider selected");
+            if (!editProvider.can_upload && !editProvider.reason?.trim()) {
+                toast.error("Reason is required when provider cannot upload.");
+                setIsSubmitting(false);
+                return;
+            }
+            const { id, short_name, long_name, can_upload, point_of_contact,reason } = editProvider;
+            const updateData = { short_name, long_name, can_upload, point_of_contact, reason: can_upload ? null : reason};
             await providerApi.updateProvider(id, updateData);
             toast.success("Provider updated successfully");
             setSelected([]);
@@ -176,6 +201,8 @@ function Providers() {
         }
     };
 
+    const handleCloseDeleteDialog = () => setOpenDeleteDialog(false);
+
     const handleRequestSort = (property) => {
         const isAsc = orderBy === property && order === 'asc';
         setOrder(isAsc ? 'desc' : 'asc');
@@ -183,29 +210,47 @@ function Providers() {
     };
 
     const filteredAndSortedProviders = useMemo(() => {
-        const filtered = providers.filter(p =>
-            p.short_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.long_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.point_of_contact_name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        let list = [...(providers || [])];
 
+        // filter active/suspended
+        if (filter === 'active') list = list.filter(p => p.can_upload);
+        else if (filter === 'suspended') list = list.filter(p => !p.can_upload);
+
+        // search
+        const search = (searchTerm || '').toLowerCase();
+        if (search) {
+        list = list.filter(p =>
+            (p.short_name || '').toLowerCase().includes(search) ||
+            (p.long_name || '').toLowerCase().includes(search) ||
+            (p.point_of_contact_name || '').toLowerCase().includes(search)
+        );
+        }
+
+        // sort
         const comparator = (a, b) => {
-            const isAsc = order === 'asc';
-            let aValue = a[orderBy];
-            let bValue = b[orderBy];
-            if (typeof aValue === 'string') {
-                return isAsc ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-            }
-            if (typeof aValue === 'boolean') {
-                return isAsc ? (aValue === bValue ? 0 : aValue ? -1 : 1) : (aValue === bValue ? 0 : aValue ? 1 : -1);
-            }
-            return 0;
+        const isAsc = order === 'asc';
+        const aValue = a[orderBy];
+        const bValue = b[orderBy];
+
+        if (typeof aValue === 'string' || typeof bValue === 'string') {
+            const av = (aValue || '').toString();
+            const bv = (bValue || '').toString();
+            return isAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+        }
+        if (typeof aValue === 'boolean') {
+            if (aValue === bValue) return 0;
+            return isAsc ? (aValue ? -1 : 1) : (aValue ? 1 : -1);
+        }
+        return 0;
         };
-        return filtered.sort(comparator);
-    }, [providers, order, orderBy, searchTerm]);
+
+        return list.sort(comparator);
+    }, [providers, order, orderBy, searchTerm, filter]);
+
 
     const visibleRows = useMemo(() => {
-        return filteredAndSortedProviders.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+        const start = page * rowsPerPage;
+        return filteredAndSortedProviders.slice(start, start + rowsPerPage);
     }, [filteredAndSortedProviders, page, rowsPerPage]);
     
     const handleSelectAllClick = (event) => {
@@ -231,119 +276,237 @@ function Providers() {
         return <Outlet key={location.pathname} />;
     }
 
+    // ---------- Export suspended providers ----------
+  const handleExportProviders = async (format) => {
+        if (format !== 'pdf') return;
+        try {
+        let suspended = [];
+        let pg = 1;
+        const pageSize = 100;
+        let total = 0;
+
+        do {
+            const res = await providerApi.listProviders({
+            can_upload: false,
+            page: pg,
+            page_size: pageSize
+            });
+            // If API returns { items, total } or an array, adapt accordingly
+            if (Array.isArray(res)) {
+            suspended = suspended.concat(res);
+            total = res.length; // fallback if API doesn't return total
+            } else {
+            const items = res.items || res.data || res;
+            suspended = suspended.concat(items);
+            total = res.total || suspended.length;
+            }
+            pg++;
+        } while (suspended.length < total);
+
+        const columns = [
+            { header: "Short Name", dataKey: "short_name" },
+            { header: "Long Name", dataKey: "long_name" },
+            { header: "Point of Contact", dataKey: "point_of_contact_name" },
+            { header: "Reason", dataKey: "reason" },
+        ];
+
+        generatePDFReport(
+            "Suspended Providers",
+            columns,
+            suspended,
+            null,
+            {
+            name: localStorage.getItem('CUE_username'),
+            start: 'N/A',
+            end: 'N/A'
+            }
+        );
+        } catch (err) {
+        toast.error("Failed to export suspended providers: " + (err?.message || err));
+        }
+    };
+
     return (
         <Box sx={{ flexGrow: 1, p: 3 }}>
-            <ToastContainer position="top-center" />
-            <Card>
-                <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="h5">Providers</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <TextField label="Search Providers" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                            <Button variant="contained" color="primary" onClick={handleCreateOpen} startIcon={<AddIcon />} disabled={!hasPrivilege('provider:create')}>Add</Button>
-                            <Button variant="contained" onClick={handleEditClick} disabled={selected.length !== 1 || !hasPrivilege('provider:update')} startIcon={<EditIcon />}>Edit</Button>
-                            <Button variant="contained" color="error" onClick={handleDeleteClick} disabled={selected.length === 0 || !hasPrivilege('provider:delete')} startIcon={<DeleteIcon />}>Delete</Button>
-                        </Box>
-                    </Box>
+      <ToastContainer position="top-center" />
+      <Card>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h5">Providers</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TextField
+                label="Search Providers"
+                variant="outlined"
+                size="small"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <TextField
+                select
+                label="Filter"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                size="small"
+                sx={{ minWidth: 180 }}
+              >
+                <MenuItem value="all">All Providers</MenuItem>
+                <MenuItem value="active">Active Providers</MenuItem>
+                <MenuItem value="suspended">Suspended Providers</MenuItem>
+              </TextField>
+              <ExportMenu onExport={handleExportProviders} />
+              <Button variant="contained" color="primary" onClick={handleCreateOpen} startIcon={<AddIcon />} disabled={!hasPrivilege('provider:create')}>Add</Button>
+              <Button variant="contained" onClick={handleEditClick} disabled={selected.length !== 1 || !hasPrivilege('provider:update')} startIcon={<EditIcon />}>Edit</Button>
+              <Button variant="contained" color="error" onClick={handleDeleteClick} disabled={selected.length === 0 || !hasPrivilege('provider:delete')} startIcon={<DeleteIcon />}>Delete</Button>
+            </Box>
+          </Box>
 
-                    {loading ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>
-                    ) : (
-                        <>
-                            <TableContainer component={Paper}>
-                                <Table stickyHeader>
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < visibleRows.length} checked={visibleRows.length > 0 && selected.length === visibleRows.length} onChange={handleSelectAllClick} /></TableCell>
-                                            <TableCell><TableSortLabel active={orderBy === 'short_name'} direction={order} onClick={() => handleRequestSort('short_name')}>Short Name</TableSortLabel></TableCell>
-                                            <TableCell><TableSortLabel active={orderBy === 'long_name'} direction={order} onClick={() => handleRequestSort('long_name')}>Long Name</TableSortLabel></TableCell>
-                                            <TableCell><TableSortLabel active={orderBy === 'can_upload'} direction={order} onClick={() => handleRequestSort('can_upload')}>Can Upload</TableSortLabel></TableCell>
-                                            <TableCell><TableSortLabel active={orderBy === 'point_of_contact_name'} direction={order} onClick={() => handleRequestSort('point_of_contact_name')}>Point of Contact</TableSortLabel></TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {visibleRows.map((provider) => {
-                                            const isItemSelected = isSelected(provider.id);
-                                            return (
-                                                <TableRow key={provider.id} hover onClick={(event) => handleClick(event, provider.id)} role="checkbox" tabIndex={-1} selected={isItemSelected}>
-                                                    <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
-                                                    <TableCell>{provider.short_name}</TableCell>
-                                                    <TableCell>{provider.long_name}</TableCell>
-                                                    <TableCell>{provider.can_upload ? 'Yes' : 'No'}</TableCell>
-                                                    <TableCell>{provider.point_of_contact_name}</TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-                            <TablePagination
-                                rowsPerPageOptions={[10, 25, 50]}
-                                component="div"
-                                count={filteredAndSortedProviders.length}
-                                rowsPerPage={rowsPerPage}
-                                page={page}
-                                onPageChange={(e, newPage) => setPage(newPage)}
-                                onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
-                            />
-                        </>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>
+          ) : error ? (
+            <Typography color="error">Error: {error}</Typography>
+          ) : (
+            <>
+              <TableContainer component={Paper}>
+                <Table stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          indeterminate={selected.length > 0 && selected.length < visibleRows.length}
+                          checked={visibleRows.length > 0 && selected.length === visibleRows.length}
+                          onChange={handleSelectAllClick}
+                        />
+                      </TableCell>
+                      <TableCell><TableSortLabel active={orderBy === 'short_name'} direction={order} onClick={() => handleRequestSort('short_name')}>Short Name</TableSortLabel></TableCell>
+                      <TableCell><TableSortLabel active={orderBy === 'long_name'} direction={order} onClick={() => handleRequestSort('long_name')}>Long Name</TableSortLabel></TableCell>
+                      <TableCell><TableSortLabel active={orderBy === 'can_upload'} direction={order} onClick={() => handleRequestSort('can_upload')}>Can Upload</TableSortLabel></TableCell>
+                      <TableCell><TableSortLabel active={orderBy === 'point_of_contact_name'} direction={order} onClick={() => handleRequestSort('point_of_contact_name')}>Point of Contact</TableSortLabel></TableCell>
+                      <TableCell>Reason</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {visibleRows.length > 0 ? visibleRows.map(provider => {
+                      const isItemSelected = isSelected(provider.id);
+                      return (
+                        <TableRow
+                          key={provider.id}
+                          hover
+                          onClick={(event) => handleClick(event, provider.id)}
+                          role="checkbox"
+                          tabIndex={-1}
+                          selected={isItemSelected}
+                        >
+                          <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
+                          <TableCell>{provider.short_name}</TableCell>
+                          <TableCell>{provider.long_name}</TableCell>
+                          <TableCell>{provider.can_upload ? 'Yes' : 'No'}</TableCell>
+                          <TableCell>{provider.point_of_contact_name}</TableCell>
+                          <TableCell>{provider.reason || ''}</TableCell>
+                        </TableRow>
+                      );
+                    }) : (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center">No providers found.</TableCell>
+                      </TableRow>
                     )}
-                </CardContent>
-            </Card>
+                  </TableBody>
+                </Table>
+              </TableContainer>
 
-            <Dialog open={openCreateDialog} onClose={handleCreateClose} fullWidth maxWidth="sm">
-                <DialogTitle>Create New Provider</DialogTitle>
-                <DialogContent>
-                    <TextField autoFocus margin="dense" name="short_name" label="Provider Short Name" type="text" fullWidth variant="outlined" value={createFormData.short_name} onChange={(e) => setCreateFormData({...createFormData, short_name: e.target.value})} required/>
-                    <TextField margin="dense" name="long_name" label="Provider Long Name" type="text" fullWidth variant="outlined" value={createFormData.long_name} onChange={(e) => setCreateFormData({...createFormData, long_name: e.target.value})}/>
-                    <Autocomplete fullWidth options={userOptions} getOptionLabel={(option) => option.name} value={userOptions.find(option => option.id === createFormData.point_of_contact) || null} onChange={(event, newValue) => setCreateFormData({ ...createFormData, point_of_contact: newValue ? newValue.id : null })} isOptionEqualToValue={(option, value) => option.id === value?.id} renderInput={(params) => (<TextField {...params} label="Point of Contact" name="point_of_contact" margin="dense" required />)}/>
-                    <TextField fullWidth select label="Can Upload" name="can_upload" value={createFormData.can_upload.toString()} onChange={(e) => setCreateFormData({...createFormData, can_upload: e.target.value === 'true'})} margin="dense">
-                        <MenuItem value="true">Yes</MenuItem>
-                        <MenuItem value="false">No</MenuItem>
-                    </TextField>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleCreateClose}>Cancel</Button>
-                    <Button onClick={handleCreateSubmit} variant="contained" disabled={isSubmitting}>
-                        {isSubmitting ? <CircularProgress size={24} /> : 'Create'}
-                    </Button>
-                </DialogActions>
-            </Dialog>
+              <TablePagination
+                rowsPerPageOptions={[10, 25, 50]}
+                component="div"
+                count={filteredAndSortedProviders.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={(e, newPage) => setPage(newPage)}
+                onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
 
-            <Dialog open={openEditDialog} onClose={handleEditClose} fullWidth maxWidth="sm">
-                <DialogTitle>Edit Provider</DialogTitle>
-                <DialogContent>
-                    {editProvider && (
-                        <>
-                            <TextField autoFocus margin="dense" name="short_name" label="Provider Short Name" type="text" fullWidth variant="outlined" value={editProvider.short_name} onChange={(e) => setEditProvider({ ...editProvider, short_name: e.target.value })} required />
-                            <TextField margin="dense" name="long_name" label="Provider Long Name" type="text" fullWidth variant="outlined" value={editProvider.long_name} onChange={(e) => setEditProvider({ ...editProvider, long_name: e.target.value })} required />
-                            <Autocomplete fullWidth options={userOptions} getOptionLabel={(option) => option.name} value={userOptions.find(option => option.id === editProvider.point_of_contact) || null} onChange={(event, newValue) => setEditProvider({ ...editProvider, point_of_contact: newValue ? newValue.id : null })} isOptionEqualToValue={(option, value) => option.id === value?.id} renderInput={(params) => (<TextField {...params} label="Point of Contact" name="point_of_contact" margin="dense" required />)}/>
-                            <TextField fullWidth select label="Can Upload" name="can_upload" value={editProvider.can_upload.toString()} onChange={(e) => setEditProvider({ ...editProvider, can_upload: e.target.value === 'true' })} margin="dense">
-                                <MenuItem value="true">Yes</MenuItem>
-                                <MenuItem value="false">No</MenuItem>
-                            </TextField>
-                        </>
-                    )}
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleEditClose}>Cancel</Button>
-                    <Button onClick={handleEditSubmit} variant="contained" disabled={isSubmitting}>
-                        {isSubmitting ? <CircularProgress size={24} /> : 'Save'}
-                    </Button>
-                </DialogActions>
-            </Dialog>
+      {/* Create Dialog */}
+      <Dialog open={openCreateDialog} onClose={handleCreateClose} fullWidth maxWidth="sm">
+        <DialogTitle>Create New Provider</DialogTitle>
+        <DialogContent>
+          <TextField autoFocus margin="dense" name="short_name" label="Provider Short Name" type="text" fullWidth variant="outlined" value={createFormData.short_name} onChange={handleInputChange} required />
+          <TextField margin="dense" name="long_name" label="Provider Long Name" type="text" fullWidth variant="outlined" value={createFormData.long_name} onChange={handleInputChange} />
+          <Autocomplete
+            fullWidth
+            options={userOptions}
+            getOptionLabel={(option) => option.name}
+            value={userOptions.find(option => option.id === createFormData.point_of_contact) || null}
+            onChange={(event, newValue) => setCreateFormData({ ...createFormData, point_of_contact: newValue ? newValue.id : null })}
+            isOptionEqualToValue={(option, value) => option.id === value?.id}
+            renderInput={(params) => (<TextField {...params} label="Point of Contact" name="point_of_contact" margin="dense" />)}
+          />
+          <TextField fullWidth select label="Can Upload" name="can_upload" value={createFormData.can_upload.toString()} onChange={handleInputChange} margin="dense">
+            <MenuItem value="true">Yes</MenuItem>
+            <MenuItem value="false">No</MenuItem>
+          </TextField>
+          {!createFormData.can_upload && (
+            <TextField margin="dense" name="reason" label="Provider Suspension Reason" type="text" fullWidth variant="outlined" value={createFormData.reason || ""} onChange={handleInputChange} required />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCreateClose}>Cancel</Button>
+          <Button onClick={handleCreateSubmit} variant="contained" disabled={isSubmitting}>
+            {isSubmitting ? <CircularProgress size={24} /> : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-            <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
-                <DialogTitle>Confirm Delete</DialogTitle>
-                <DialogContent>Are you sure you want to delete the {selected.length} selected provider(s)?</DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-                    <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={isSubmitting}>
-                        {isSubmitting ? <CircularProgress size={24} /> : 'Delete'}
-                    </Button>
-                </DialogActions>
-            </Dialog>
-        </Box>
+      {/* Edit Dialog */}
+      <Dialog open={openEditDialog} onClose={handleEditClose} fullWidth maxWidth="sm">
+        <DialogTitle>Edit Provider</DialogTitle>
+        <DialogContent>
+          {editProvider && (
+            <>
+              <TextField autoFocus margin="dense" name="short_name" label="Provider Short Name" type="text" fullWidth variant="outlined" value={editProvider.short_name} onChange={(e) => setEditProvider({ ...editProvider, short_name: e.target.value })} required />
+              <TextField margin="dense" name="long_name" label="Provider Long Name" type="text" fullWidth variant="outlined" value={editProvider.long_name} onChange={(e) => setEditProvider({ ...editProvider, long_name: e.target.value })} required />
+              <Autocomplete
+                fullWidth
+                options={userOptions}
+                getOptionLabel={(option) => option.name}
+                value={userOptions.find(option => option.id === editProvider.point_of_contact) || null}
+                onChange={(event, newValue) => setEditProvider({ ...editProvider, point_of_contact: newValue ? newValue.id : null })}
+                isOptionEqualToValue={(option, value) => option.id === value?.id}
+                renderInput={(params) => (<TextField {...params} label="Point of Contact" name="point_of_contact" margin="dense" />)}
+              />
+              <TextField fullWidth select label="Can Upload" name="can_upload" value={editProvider.can_upload.toString()} onChange={(e) => setEditProvider({ ...editProvider, can_upload: e.target.value === 'true' })} margin="dense">
+                <MenuItem value="true">Yes</MenuItem>
+                <MenuItem value="false">No</MenuItem>
+              </TextField>
+              {!editProvider.can_upload && (
+                <TextField margin="dense" name="reason" label="Provider Suspension Reason" type="text" fullWidth variant="outlined" value={editProvider.reason || ""} onChange={(e) => setEditProvider({ ...editProvider, reason: e.target.value })} required />
+              )}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleEditClose}>Cancel</Button>
+          <Button onClick={handleEditSubmit} variant="contained" disabled={isSubmitting}>
+            {isSubmitting ? <CircularProgress size={24} /> : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete the selected provider(s)?
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog}>Cancel</Button>
+          <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={isSubmitting}>
+            {isSubmitting ? <CircularProgress size={24} /> : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
     );
 }
 
