@@ -26,7 +26,7 @@ function buildQueryString(params) {
  */
 export const listFiles = (params) => {
     const queryString = buildQueryString(params);
-    return apiClient.get(`/files?${queryString}`);
+    return apiClient.get(`/files/?${queryString}`);
 };
 
 /**
