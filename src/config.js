@@ -23,7 +23,7 @@ const getEnvConfig = () => {
         case 'uat':
         default:
             return {
-                apiBaseUrl: 'http://localhost:8000/v2',
+                apiBaseUrl: 'https://upload.uat.earthdata.nasa.gov/api/v2',
                 // http://localhost:8000/v2
                 // https://upload.uat.earthdata.nasa.gov/api/v2
                 keycloakHost: 'https://idfs.uat.earthdata.nasa.gov',
@@ -40,7 +40,7 @@ export const config = {
     ...envConfig,
 
     // Static settings that are the same across all environments
-    version: "0.0.25",
+    version: "0.0.28",
     keycloakRealm: "cue",
 };
 

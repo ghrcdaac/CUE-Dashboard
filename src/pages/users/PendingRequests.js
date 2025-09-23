@@ -1,11 +1,9 @@
-// src/pages/users/PendingRequests.js
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Paper, Button, Typography, Checkbox, TablePagination, Dialog, DialogTitle,
     DialogContent, DialogActions, TextField, Box, Card, CardContent,
-    TableSortLabel, Autocomplete, CircularProgress
+    TableSortLabel, Autocomplete, CircularProgress, Container, Alert
 } from '@mui/material';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -13,6 +11,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import usePageTitle from "../../hooks/usePageTitle";
 import useAuth from '../../hooks/useAuth';
 import usePrivileges from '../../hooks/usePrivileges';
+import sessionService from '../../services/sessionService';
 import { parseApiError } from '../../utils/errorUtils';
 import { getEditableRoles } from '../../utils/permissionUtils';
 
@@ -20,7 +19,6 @@ import { listUserApplications, approveUserApplication, rejectUserApplication } f
 import { listRoles } from '../../api/roleApi';
 import { listProviders } from '../../api/providerApi';
 
-// --- IMPROVEMENT: Defined table columns here for easier maintenance ---
 const headCells = [
     { id: 'name', label: 'Name' },
     { id: 'email', label: 'Email' },
@@ -30,87 +28,87 @@ const headCells = [
 ];
 
 function PendingRequests() {
+    usePageTitle("Pending User Requests");
+
+    const { privileges, hasPrivilege } = usePrivileges();
+    const ngroupId = useMemo(() => sessionService.getSession()?.active_ngroup_id || null, []);
+
+    // State
     const [applications, setApplications] = useState([]);
     const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [selected, setSelected] = useState([]);
-    const [openAcceptDialog, setOpenAcceptDialog] = useState(false);
-    const [openRejectDialog, setOpenRejectDialog] = useState(false);
-    const [applicationToProcess, setApplicationToProcess] = useState(null);
+    
+    // Dialog state
+    const [dialog, setDialog] = useState({ open: null, data: null }); // 'accept', 'reject'
+    
+    // Client-side operation state
     const [searchTerm, setSearchTerm] = useState('');
-    const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
-    const [order, setOrder] = useState('asc');
-    const [orderBy, setOrderBy] = useState('name');
-
-    const { activeNgroupId } = useAuth();
-    // --- CHANGE: Get the full list of privileges for the current user ---
-    const { privileges, hasPrivilege } = usePrivileges();
-    usePageTitle("Pending User Requests");
+    const [pagination, setPagination] = useState({ page: 0, rowsPerPage: 10 });
+    const [sorting, setSorting] = useState({ orderBy: 'name', order: 'asc' });
 
     const fetchPageData = useCallback(async () => {
-        if (!activeNgroupId) return;
-        
+        if (!ngroupId) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
+        setError(null);
         try {
             const [rolesData, appsData, providersData] = await Promise.all([
                 listRoles(),
                 listUserApplications('pending'),
-                listProviders(activeNgroupId)
+                listProviders()
             ]);
-            setRoles(rolesData);
+            setRoles(rolesData || []);
 
-            const providerMap = new Map(providersData.map(provider => [provider.id, provider]));
-
-            const processedApps = appsData.map(app => ({
+            const providerMap = new Map((providersData || []).map(provider => [provider.id, provider]));
+            const processedApps = (appsData || []).map(app => ({
                 ...app,
                 providerName: app.provider_id ? providerMap.get(app.provider_id)?.short_name || 'N/A' : '',
             }));
             setApplications(processedApps);
         } catch (err) {
-            toast.error(parseApiError(err));
+            const apiError = parseApiError(err);
+            setError(apiError);
+            toast.error(apiError);
         } finally {
             setLoading(false);
         }
-    }, [activeNgroupId]);
+    }, [ngroupId]);
 
     useEffect(() => {
         fetchPageData();
     }, [fetchPageData]);
 
     const handleRequestSort = (property) => {
-        const isAsc = orderBy === property && order === 'asc';
-        setOrder(isAsc ? 'desc' : 'asc');
-        setOrderBy(property);
+        const isAsc = sorting.orderBy === property && sorting.order === 'asc';
+        setSorting({ order: isAsc ? 'desc' : 'asc', orderBy: property });
     };
     
-    const filteredAndSortedApps = useMemo(() => {
-        const filtered = applications.filter(app =>
-            ['name', 'email', 'username', 'providerName', 'justification'].some(field => 
-                app[field]?.toLowerCase().includes(searchTerm.toLowerCase())
-            )
-        );
+    const processedApps = useMemo(() => {
+        let filtered = [...applications];
+        if (searchTerm) {
+            const lowercasedTerm = searchTerm.toLowerCase();
+            filtered = filtered.filter(app =>
+                Object.values(app).some(val => 
+                    String(val).toLowerCase().includes(lowercasedTerm)
+                )
+            );
+        }
 
-        // --- IMPROVEMENT: Implemented full sorting logic ---
-        const comparator = (a, b) => {
-            const isAsc = order === 'asc';
-            let aValue = a[orderBy] || '';
-            let bValue = b[orderBy] || '';
-
-            if (aValue < bValue) return isAsc ? -1 : 1;
-            if (aValue > bValue) return isAsc ? 1 : -1;
-            return 0;
-        };
-        return filtered.sort(comparator);
-    }, [applications, order, orderBy, searchTerm]);
-
-    const visibleRows = useMemo(() => {
-        return filteredAndSortedApps.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-    }, [filteredAndSortedApps, page, rowsPerPage]);
+        return filtered.sort((a, b) => {
+            const isAsc = sorting.order === 'asc' ? 1 : -1;
+            const aValue = a[sorting.orderBy] || '';
+            const bValue = b[sorting.orderBy] || '';
+            return aValue.toString().localeCompare(bValue.toString()) * isAsc;
+        });
+    }, [applications, sorting, searchTerm]);
 
     const handleSelectAllClick = (event) => {
-        if (event.target.checked) setSelected(filteredAndSortedApps.map((app) => app.id));
+        if (event.target.checked) setSelected(processedApps.map((app) => app.id));
         else setSelected([]);
     };
 
@@ -122,24 +120,26 @@ function PendingRequests() {
         setSelected(newSelected);
     };
 
-    const handleAcceptClick = () => {
-        const app = applications.find(a => a.id === selected[0]);
-        setApplicationToProcess({ ...app, role: null });
-        setOpenAcceptDialog(true);
+    const handleOpenDialog = (type) => {
+        if (type === 'accept') {
+            const app = applications.find(a => a.id === selected[0]);
+            setDialog({ open: 'accept', data: { ...app, role: null } });
+        } else {
+            setDialog({ open: 'reject', data: null });
+        }
     };
-
-    const handleRejectClick = () => setOpenRejectDialog(true);
+    const handleCloseDialog = () => setDialog({ open: null, data: null });
 
     const handleConfirmApprove = async () => {
-        if (!applicationToProcess?.role?.id) {
+        if (!dialog.data?.role?.id) {
             toast.error("Please select a role for the user.");
             return;
         }
         setActionLoading(true);
         try {
-            await approveUserApplication(applicationToProcess.id, applicationToProcess.role.id);
+            await approveUserApplication(dialog.data.id, dialog.data.role.id);
             toast.success("Application approved successfully!");
-            setOpenAcceptDialog(false);
+            handleCloseDialog();
             setSelected([]);
             fetchPageData();
         } catch (error) {
@@ -154,7 +154,7 @@ function PendingRequests() {
         try {
             await Promise.all(selected.map(appId => rejectUserApplication(appId)));
             toast.success(`${selected.length} application(s) rejected successfully!`);
-            setOpenRejectDialog(false);
+            handleCloseDialog();
             setSelected([]);
             fetchPageData();
         } catch (error) {
@@ -163,11 +163,11 @@ function PendingRequests() {
             setActionLoading(false);
         }
     };
-
+    
     const isSelected = (id) => selected.indexOf(id) !== -1;
 
     return (
-        <Box>
+        <Container maxWidth={false} disableGutters>
             <ToastContainer position="top-center" />
             <Card>
                 <CardContent>
@@ -175,18 +175,21 @@ function PendingRequests() {
                         <Typography variant="h5">Pending User Applications</Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <TextField label="Search Applications" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                            <Button variant="contained" color="primary" onClick={handleAcceptClick} disabled={selected.length !== 1 || actionLoading || !hasPrivilege('application:approve')}>Accept</Button>
-                            <Button variant="contained" color="error" onClick={handleRejectClick} disabled={selected.length === 0 || actionLoading || !hasPrivilege('application:approve')}>Reject</Button>
+                            <Button variant="contained" color="primary" onClick={() => handleOpenDialog('accept')} disabled={selected.length !== 1 || actionLoading || !hasPrivilege('application:approve')}>Accept</Button>
+                            <Button variant="contained" color="error" onClick={() => handleOpenDialog('reject')} disabled={selected.length === 0 || actionLoading || !hasPrivilege('application:approve')}>Reject</Button>
                         </Box>
                     </Box>
+
+                    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
                     <TableContainer component={Paper}>
                         <Table>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < filteredAndSortedApps.length} checked={filteredAndSortedApps.length > 0 && selected.length === filteredAndSortedApps.length} onChange={handleSelectAllClick} /></TableCell>
+                                    <TableCell padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedApps.length} checked={processedApps.length > 0 && selected.length === processedApps.length} onChange={handleSelectAllClick} /></TableCell>
                                     {headCells.map((headCell) => (
-                                        <TableCell key={headCell.id}>
-                                            <TableSortLabel active={orderBy === headCell.id} direction={order} onClick={() => handleRequestSort(headCell.id)}>
+                                        <TableCell key={headCell.id} sortDirection={sorting.orderBy === headCell.id ? sorting.order : false}>
+                                            <TableSortLabel active={sorting.orderBy === headCell.id} direction={sorting.orderBy === headCell.id ? sorting.order : 'asc'} onClick={() => handleRequestSort(headCell.id)}>
                                                 {headCell.label}
                                             </TableSortLabel>
                                         </TableCell>
@@ -195,67 +198,78 @@ function PendingRequests() {
                             </TableHead>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow><TableCell colSpan={headCells.length + 1} align="center"><CircularProgress /></TableCell></TableRow>
-                                ) : visibleRows.map(app => {
-                                    const isItemSelected = isSelected(app.id);
-                                    return (
-                                        <TableRow key={app.id} hover onClick={() => handleClick(app.id)} selected={isItemSelected} role="checkbox" tabIndex={-1} sx={{ cursor: 'pointer' }}>
-                                            <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
-                                            <TableCell>{app.name}</TableCell>
-                                            <TableCell>{app.email}</TableCell>
-                                            <TableCell>{app.username}</TableCell>
-                                            <TableCell>{app.justification}</TableCell>
-                                            <TableCell>{app.providerName || 'N/A'}</TableCell>
-                                        </TableRow>
-                                    );
-                                })}
+                                    <TableRow><TableCell colSpan={headCells.length + 1} align="center" sx={{ py: 5 }}><CircularProgress /></TableCell></TableRow>
+                                ) : processedApps.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={headCells.length + 1} align="center">
+                                            <Typography sx={{ py: 5 }} color="text.secondary">
+                                                {searchTerm ? "No requests match your search." : "No pending requests found."}
+                                            </Typography>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    processedApps
+                                        .slice(pagination.page * pagination.rowsPerPage, pagination.page * pagination.rowsPerPage + pagination.rowsPerPage)
+                                        .map(app => {
+                                            const isItemSelected = isSelected(app.id);
+                                            return (
+                                                <TableRow key={app.id} hover onClick={() => handleClick(app.id)} selected={isItemSelected} role="checkbox" tabIndex={-1} sx={{ cursor: 'pointer' }}>
+                                                    <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
+                                                    <TableCell>{app.name}</TableCell>
+                                                    <TableCell>{app.email}</TableCell>
+                                                    <TableCell>{app.username}</TableCell>
+                                                    <TableCell>{app.justification}</TableCell>
+                                                    <TableCell>{app.providerName || 'N/A'}</TableCell>
+                                                </TableRow>
+                                            );
+                                        })
+                                )}
                             </TableBody>
                         </Table>
                     </TableContainer>
                     <TablePagination
                         rowsPerPageOptions={[10, 25, 50]}
                         component="div"
-                        count={filteredAndSortedApps.length}
-                        rowsPerPage={rowsPerPage}
-                        page={page}
-                        onPageChange={(e, newPage) => setPage(newPage)}
-                        onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                        count={processedApps.length}
+                        rowsPerPage={pagination.rowsPerPage}
+                        page={pagination.page}
+                        onPageChange={(e, newPage) => setPagination(prev => ({ ...prev, page: newPage }))}
+                        onRowsPerPageChange={(e) => setPagination({ ...pagination, rowsPerPage: parseInt(e.target.value, 10), page: 0 })}
                     />
                 </CardContent>
             </Card>
 
-            <Dialog open={openAcceptDialog} onClose={() => setOpenAcceptDialog(false)} fullWidth maxWidth="xs">
+            <Dialog open={dialog.open === 'accept'} onClose={handleCloseDialog} fullWidth maxWidth="xs">
                 <DialogTitle>Accept User Application</DialogTitle>
                 <DialogContent>
                     <Typography gutterBottom>Please assign a role to approve this user.</Typography>
                     <Autocomplete
-                        // --- CHANGE: Pass the current user's PRIVILEGES, not their roles ---
                         options={getEditableRoles(roles, privileges)}
                         getOptionLabel={(option) => option.long_name}
-                        onChange={(e, newValue) => setApplicationToProcess(prev => ({ ...prev, role: newValue }))}
+                        onChange={(e, newValue) => setDialog(prev => ({ ...prev, data: { ...prev.data, role: newValue } }))}
                         renderInput={(params) => <TextField {...params} label="Role" margin="dense" fullWidth />}
                         isOptionEqualToValue={(option, value) => option.id === value.id}
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setOpenAcceptDialog(false)}>Cancel</Button>
+                    <Button onClick={handleCloseDialog}>Cancel</Button>
                     <Button onClick={handleConfirmApprove} variant="contained" disabled={actionLoading}>
                         {actionLoading ? <CircularProgress size={24} /> : "Approve"}
                     </Button>
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={openRejectDialog} onClose={() => setOpenRejectDialog(false)}>
+            <Dialog open={dialog.open === 'reject'} onClose={handleCloseDialog}>
                 <DialogTitle>Confirm Reject</DialogTitle>
-                <DialogContent>Are you sure you want to reject the selected application(s)?</DialogContent>
+                <DialogContent>Are you sure you want to reject the {selected.length} selected application(s)?</DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setOpenRejectDialog(false)}>Cancel</Button>
-                    <Button onClick={handleConfirmReject} color="error" disabled={actionLoading}>
+                    <Button onClick={handleCloseDialog}>Cancel</Button>
+                    <Button onClick={handleConfirmReject} color="error" variant="contained" disabled={actionLoading}>
                         {actionLoading ? <CircularProgress size={24} /> : "Reject"}
                     </Button>
                 </DialogActions>
             </Dialog>
-        </Box>
+        </Container>
     );
 }
 

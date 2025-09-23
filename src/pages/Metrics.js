@@ -35,9 +35,6 @@ import usePageTitle from '../hooks/usePageTitle';
 import sessionService from '../services/sessionService';
 import MetricsFilter from './metrics/MetricsFilter';
 
-import { generateMetricsReport } from "./reports/PdfReport";
-import ExportDropdown from './reports/ExportMenu';
-
 // API Imports
 import * as fileMetricsApi from '../api/fileMetricsApi';
 import { parseApiError } from '../utils/errorUtils';
@@ -63,12 +60,13 @@ const formatBytes = (bytes, decimals = 2) => {
 };
 
 const statusColors = {
-  infected: '#ffcdd2',
-  clean: '#c8e6c9',
-  distributed: '#c8e6c9',
-  scan_failed: '#ffecb3',
-  unscanned: '#fff9c4',
-  default: '#f5f5f5',
+  uploading: '#bbdefb', // light blue
+  unscanned: '#fff9c4', // light yellow
+  clean: '#c8e6c9', // light green
+  distributed: '#c8e6c9', // light green
+  infected: '#ffcdd2', // light red
+  scan_failed: '#ffecb3', // light orange/amber
+  default: '#f5f5f5', // default grey
 };
 const getStatusColor = (status) =>
   statusColors[status?.toLowerCase()] || statusColors.default;
@@ -106,16 +104,14 @@ function Metrics() {
 
   const fetchMetrics = useCallback(
     async (filtersToUse) => {
-      if (!ngroupId || !accessToken) {
-        setErrorMetrics('Cannot fetch metrics. Missing user or group ID.');
+      if (!ngroupId) {
+        setLoadingMetrics(false);
+        setErrorMetrics('Cannot fetch metrics. No NGROUP ID found.');
         return;
       }
       setLoadingMetrics(true);
       setErrorMetrics(null);
-      const params = { ngroup_id: ngroupId, ...filtersToUse };
-      Object.keys(params).forEach((key) => {
-        if (params[key] === null || params[key] === '') delete params[key];
-      });
+      const params = { ...filtersToUse }; // ngroupId is sent via header
 
       try {
         const summaryData = await fileMetricsApi.getMetricsSummary(params);
@@ -134,7 +130,7 @@ function Metrics() {
         setLoadingMetrics(false);
       }
     },
-    [accessToken, ngroupId],
+    [ngroupId],
   );
 
   useEffect(() => {
@@ -155,13 +151,13 @@ function Metrics() {
     fetchMetrics(defaultFilters);
   };
 
-  const volumeTooltipFormatter = (value) => [`${value.toFixed(2)} GB`, 'Volume'];
+  const volumeTooltipFormatter = (value) => [`${value.toFixed(4)} GB`, 'Volume'];
   const countTooltipFormatter = (value) => [value.toLocaleString(), 'Files'];
-
 
   return (
     <Container maxWidth={false} disableGutters>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <ToastContainer position="top-center" autoClose={3000} />
         <MetricsFilter
           onApplyFilters={handleApplyFilters}
           onClearFilters={handleClearFilters}
@@ -172,7 +168,6 @@ function Metrics() {
           Metrics Overview
         </Typography>
 
-        {/* UPDATED: Restored the Skeleton components to fix the syntax error */}
         {loadingMetrics && (
           <Box>
             <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
@@ -191,7 +186,6 @@ function Metrics() {
             {errorMetrics}
           </Alert>
         )}
-
 
         {!loadingMetrics && !errorMetrics && (
           <Box>
@@ -219,7 +213,7 @@ function Metrics() {
                     {statusCountsData && statusCountsData.length > 0 ? (
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', minHeight: 50 }}>
                         {statusCountsData.map((item) => (
-                          <Chip key={item.status} label={`${item.status}: ${item.count.toLocaleString()}`} sx={{ backgroundColor: getStatusColor(item.status), fontWeight: 500, fontSize: '1.5rem', padding: '6px 0' }}/>
+                          <Chip key={item.status} label={`${item.status}: ${item.count.toLocaleString()}`} sx={{ backgroundColor: getStatusColor(item.status), fontWeight: 500, fontSize: '1rem', padding: '6px 0' }}/>
                         ))}
                       </Box>
                     ) : ( <Typography variant="body2" color="text.secondary">No status data.</Typography> )}
@@ -260,7 +254,6 @@ function Metrics() {
             </Grid>
           </Box>
         )}
-        <ToastContainer position="top-center" autoClose={3000} hideProgressBar />
       </LocalizationProvider>
     </Container>
   );

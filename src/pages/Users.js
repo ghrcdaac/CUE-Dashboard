@@ -1,11 +1,9 @@
-// src/pages/Users.js
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Paper, Button, Typography, Checkbox, TablePagination, Dialog, DialogTitle,
     DialogContent, DialogActions, TextField, Box, Card, CardContent,
-    TableSortLabel, CircularProgress, Autocomplete
+    TableSortLabel, CircularProgress, Autocomplete, Container, Alert
 } from '@mui/material';
 import { useOutletContext, Outlet, useLocation } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
@@ -13,139 +11,182 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import PersonIcon from '@mui/icons-material/Person';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
-import CancelIcon from '@mui/icons-material/Cancel';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-// --- CHANGE: Removed unused icons ---
 
 import usePageTitle from "../hooks/usePageTitle";
 import useAuth from '../hooks/useAuth';
 import usePrivileges from '../hooks/usePrivileges';
 import { parseApiError } from '../utils/errorUtils';
 import { getEditableRoles } from '../utils/permissionUtils'; 
+import sessionService from '../services/sessionService';
 
 import { listCueusers, assignUserRole, deleteCueuser } from '../api/cueUser';
 import { listProviders } from '../api/providerApi';
 import { listRoles } from '../api/roleApi';
 
-// --- CHANGE: Updated canModifyUser logic for admin permissions ---
 const canModifyUser = (currentUser, targetUser) => {
     if (!currentUser || !targetUser?.role) return false;
-    
     const currentUserIsAdmin = currentUser.roles.includes('admin');
     const targetUserIsAdmin = targetUser.roles.includes('admin');
-   // const targetUserIsManager = targetUser.roles.includes('daac_manager');
-    
-    // An admin can manage ANY user, including other admins.
-    if (currentUserIsAdmin) {
-        return true;
-    }
-    
-    // A non-admin cannot manage admins.
-    if (targetUserIsAdmin) {
-        return false;
-    }
-    
+    if (currentUserIsAdmin) return true;
+    if (targetUserIsAdmin) return false;
     return true;
 };
 
+const headCells = [
+    { id: 'name', label: 'Name' },
+    { id: 'email', label: 'Email' },
+    { id: 'username', label: 'Username' },
+    { id: 'role', label: 'Role' },
+    { id: 'providerName', label: 'Provider' },
+];
 
 function Users() {
-    const [users, setUsers] = useState([]);
-    const [roles, setRoles] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [selected, setSelected] = useState([]);
-    const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [order, setOrder] = useState('asc');
-    const [orderBy, setOrderBy] = useState('name');
-    const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-    const [editUser, setEditUser] = useState(null);
-    const [openEditDialog, setOpenEditDialog] = useState(false);
+    usePageTitle("Users");
 
-    const { user: currentUser, activeNgroupId } = useAuth();
+    const { user: currentUser } = useAuth();
     const { privileges, hasPrivilege } = usePrivileges();
     const { setMenuItems } = useOutletContext();
     const location = useLocation();
-    usePageTitle("Users");
+    const ngroupId = useMemo(() => sessionService.getSession()?.active_ngroup_id || null, []);
 
+    const [users, setUsers] = useState([]);
+    const [roles, setRoles] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [selected, setSelected] = useState([]);
+    const [pagination, setPagination] = useState({ page: 0, rowsPerPage: 10 });
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sorting, setSorting] = useState({ orderBy: 'name', order: 'asc' });
+    const [dialog, setDialog] = useState({ open: null, data: null });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
     useEffect(() => {
         const usersMenuItems = [
             { text: 'Users', path: '/users', icon: <PersonIcon /> },
             { text: 'Pending Requests', path: '/users/pending-requests', icon: <PendingActionsIcon /> },
-            { text: 'Rejected Requests', path: '/users/rejected-requests', icon: <CancelIcon /> },
         ];
         setMenuItems(usersMenuItems);
         return () => setMenuItems([]);
     }, [setMenuItems]);
 
     const fetchPageData = useCallback(async () => {
-        if (!activeNgroupId) return;
+        if (!ngroupId) { setLoading(false); return; }
         setLoading(true);
+        setError(null);
         try {
             const [rolesData, usersData, providersData] = await Promise.all([
                 listRoles(),
                 listCueusers(),
-                listProviders(activeNgroupId)
+                listProviders()
             ]);
-            setRoles(rolesData);
-            const roleMap = new Map(rolesData.map(role => [role.short_name, role]));
-            const providerMap = new Map(providersData.map(provider => [provider.id, provider]));
-            const processedUsers = usersData.map(user => {
+            setRoles(rolesData || []);
+            const roleMap = new Map((rolesData || []).map(role => [role.short_name, role]));
+            const providerMap = new Map((providersData || []).map(provider => [provider.id, provider.short_name]));
+            
+            const processedUsers = (usersData || []).map(user => {
                 const roleName = user.roles && user.roles.length > 0 ? user.roles[0] : null;
                 return {
                     ...user,
                     role: roleName ? roleMap.get(roleName) : null,
-                    providerName: user.provider_id ? providerMap.get(user.provider_id)?.short_name || 'N/A' : '',
+                    providerName: user.provider_id ? providerMap.get(user.provider_id) || 'N/A' : '',
                 };
             });
             setUsers(processedUsers);
         } catch (err){
-            toast.error(parseApiError(err));
+            const apiError = parseApiError(err);
+            setError(apiError);
+            toast.error(apiError);
         } finally {
             setLoading(false);
         }
-    }, [activeNgroupId]);
+    }, [ngroupId]);
 
     useEffect(() => {
         fetchPageData();
     }, [fetchPageData]);
     
-    const filteredAndSortedUsers = useMemo(() => {
-        const filtered = users.filter(user =>
-            ['name', 'email', 'cueusername', 'providerName'].some(field =>
-                user[field]?.toLowerCase().includes(searchTerm.toLowerCase())
-            ) || user.role?.long_name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-        const comparator = (a, b) => {
-            const isAsc = order === 'asc';
-            let aValue = a[orderBy] || '';
-            let bValue = b[orderBy] || '';
-            if (orderBy === 'role') {
+    const processedUsers = useMemo(() => {
+        let filtered = [...users];
+        if (searchTerm) {
+            const lowercasedTerm = searchTerm.toLowerCase();
+            filtered = users.filter(user =>
+                user.name?.toLowerCase().includes(lowercasedTerm) ||
+                user.email?.toLowerCase().includes(lowercasedTerm) ||
+                user.username?.toLowerCase().includes(lowercasedTerm) ||
+                user.providerName?.toLowerCase().includes(lowercasedTerm) ||
+                user.role?.long_name.toLowerCase().includes(lowercasedTerm)
+            );
+        }
+
+        return filtered.sort((a, b) => {
+            const isAsc = sorting.order === 'asc' ? 1 : -1;
+            let aValue = a[sorting.orderBy];
+            let bValue = b[sorting.orderBy];
+            if (sorting.orderBy === 'role') {
                 aValue = a.role?.long_name || '';
                 bValue = b.role?.long_name || '';
             }
-            if (aValue < bValue) return isAsc ? -1 : 1;
-            if (aValue > bValue) return isAsc ? 1 : -1;
-            return 0;
-        };
-        return filtered.sort(comparator);
-    }, [users, order, orderBy, searchTerm]);
+            if (aValue === null || aValue === undefined) return 1 * isAsc;
+            if (bValue === null || bValue === undefined) return -1 * isAsc;
+            return aValue.toString().localeCompare(bValue.toString()) * isAsc;
+        });
+    }, [users, sorting, searchTerm]);
 
-    const visibleRows = useMemo(() => {
-        return filteredAndSortedUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-    }, [filteredAndSortedUsers, page, rowsPerPage]);
+    const handleOpenDialog = (type) => {
+        if (type === 'edit') {
+            const userToEdit = users.find(user => user.id === selected[0]);
+            setDialog({ open: 'edit', data: { ...userToEdit }});
+        } else {
+            setDialog({ open: 'delete', data: null });
+        }
+    };
 
+    const handleCloseDialog = () => setDialog({ open: null, data: null });
+
+    const handleUpdateUser = async () => {
+        if (!dialog.data || !dialog.data.role) {
+            toast.error("A role must be selected.");
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await assignUserRole(dialog.data.id, dialog.data.role.id);
+            toast.success("User role updated successfully!");
+            handleCloseDialog();
+            fetchPageData();
+            setSelected([]);
+        } catch (error) {
+            toast.error(parseApiError(error));
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleConfirmDelete = async () => {
+        setIsSubmitting(true);
+        try {
+            await Promise.all(selected.map(userId => deleteCueuser(userId)));
+            toast.success("User(s) deleted successfully!");
+            setSelected([]);
+            handleCloseDialog();
+            fetchPageData();
+        } catch (error) {
+            toast.error(parseApiError(error));
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
     const handleRequestSort = (property) => {
-        const isAsc = orderBy === property && order === 'asc';
-        setOrder(isAsc ? 'desc' : 'asc');
-        setOrderBy(property);
+        const isAsc = sorting.orderBy === property && sorting.order === 'asc';
+        setSorting({ order: isAsc ? 'desc' : 'asc', orderBy: property });
     };
 
     const handleSelectAllClick = (event) => {
         if (event.target.checked) {
-            const newSelected = filteredAndSortedUsers
+            const newSelected = processedUsers
                 .filter(user => canModifyUser(currentUser, user))
                 .map((user) => user.id);
             setSelected(newSelected);
@@ -153,157 +194,143 @@ function Users() {
         }
         setSelected([]);
     };
-
-    const handleClick = (event, id) => {
+    
+    // UPDATED: Restored the handleClick function to fix the parsing error
+    const handleClick = (id) => {
         const selectedIndex = selected.indexOf(id);
         let newSelected = [];
-        if (selectedIndex === -1) newSelected = [...selected, id];
-        else newSelected = selected.filter(selId => selId !== id);
+        if (selectedIndex === -1) {
+            newSelected = newSelected.concat(selected, id);
+        } else if (selectedIndex === 0) {
+            newSelected = newSelected.concat(selected.slice(1));
+        } else if (selectedIndex === selected.length - 1) {
+            newSelected = newSelected.concat(selected.slice(0, -1));
+        } else if (selectedIndex > 0) {
+            newSelected = newSelected.concat(
+                selected.slice(0, selectedIndex),
+                selected.slice(selectedIndex + 1),
+            );
+        }
         setSelected(newSelected);
     };
 
-    const handleEditClick = () => {
-        if (selected.length !== 1) return;
-        const userToEdit = users.find(user => user.id === selected[0]);
-        setEditUser(userToEdit);
-        setOpenEditDialog(true);
-    };
-
-    const handleDeleteClick = () => {
-        if (selected.length === 0) return;
-        setOpenDeleteDialog(true);
-    };
-
-    const handleUpdateUser = async () => {
-        if (!editUser || !editUser.role) {
-            toast.error("A role must be selected.");
-            return;
-        }
-        const originalUser = users.find(u => u.id === editUser.id);
-        if (originalUser && originalUser.role?.id === editUser.role.id) {
-            toast.info("No changes were made.");
-            setOpenEditDialog(false);
-            return;
-        }
-        try {
-            await assignUserRole(editUser.id, editUser.role.id);
-            toast.success("User role updated successfully!");
-            setOpenEditDialog(false);
-            fetchPageData();
-            setSelected([]);
-        } catch (error) {
-            toast.error(parseApiError(error));
-        }
-    };
-
-    const handleConfirmDelete = async () => {
-        try {
-            await Promise.all(selected.map(userId => deleteCueuser(userId)));
-            toast.success("User(s) deleted successfully!");
-            setSelected([]);
-            setOpenDeleteDialog(false);
-            fetchPageData();
-        } catch (error) {
-            toast.error(parseApiError(error));
-        }
-    };
-    
-    const isSelected = (id) => selected.indexOf(id) !== -1;
-    
-    if (location.pathname !== '/users' && location.pathname !== '/users/') {
+    if (location.pathname !== '/users') {
         return <Outlet key={location.pathname} />;
     }
 
-    return (
-        <Box sx={{ flexGrow: 1, p: 3 }}>
-            {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><CircularProgress /></Box>
-            ) : (
-                <Card>
-                    <CardContent>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="h5">Users</Typography>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <TextField label="Search Users" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                                <Button variant="contained" onClick={handleEditClick} disabled={selected.length !== 1 || !hasPrivilege('user:assign_role')} startIcon={<EditIcon />}>Modify Role</Button>
-                                {/* --- CHANGE: Removed the Suspend/Reactivate buttons --- */}
-                                <Button variant="contained" color="error" onClick={handleDeleteClick} disabled={selected.length === 0 || !hasPrivilege('user:delete')} startIcon={<DeleteIcon />}>Delete</Button>
-                            </Box>
-                        </Box>
-                        <TableContainer component={Paper}>
-                            <Table stickyHeader>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < filteredAndSortedUsers.length} checked={filteredAndSortedUsers.length > 0 && selected.length === filteredAndSortedUsers.length} onChange={handleSelectAllClick} /></TableCell>
-                                        <TableCell><TableSortLabel active={orderBy === 'name'} direction={order} onClick={() => handleRequestSort('name')}>Name</TableSortLabel></TableCell>
-                                        <TableCell><TableSortLabel active={orderBy === 'email'} direction={order} onClick={() => handleRequestSort('email')}>Email</TableSortLabel></TableCell>
-                                        <TableCell><TableSortLabel active={orderBy === 'cueusername'} direction={order} onClick={() => handleRequestSort('cueusername')}>Username</TableSortLabel></TableCell>
-                                        <TableCell><TableSortLabel active={orderBy === 'role'} direction={order} onClick={() => handleRequestSort('role')}>Role</TableSortLabel></TableCell>
-                                        <TableCell><TableSortLabel active={orderBy === 'providerName'} direction={order} onClick={() => handleRequestSort('providerName')}>Provider</TableSortLabel></TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {visibleRows.map((user) => {
-                                        const isItemSelected = isSelected(user.id);
-                                        const isManageable = canModifyUser(currentUser, user);
-                                        return (
-                                            <TableRow key={user.id} hover onClick={(event) => isManageable && handleClick(event, user.id)} role="checkbox" tabIndex={-1} selected={isItemSelected} sx={{ cursor: isManageable ? 'pointer' : 'default' }}>
-                                                <TableCell padding="checkbox">
-                                                    <Checkbox checked={isItemSelected} disabled={!isManageable} />
-                                                </TableCell>
-                                                <TableCell>{user.name}</TableCell>
-                                                <TableCell>{user.email}</TableCell>
-                                                <TableCell>{user.cueusername}</TableCell>
-                                                <TableCell>{user.role?.long_name || "N/A"}</TableCell>
-                                                <TableCell>{user.providerName}</TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                        <TablePagination
-                            rowsPerPageOptions={[10, 25, 50]}
-                            component="div"
-                            count={filteredAndSortedUsers.length}
-                            rowsPerPage={rowsPerPage}
-                            page={page}
-                            onPageChange={(e, newPage) => setPage(newPage)}
-                            onRowsPerPageChange={(e) => {setRowsPerPage(parseInt(e.target.value, 10)); setPage(0);}}
-                        />
-                    </CardContent>
-                </Card>
-            )}
+    let tableBodyContent;
+    if (loading) {
+        tableBodyContent = (
+            <TableRow>
+                <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
+                    <CircularProgress />
+                </TableCell>
+            </TableRow>
+        );
+    } else if (processedUsers.length === 0) {
+        tableBodyContent = (
+            <TableRow>
+                <TableCell colSpan={6} align="center">
+                    <Typography sx={{ py: 5 }} color="text.secondary">
+                        {searchTerm ? "No users match your search." : "No users found."}
+                    </Typography>
+                </TableCell>
+            </TableRow>
+        );
+    } else {
+        tableBodyContent = processedUsers
+            .slice(pagination.page * pagination.rowsPerPage, pagination.page * pagination.rowsPerPage + pagination.rowsPerPage)
+            .map((user) => {
+                const isItemSelected = selected.indexOf(user.id) !== -1;
+                const isManageable = canModifyUser(currentUser, user);
+                return (
+                    <TableRow key={user.id} hover onClick={() => isManageable && handleClick(user.id)} role="checkbox" tabIndex={-1} selected={isItemSelected} sx={{ cursor: isManageable ? 'pointer' : 'default' }}>
+                        <TableCell padding="checkbox"><Checkbox checked={isItemSelected} disabled={!isManageable} /></TableCell>
+                        <TableCell>{user.name}</TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>{user.username}</TableCell>
+                        <TableCell>{user.role?.long_name || "N/A"}</TableCell>
+                        <TableCell>{user.providerName}</TableCell>
+                    </TableRow>
+                );
+            });
+    }
 
-            {/* Dialogs */}
-            <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} fullWidth maxWidth="xs">
+    return (
+        <Container maxWidth={false} disableGutters>
+            <ToastContainer position="top-center" />
+            <Card>
+                <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="h5">Users</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <TextField label="Search Users" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                            <Button variant="contained" onClick={() => handleOpenDialog('edit')} disabled={selected.length !== 1 || !hasPrivilege('user:assign_role')} startIcon={<EditIcon />}>Modify Role</Button>
+                            <Button variant="contained" color="error" onClick={() => handleOpenDialog('delete')} disabled={selected.length === 0 || !hasPrivilege('user:delete')} startIcon={<DeleteIcon />}>Delete</Button>
+                        </Box>
+                    </Box>
+
+                    {error && <Alert severity="error" sx={{ my: 2 }}>{error}</Alert>}
+
+                    <TableContainer component={Paper}>
+                        <Table stickyHeader>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedUsers.length} checked={processedUsers.length > 0 && selected.length === processedUsers.length} onChange={handleSelectAllClick} /></TableCell>
+                                    {headCells.map((headCell) => (
+                                        <TableCell key={headCell.id} sortDirection={sorting.orderBy === headCell.id ? sorting.order : false}>
+                                            <TableSortLabel active={sorting.orderBy === headCell.id} direction={sorting.orderBy === headCell.id ? sorting.order : 'asc'} onClick={() => handleRequestSort(headCell.id)}>
+                                                {headCell.label}
+                                            </TableSortLabel>
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {tableBodyContent}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                    <TablePagination
+                        rowsPerPageOptions={[10, 25, 50]}
+                        component="div"
+                        count={processedUsers.length}
+                        rowsPerPage={pagination.rowsPerPage}
+                        page={pagination.page}
+                        onPageChange={(e, newPage) => setPagination(prev => ({ ...prev, page: newPage }))}
+                        onRowsPerPageChange={(e) => setPagination({ rowsPerPage: parseInt(e.target.value, 10), page: 0 })}
+                    />
+                </CardContent>
+            </Card>
+
+            <Dialog open={dialog.open === 'edit'} onClose={handleCloseDialog} fullWidth maxWidth="xs">
                 <DialogTitle>Modify User Role</DialogTitle>
                 <DialogContent>
-                    <TextField margin="dense" label="Name" fullWidth value={editUser?.name || ''} InputProps={{ readOnly: true }} />
+                    <TextField margin="dense" label="Name" fullWidth value={dialog.data?.name || ''} InputProps={{ readOnly: true }} />
                     <Autocomplete
                         options={getEditableRoles(roles, privileges)}
                         getOptionLabel={(option) => option.long_name}
-                        value={editUser?.role || null}
-                        onChange={(event, newValue) => setEditUser({ ...editUser, role: newValue })}
+                        value={dialog.data?.role || null}
+                        onChange={(event, newValue) => setDialog(prev => ({...prev, data: {...prev.data, role: newValue}}))}
                         renderInput={(params) => <TextField {...params} label="Role" margin="dense" fullWidth />}
                         isOptionEqualToValue={(option, value) => option.id === value.id}
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setOpenEditDialog(false)}>Cancel</Button>
-                    <Button onClick={handleUpdateUser}>Save</Button>
+                    <Button onClick={handleCloseDialog}>Cancel</Button>
+                    <Button onClick={handleUpdateUser} variant="contained" disabled={isSubmitting}>{isSubmitting ? <CircularProgress size={24} /> : "Save"}</Button>
                 </DialogActions>
             </Dialog>
-            <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+            
+            <Dialog open={dialog.open === 'delete'} onClose={handleCloseDialog}>
                 <DialogTitle>Confirm Delete</DialogTitle>
                 <DialogContent>Are you sure you want to delete the {selected.length} selected user(s)?</DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-                    <Button onClick={handleConfirmDelete} color="error">Delete</Button>
+                    <Button onClick={handleCloseDialog}>Cancel</Button>
+                    <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={isSubmitting}>{isSubmitting ? <CircularProgress size={24} /> : "Delete"}</Button>
                 </DialogActions>
             </Dialog>
-            <ToastContainer position="top-center" />
-        </Box>
+        </Container>
     );
 }
 
