@@ -4,7 +4,7 @@ import {
     TableContainer, TableHead, TableRow, Paper, Typography, Checkbox,
     TablePagination, Dialog, DialogTitle, DialogContent, DialogActions,
     TextField, TableSortLabel, CircularProgress, MenuItem, Container, Alert,
-    Autocomplete // UPDATED: Added missing import
+    Autocomplete
 } from "@mui/material";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -14,8 +14,6 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AccountBoxIcon from '@mui/icons-material/AccountBox';
-import DoneIcon from '@mui/icons-material/Done';
-import CloseIcon from '@mui/icons-material/Close';
 
 import usePageTitle from '../hooks/usePageTitle';
 import usePrivileges from '../hooks/usePrivileges';
@@ -141,7 +139,9 @@ function Providers() {
         setIsSubmitting(true);
         try {
             if (dialog.open === 'create') {
-                await providerApi.createProvider(data);
+                // UPDATED: Add the ngroupId to the payload for creation
+                const payload = { ...data, ngroup_id: ngroupId };
+                await providerApi.createProvider(payload);
                 toast.success("Provider created successfully!");
             } else if (dialog.open === 'edit') {
                 const { id, ...updateData } = data;
