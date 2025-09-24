@@ -34,6 +34,8 @@ import useAuth from '../hooks/useAuth';
 import usePageTitle from '../hooks/usePageTitle';
 import sessionService from '../services/sessionService';
 import MetricsFilter from './metrics/MetricsFilter';
+import ExportMenu from './reports/ExportMenu';
+import { generatePDFReport } from './reports/PdfReport';
 
 // API Imports
 import * as fileMetricsApi from '../api/fileMetricsApi';
@@ -73,7 +75,7 @@ const getStatusColor = (status) =>
 
 function Metrics() {
   usePageTitle('Metrics Overview');
-  const { accessToken } = useAuth();
+  const { user: currentUser } = useAuth();
   const ngroupId = useMemo(
     () => sessionService.getSession()?.active_ngroup_id || null,
     [],
@@ -111,10 +113,9 @@ function Metrics() {
       }
       setLoadingMetrics(true);
       setErrorMetrics(null);
-      const params = { ...filtersToUse }; // ngroupId is sent via header
-
+      
       try {
-        const summaryData = await fileMetricsApi.getMetricsSummary(params);
+        const summaryData = await fileMetricsApi.getMetricsSummary(filtersToUse);
         if (summaryData) {
           setDailyVolumeData(summaryData.daily_volume || []);
           setDailyCountData(summaryData.daily_count || []);
@@ -151,6 +152,27 @@ function Metrics() {
     fetchMetrics(defaultFilters);
   };
 
+  const handleExport = (format) => {
+    if (format !== 'pdf') return;
+    const reportData = {
+        summary: {
+            totalVolume: overallVolumeData ? formatBytes(overallVolumeData.total_volume_gb) : 'N/A',
+            totalCount: overallCountData ? overallCountData.total_count.toLocaleString() : 'N/A',
+            statusCounts: statusCountsData,
+        },
+        dailyVolume: dailyVolumeData,
+        dailyCount: dailyCountData,
+    };
+    const reportFilters = {
+        name: currentUser?.name || 'N/A',
+        start: activeFilters.start_date,
+        end: activeFilters.end_date,
+    };
+    // Assuming a report generator for this specific data structure exists
+    // generateMetricsReport(reportData, reportFilters);
+    toast.info("PDF export for this view is not yet implemented.");
+  };
+
   const volumeTooltipFormatter = (value) => [`${value.toFixed(4)} GB`, 'Volume'];
   const countTooltipFormatter = (value) => [value.toLocaleString(), 'Files'];
 
@@ -163,10 +185,11 @@ function Metrics() {
           onClearFilters={handleClearFilters}
           isDataLoading={loadingMetrics}
         />
-
-        <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
-          Metrics Overview
-        </Typography>
+        
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h5">Metrics Overview</Typography>
+            <ExportMenu onExport={handleExport} />
+        </Box>
 
         {loadingMetrics && (
           <Box>
@@ -182,9 +205,7 @@ function Metrics() {
           </Box>
         )}
         {errorMetrics && !loadingMetrics && (
-          <Alert severity="warning" sx={{ my: 2 }}>
-            {errorMetrics}
-          </Alert>
+          <Alert severity="warning" sx={{ my: 2 }}>{errorMetrics}</Alert>
         )}
 
         {!loadingMetrics && !errorMetrics && (

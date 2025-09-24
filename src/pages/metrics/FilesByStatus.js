@@ -14,7 +14,6 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
 // Hooks, Components & Utils
 import usePageTitle from "../../hooks/usePageTitle";
-import useAuth from '../../hooks/useAuth';
 import sessionService from '../../services/sessionService';
 import { parseApiError } from '../../utils/errorUtils';
 import MetricsFilter from './MetricsFilter';
@@ -44,7 +43,11 @@ const formatBytes = (bytes) => {
 
 const formatDisplayDate = (dateString) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleString();
+    // Fix for non-standard ISO timestamps that may be missing the decimal separator
+    const standardDateString = dateString.replace(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\d+)(Z)/, '$1.$2$3');
+    const date = new Date(standardDateString);
+    if (isNaN(date)) return 'Invalid Date';
+    return date.toLocaleString();
 };
 
 const baseHeadCells = [
@@ -59,13 +62,9 @@ const ScanResultsDisplay = ({ results }) => {
         return <Typography variant="body2" color="text.secondary">Scan result data not available.</Typography>;
     }
     
-    let resultsArray = [];
-    if (Array.isArray(results)) {
-        resultsArray = results;
-    } else if (typeof results === 'object' && results.scanResults) {
-        resultsArray = results.scanResults;
-    } else if (typeof results === 'object') {
-        resultsArray = [results];
+    let resultsArray = Array.isArray(results) ? results : [results];
+    if (resultsArray.length > 0 && resultsArray[0].scanResults) {
+        resultsArray = resultsArray[0].scanResults;
     }
 
     if (resultsArray.length === 0) {
@@ -82,7 +81,7 @@ const ScanResultsDisplay = ({ results }) => {
                         <Typography variant="body2" component="div"><strong>Viruses:</strong> {scan.virusName.join(', ')}</Typography>
                     )}
                     {scan.message && scan.message.length > 0 && (
-                         <Typography variant="body2" component="div"><strong>Message:</strong> {scan.message.join(', ')}</Typography>
+                         <Typography variant="body2" component="div"><strong>File ID:</strong> {scan.message.join(', ')}</Typography>
                     )}
                     <Typography variant="body2" component="div"><strong>Scanned:</strong> {formatDisplayDate(scan.dateScanned)}</Typography>
                 </Box>
@@ -90,7 +89,6 @@ const ScanResultsDisplay = ({ results }) => {
         </Box>
     );
 };
-
 
 function FilesByStatus() {
     usePageTitle("Files by Status");
@@ -128,12 +126,7 @@ function FilesByStatus() {
         setError(null);
 
         try {
-            const initialParams = {
-                ...activeFilters,
-                status: selectedStatusTab,
-                page: 1,
-                page_size: API_MAX_PAGE_SIZE,
-            };
+            const initialParams = { ...activeFilters, status: selectedStatusTab, page: 1, page_size: API_MAX_PAGE_SIZE };
             const initialResponse = await listFiles(initialParams);
             let allItems = initialResponse.items || [];
             const totalItems = initialResponse.total || 0;
@@ -145,9 +138,7 @@ function FilesByStatus() {
                     pagePromises.push(listFiles({ ...initialParams, page }));
                 }
                 const additionalResponses = await Promise.all(pagePromises);
-                additionalResponses.forEach(res => {
-                    allItems = allItems.concat(res.items || []);
-                });
+                additionalResponses.forEach(res => { allItems = allItems.concat(res.items || []); });
             }
             
             const filesWithCollectionNames = allItems.map(file => ({
@@ -225,7 +216,6 @@ function FilesByStatus() {
                 return val;
             }
         }));
-        
         generatePDFReport(`Files Report - ${selectedStatusTab.replace('_', ' ').toUpperCase()}`, columns, processedFiles);
     };
 
@@ -241,7 +231,7 @@ function FilesByStatus() {
 
                 <Card>
                     <CardContent>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, flexWrap: 'wrap', gap: 2 }}>
                             <Typography variant="h5">Files by Status</Typography>
                             <Box sx={{ display: 'flex', gap: 1 }}>
                                 <TextField 
