@@ -69,7 +69,7 @@ export function generatePDFReport(title, columns, rows, summary = null, userInfo
   // Title
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text(toCamelCaseTitle("CUE - " + title+" Report"), 14, 20);
+  doc.text("CUE - " + toCamelCaseTitle(title), 14, 20);
 
   y += 10;
 

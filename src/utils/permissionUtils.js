@@ -1,39 +1,34 @@
-// src/utils/permissionUtils.js
-
 /**
- * Filters a list of all roles down to only those the current user can assign.
- * This function is now driven by privileges, not hard-coded role names.
+ * Filters a list of all roles down to only those the current user can assign
+ * based on a role hierarchy. A user can only assign roles at or below their own level.
  * @param {Array} allRoles - The complete list of role objects from the API.
- * @param {string[]} privileges - The current user's flat list of privilege strings.
+ * @param {string[]} currentUserRoles - The current user's list of role short names (e.g., ['daac_manager']).
  * @returns {Array} The filtered list of role objects that the user can assign.
  */
-export const getEditableRoles = (allRoles, privileges = []) => {
+export const getEditableRoles = (allRoles, currentUserRoles = []) => {
     if (!Array.isArray(allRoles)) {
         return [];
     }
 
-    // The 'admin' role is a special superuser case.
-    // We confirm this by checking for a role named 'admin' in the role list.
-    const isAdminRolePresent = allRoles.some(role => role.short_name === 'admin');
-    if (isAdminRolePresent && privileges.includes('user:assign_role')) {
-        // An admin can assign any role, so return the full list.
+    // An admin can see and assign any role.
+    if (currentUserRoles.includes('admin')) {
         return allRoles;
     }
 
-    // The primary check is now based on whether the user has the privilege to assign roles.
-    if (privileges.includes('user:assign_role')) {
-        // This is the list of roles that a non-admin user (i.e., a DAAC Manager) can assign.
-        const allowedRoleNames = new Set([
-            'DAAC Manager',
-            'DAAC Staff',
-            'DAAC Observer',
-            'Provider'
-        ]);
-        return allRoles.filter(role => allowedRoleNames.has(role.long_name));
-    }
+    // For non-admins, determine the roles they are NOT allowed to assign.
+    let disallowedRoles = new Set(['admin']);
 
-    // If the user lacks the 'user:assign_role' privilege, they cannot assign any roles.
-    return [];
+    // A security user can assign any role except admin.
+    // If the user is NOT a security user, they also cannot assign the security role.
+    if (!currentUserRoles.includes('security')) {
+        disallowedRoles.add('security');
+    }
+    
+    // A daac_manager can assign any role except admin and security.
+    // If the user is NOT a daac_manager, they also cannot assign the daac_manager role.
+    // (This logic can be extended for more roles in the future)
+
+    return allRoles.filter(role => !disallowedRoles.has(role.short_name));
 };
 
 /**
@@ -66,8 +61,7 @@ export const isReadOnlyObserver = (privileges = []) => {
     if (privileges.length === 0) {
         return false;
     }
-    const hasOnlyReadPrivileges = privileges.every(p => p.endsWith(':read'));
-    return hasOnlyReadPrivileges;
+    return privileges.every(p => p.endsWith(':read'));
 };
 
 /**
@@ -110,3 +104,4 @@ export const canManageAllApiKeys = (privileges = []) => {
 export const canPerformSecurityActions = (privileges = []) => {
     return privileges.includes('user:suspend') || privileges.includes('user:reinstate');
 };
+

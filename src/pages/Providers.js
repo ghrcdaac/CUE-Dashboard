@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Box, Card, CardContent, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Paper, Typography, Checkbox,
@@ -9,6 +9,7 @@ import {
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useOutletContext, Outlet, useLocation } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
 
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -16,14 +17,15 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AccountBoxIcon from '@mui/icons-material/AccountBox';
 
 import usePageTitle from '../hooks/usePageTitle';
+import useAuth from '../hooks/useAuth';
 import usePrivileges from '../hooks/usePrivileges';
 import { parseApiError } from '../utils/errorUtils';
-import sessionService from '../services/sessionService';
-
 import * as providerApi from '../api/providerApi';
-import { listCueusers } from '../api/cueUser';
 import ExportMenu from "./reports/ExportMenu";
 import { generatePDFReport } from "./reports/PdfReport";
+
+// Import the new Redux cache actions
+import { fetchProviders, fetchUsers } from '../app/reducers/dataCacheSlice';
 
 const headCells = [
     { id: 'short_name', label: 'Short Name' },
@@ -35,28 +37,24 @@ const headCells = [
 
 function Providers() {
     usePageTitle("Providers");
-
+    const dispatch = useDispatch();
+    const { activeNgroupId } = useAuth();
     const { hasPrivilege } = usePrivileges();
     const { setMenuItems } = useOutletContext();
     const location = useLocation();
-    const ngroupId = useMemo(() => sessionService.getSession()?.active_ngroup_id || null, []);
-
-    // State
-    const [allProviders, setAllProviders] = useState([]);
-    const [userOptions, setUserOptions] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [selected, setSelected] = useState([]);
     
-    // Client-side operations state
+    const { providers, users } = useSelector((state) => state.dataCache);
+
+    const [loading, setLoading] = useState(true);
+    const [selected, setSelected] = useState([]);
     const [pagination, setPagination] = useState({ page: 0, rowsPerPage: 10 });
-    const [sorting, setSorting] = useState({ orderBy: 'short_name', order: 'asc' });
     const [searchTerm, setSearchTerm] = useState('');
     const [filter, setFilter] = useState('all');
-    
-    // Dialog state
     const [dialog, setDialog] = useState({ open: null, data: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // UPDATED: Restored the missing state declaration for sorting
+    const [sorting, setSorting] = useState({ orderBy: 'short_name', order: 'asc' });
     
     useEffect(() => {
         const providersMenuItems = [{ text: 'Providers', path: '/providers', icon: <AccountBoxIcon /> }];
@@ -64,38 +62,29 @@ function Providers() {
         return () => setMenuItems([]);
     }, [setMenuItems]);
 
-    const fetchPageData = useCallback(async () => {
-        if (!ngroupId) { setLoading(false); return; }
-        setLoading(true);
-        setError(null);
-        try {
-            const [providersData, usersData] = await Promise.all([
-                providerApi.listProviders(),
-                listCueusers()
-            ]);
-            const userOpts = usersData || [];
-            setUserOptions(userOpts);
-            const userMap = new Map(userOpts.map(user => [user.id, user.name]));
-            const processedProviders = (providersData || []).map(provider => ({
-                ...provider,
-                point_of_contact_name: provider.point_of_contact ? userMap.get(provider.point_of_contact) || 'N/A' : '',
-            }));
-            setAllProviders(processedProviders);
-        } catch (err) {
-            const apiError = parseApiError(err);
-            setError(apiError);
-            toast.error(apiError);
-        } finally {
-            setLoading(false);
+    useEffect(() => {
+        if (activeNgroupId) {
+            if (providers.status === 'idle') dispatch(fetchProviders());
+            if (users.status === 'idle') dispatch(fetchUsers());
         }
-    }, [ngroupId]);
+    }, [activeNgroupId, providers.status, users.status, dispatch]);
 
     useEffect(() => {
-        fetchPageData();
-    }, [fetchPageData]);
+        const isLoading = providers.status === 'loading' || users.status === 'loading';
+        setLoading(isLoading);
+    }, [providers.status, users.status]);
 
     const processedProviders = useMemo(() => {
-        let list = [...allProviders];
+        if (!providers.data || !users.data) return [];
+
+        const userMap = new Map(users.data.map(user => [user.id, user.name]));
+        
+        const allProvidersWithDetails = providers.data.map(provider => ({
+            ...provider,
+            point_of_contact_name: provider.point_of_contact ? userMap.get(provider.point_of_contact) || 'N/A' : '',
+        }));
+
+        let list = [...allProvidersWithDetails];
         if (filter === 'active') list = list.filter(p => p.can_upload);
         else if (filter === 'suspended') list = list.filter(p => !p.can_upload);
 
@@ -117,16 +106,17 @@ function Providers() {
             if (typeof aValue === 'boolean') return (aValue === bValue ? 0 : aValue ? -1 : 1) * isAsc;
             return aValue.toString().localeCompare(bValue.toString(), undefined, { numeric: true }) * isAsc;
         });
-    }, [allProviders, sorting, searchTerm, filter]);
+    }, [providers.data, users.data, sorting, searchTerm, filter]);
 
     const handleOpenDialog = (type, data = null) => {
         if (type === 'edit') {
-            const providerToEdit = allProviders.find(p => p.id === selected[0]);
+            const providerToEdit = processedProviders.find(p => p.id === selected[0]);
             setDialog({ open: 'edit', data: { ...providerToEdit } });
         } else {
             setDialog({ open: type, data });
         }
     };
+
     const handleCloseDialog = () => setDialog({ open: null, data: null });
 
     const handleFormSubmit = async (e) => {
@@ -139,18 +129,18 @@ function Providers() {
         setIsSubmitting(true);
         try {
             if (dialog.open === 'create') {
-                // UPDATED: Add the ngroupId to the payload for creation
-                const payload = { ...data, ngroup_id: ngroupId };
+                const payload = { ...data, ngroup_id: activeNgroupId };
                 await providerApi.createProvider(payload);
                 toast.success("Provider created successfully!");
             } else if (dialog.open === 'edit') {
-                const { id, ...updateData } = data;
+                const { id, short_name, long_name, can_upload, point_of_contact, reason } = data;
+                const updateData = { short_name, long_name, can_upload, point_of_contact, reason: can_upload ? null : reason };
                 await providerApi.updateProvider(id, updateData);
-                toast.success("Provider updated successfully!");
+                toast.success("Provider updated successfully");
             }
             handleCloseDialog();
             setSelected([]);
-            fetchPageData();
+            dispatch(fetchProviders());
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -163,9 +153,9 @@ function Providers() {
         try {
             await Promise.all(selected.map(providerId => providerApi.deleteProvider(providerId)));
             toast.success("Provider(s) deleted successfully!");
-            handleCloseDialog();
             setSelected([]);
-            fetchPageData();
+            handleCloseDialog();
+            dispatch(fetchProviders());
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -184,21 +174,21 @@ function Providers() {
         const selectedIndex = selected.indexOf(id);
         let newSelected = [];
         if (selectedIndex === -1) { newSelected = newSelected.concat(selected, id); }
-        else if (selectedIndex === 0) { newSelected = newSelected.concat(selected.slice(1)); }
-        else if (selectedIndex === selected.length - 1) { newSelected = newSelected.concat(selected.slice(0, -1)); }
-        else if (selectedIndex > 0) { newSelected = newSelected.concat(selected.slice(0, selectedIndex), selected.slice(selectedIndex + 1)); }
+        else if (selectedIndex > -1) { newSelected = selected.filter(selId => selId !== id); }
         setSelected(newSelected);
     };
+
+    const handlePageChange = (event, newPage) => setPagination(prev => ({ ...prev, page: newPage }));
+    const handleRowsPerPageChange = (event) => setPagination({ ...pagination, rowsPerPage: parseInt(event.target.value, 10), page: 0 });
     
     const handleExportProviders = async (format) => {
         if (format !== 'pdf') return;
         try {
-            const suspended = allProviders.filter(p => !p.can_upload);
+            const suspended = processedProviders.filter(p => !p.can_upload);
             if (suspended.length === 0) {
-                toast.info("There are no suspended providers to export.");
+                toast.info("There are no suspended providers to export based on current filters.");
                 return;
             }
-
             const columns = [
                 { header: "Short Name", dataKey: "short_name" },
                 { header: "Long Name", dataKey: "long_name" },
@@ -236,7 +226,7 @@ function Providers() {
                         </Box>
                     </Box>
                     
-                    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+                    {(providers.error || users.error) && <Alert severity="error" sx={{ mb: 2 }}>{providers.error || users.error}</Alert>}
                     
                     <TableContainer component={Paper}>
                         <Table stickyHeader>
@@ -287,8 +277,8 @@ function Providers() {
                         count={processedProviders.length}
                         rowsPerPage={pagination.rowsPerPage}
                         page={pagination.page}
-                        onPageChange={(e, newPage) => setPagination(prev => ({ ...prev, page: newPage }))}
-                        onRowsPerPageChange={(e) => setPagination({ ...pagination, rowsPerPage: parseInt(e.target.value, 10), page: 0 })}
+                        onPageChange={handlePageChange}
+                        onRowsPerPageChange={handleRowsPerPageChange}
                     />
                 </CardContent>
             </Card>
@@ -301,7 +291,7 @@ function Providers() {
                             <>
                                 <TextField autoFocus margin="dense" name="short_name" label="Provider Short Name" fullWidth value={dialog.data.short_name} onChange={(e) => setDialog({...dialog, data: {...dialog.data, short_name: e.target.value}})} required />
                                 <TextField margin="dense" name="long_name" label="Provider Long Name" fullWidth value={dialog.data.long_name} onChange={(e) => setDialog({...dialog, data: {...dialog.data, long_name: e.target.value}})} />
-                                <Autocomplete fullWidth options={userOptions} getOptionLabel={(option) => option.name} value={userOptions.find(option => option.id === dialog.data.point_of_contact) || null} onChange={(e, newValue) => setDialog({...dialog, data: {...dialog.data, point_of_contact: newValue?.id || null}})} isOptionEqualToValue={(option, value) => option.id === value?.id} renderInput={(params) => (<TextField {...params} label="Point of Contact" margin="dense" />)} />
+                                <Autocomplete fullWidth options={users.data} getOptionLabel={(option) => option.name} value={users.data.find(option => option.id === dialog.data.point_of_contact) || null} onChange={(e, newValue) => setDialog({...dialog, data: {...dialog.data, point_of_contact: newValue?.id || null}})} isOptionEqualToValue={(option, value) => option.id === value?.id} renderInput={(params) => (<TextField {...params} label="Point of Contact" margin="dense" />)} />
                                 <TextField fullWidth select label="Can Upload" name="can_upload" value={dialog.data.can_upload} onChange={(e) => setDialog({...dialog, data: {...dialog.data, can_upload: e.target.value === true }})} margin="dense">
                                     <MenuItem value={true}>Yes</MenuItem>
                                     <MenuItem value={false}>No</MenuItem>

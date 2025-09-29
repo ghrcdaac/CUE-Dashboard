@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react'; // UPDATED: Restored useCallback
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Paper, Button, Typography, Checkbox, TablePagination, Dialog, DialogTitle,
@@ -6,6 +6,7 @@ import {
     TableSortLabel, CircularProgress, Autocomplete, Container, Alert
 } from '@mui/material';
 import { useOutletContext, Outlet, useLocation } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -18,12 +19,11 @@ import usePageTitle from "../hooks/usePageTitle";
 import useAuth from '../hooks/useAuth';
 import usePrivileges from '../hooks/usePrivileges';
 import { parseApiError } from '../utils/errorUtils';
-import { getEditableRoles } from '../utils/permissionUtils'; 
-import sessionService from '../services/sessionService';
+import { getEditableRoles } from '../utils/permissionUtils';
+import { assignUserRole, deleteCueuser } from '../api/cueUser';
 
-import { listCueusers, assignUserRole, deleteCueuser } from '../api/cueUser';
-import { listProviders } from '../api/providerApi';
-import { listRoles } from '../api/roleApi';
+// Import actions from the central data cache
+import { fetchUsers, fetchRoles, fetchProviders } from '../app/reducers/dataCacheSlice';
 
 const canModifyUser = (currentUser, targetUser) => {
     if (!currentUser || !targetUser?.role) return false;
@@ -45,16 +45,17 @@ const headCells = [
 function Users() {
     usePageTitle("Users");
 
-    const { user: currentUser } = useAuth();
-    const { privileges, hasPrivilege } = usePrivileges();
+    const dispatch = useDispatch();
+    const { user: currentUser, activeNgroupId } = useAuth();
+    const { hasPrivilege } = usePrivileges();
     const { setMenuItems } = useOutletContext();
     const location = useLocation();
-    const ngroupId = useMemo(() => sessionService.getSession()?.active_ngroup_id || null, []);
 
-    const [users, setUsers] = useState([]);
-    const [roles, setRoles] = useState([]);
+    // Get data from the central Redux cache
+    const { users, roles, providers } = useSelector((state) => state.dataCache);
+
+    // Local state for UI operations
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [selected, setSelected] = useState([]);
     const [pagination, setPagination] = useState({ page: 0, rowsPerPage: 10 });
     const [searchTerm, setSearchTerm] = useState('');
@@ -71,47 +72,40 @@ function Users() {
         return () => setMenuItems([]);
     }, [setMenuItems]);
 
-    const fetchPageData = useCallback(async () => {
-        if (!ngroupId) { setLoading(false); return; }
-        setLoading(true);
-        setError(null);
-        try {
-            const [rolesData, usersData, providersData] = await Promise.all([
-                listRoles(),
-                listCueusers(),
-                listProviders()
-            ]);
-            setRoles(rolesData || []);
-            const roleMap = new Map((rolesData || []).map(role => [role.short_name, role]));
-            const providerMap = new Map((providersData || []).map(provider => [provider.id, provider.short_name]));
-            
-            const processedUsers = (usersData || []).map(user => {
-                const roleName = user.roles && user.roles.length > 0 ? user.roles[0] : null;
-                return {
-                    ...user,
-                    role: roleName ? roleMap.get(roleName) : null,
-                    providerName: user.provider_id ? providerMap.get(user.provider_id) || 'N/A' : '',
-                };
-            });
-            setUsers(processedUsers);
-        } catch (err){
-            const apiError = parseApiError(err);
-            setError(apiError);
-            toast.error(apiError);
-        } finally {
-            setLoading(false);
-        }
-    }, [ngroupId]);
-
+    // "Smart" data fetching that uses the cache
     useEffect(() => {
-        fetchPageData();
-    }, [fetchPageData]);
-    
+        if (activeNgroupId) {
+            if (users.status === 'idle') dispatch(fetchUsers());
+            if (roles.status === 'idle') dispatch(fetchRoles());
+            if (providers.status === 'idle') dispatch(fetchProviders());
+        }
+    }, [activeNgroupId, users.status, roles.status, providers.status, dispatch]);
+
+    // Derives the page's loading state from the cache statuses
+    useEffect(() => {
+        const isLoading = users.status === 'loading' || roles.status === 'loading' || providers.status === 'loading';
+        setLoading(isLoading);
+    }, [users.status, roles.status, providers.status]);
+
     const processedUsers = useMemo(() => {
-        let filtered = [...users];
+        if (!users.data || !roles.data || !providers.data) return [];
+
+        const roleMap = new Map(roles.data.map(role => [role.short_name, role]));
+        const providerMap = new Map(providers.data.map(provider => [provider.id, provider.short_name]));
+        
+        const populatedUsers = users.data.map(user => {
+            const roleName = user.roles && user.roles.length > 0 ? user.roles[0] : null;
+            return {
+                ...user,
+                role: roleName ? roleMap.get(roleName) : null,
+                providerName: user.provider_id ? providerMap.get(user.provider_id) || 'N/A' : '',
+            };
+        });
+
+        let filtered = [...populatedUsers];
         if (searchTerm) {
             const lowercasedTerm = searchTerm.toLowerCase();
-            filtered = users.filter(user =>
+            filtered = populatedUsers.filter(user =>
                 user.name?.toLowerCase().includes(lowercasedTerm) ||
                 user.email?.toLowerCase().includes(lowercasedTerm) ||
                 user.username?.toLowerCase().includes(lowercasedTerm) ||
@@ -132,11 +126,55 @@ function Users() {
             if (bValue === null || bValue === undefined) return -1 * isAsc;
             return aValue.toString().localeCompare(bValue.toString()) * isAsc;
         });
-    }, [users, sorting, searchTerm]);
+    }, [users.data, roles.data, providers.data, sorting, searchTerm]);
+
+    const handleClick = useCallback((id) => {
+        const selectedIndex = selected.indexOf(id);
+        let newSelected = [];
+        if (selectedIndex === -1) {
+            newSelected = newSelected.concat(selected, id);
+        } else if (selectedIndex >= 0) {
+            newSelected = selected.filter(selId => selId !== id);
+        }
+        setSelected(newSelected);
+    }, [selected]);
+    
+    const tableBodyContent = useMemo(() => {
+        if (loading) {
+            return ( <TableRow><TableCell colSpan={6} align="center" sx={{ py: 5 }}><CircularProgress /></TableCell></TableRow> );
+        }
+        if (processedUsers.length === 0) {
+            return (
+                <TableRow>
+                    <TableCell colSpan={6} align="center">
+                        <Typography sx={{ py: 5 }} color="text.secondary">
+                            {searchTerm ? "No users match your search." : "No users found."}
+                        </Typography>
+                    </TableCell>
+                </TableRow>
+            );
+        }
+        return processedUsers
+            .slice(pagination.page * pagination.rowsPerPage, pagination.page * pagination.rowsPerPage + pagination.rowsPerPage)
+            .map((user) => {
+                const isItemSelected = selected.indexOf(user.id) !== -1;
+                const isManageable = canModifyUser(currentUser, user);
+                return (
+                    <TableRow key={user.id} hover onClick={() => isManageable && handleClick(user.id)} role="checkbox" tabIndex={-1} selected={isItemSelected} sx={{ cursor: isManageable ? 'pointer' : 'default' }}>
+                        <TableCell padding="checkbox"><Checkbox checked={isItemSelected} disabled={!isManageable} /></TableCell>
+                        <TableCell>{user.name}</TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>{user.username}</TableCell>
+                        <TableCell>{user.role?.long_name || "N/A"}</TableCell>
+                        <TableCell>{user.providerName}</TableCell>
+                    </TableRow>
+                );
+            });
+    }, [loading, processedUsers, pagination, selected, currentUser, searchTerm, handleClick]);
 
     const handleOpenDialog = (type) => {
         if (type === 'edit') {
-            const userToEdit = users.find(user => user.id === selected[0]);
+            const userToEdit = processedUsers.find(user => user.id === selected[0]);
             setDialog({ open: 'edit', data: { ...userToEdit }});
         } else {
             setDialog({ open: 'delete', data: null });
@@ -155,7 +193,7 @@ function Users() {
             await assignUserRole(dialog.data.id, dialog.data.role.id);
             toast.success("User role updated successfully!");
             handleCloseDialog();
-            fetchPageData();
+            dispatch(fetchUsers());
             setSelected([]);
         } catch (error) {
             toast.error(parseApiError(error));
@@ -171,7 +209,7 @@ function Users() {
             toast.success("User(s) deleted successfully!");
             setSelected([]);
             handleCloseDialog();
-            fetchPageData();
+            dispatch(fetchUsers());
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -195,65 +233,8 @@ function Users() {
         setSelected([]);
     };
     
-    // UPDATED: Restored the handleClick function to fix the parsing error
-    const handleClick = (id) => {
-        const selectedIndex = selected.indexOf(id);
-        let newSelected = [];
-        if (selectedIndex === -1) {
-            newSelected = newSelected.concat(selected, id);
-        } else if (selectedIndex === 0) {
-            newSelected = newSelected.concat(selected.slice(1));
-        } else if (selectedIndex === selected.length - 1) {
-            newSelected = newSelected.concat(selected.slice(0, -1));
-        } else if (selectedIndex > 0) {
-            newSelected = newSelected.concat(
-                selected.slice(0, selectedIndex),
-                selected.slice(selectedIndex + 1),
-            );
-        }
-        setSelected(newSelected);
-    };
-
     if (location.pathname !== '/users') {
         return <Outlet key={location.pathname} />;
-    }
-
-    let tableBodyContent;
-    if (loading) {
-        tableBodyContent = (
-            <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
-                    <CircularProgress />
-                </TableCell>
-            </TableRow>
-        );
-    } else if (processedUsers.length === 0) {
-        tableBodyContent = (
-            <TableRow>
-                <TableCell colSpan={6} align="center">
-                    <Typography sx={{ py: 5 }} color="text.secondary">
-                        {searchTerm ? "No users match your search." : "No users found."}
-                    </Typography>
-                </TableCell>
-            </TableRow>
-        );
-    } else {
-        tableBodyContent = processedUsers
-            .slice(pagination.page * pagination.rowsPerPage, pagination.page * pagination.rowsPerPage + pagination.rowsPerPage)
-            .map((user) => {
-                const isItemSelected = selected.indexOf(user.id) !== -1;
-                const isManageable = canModifyUser(currentUser, user);
-                return (
-                    <TableRow key={user.id} hover onClick={() => isManageable && handleClick(user.id)} role="checkbox" tabIndex={-1} selected={isItemSelected} sx={{ cursor: isManageable ? 'pointer' : 'default' }}>
-                        <TableCell padding="checkbox"><Checkbox checked={isItemSelected} disabled={!isManageable} /></TableCell>
-                        <TableCell>{user.name}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>{user.username}</TableCell>
-                        <TableCell>{user.role?.long_name || "N/A"}</TableCell>
-                        <TableCell>{user.providerName}</TableCell>
-                    </TableRow>
-                );
-            });
     }
 
     return (
@@ -270,7 +251,7 @@ function Users() {
                         </Box>
                     </Box>
 
-                    {error && <Alert severity="error" sx={{ my: 2 }}>{error}</Alert>}
+                    {(users.error || roles.error || providers.error) && <Alert severity="error" sx={{ my: 2 }}>{users.error || roles.error || providers.error}</Alert>}
 
                     <TableContainer component={Paper}>
                         <Table stickyHeader>
@@ -308,7 +289,7 @@ function Users() {
                 <DialogContent>
                     <TextField margin="dense" label="Name" fullWidth value={dialog.data?.name || ''} InputProps={{ readOnly: true }} />
                     <Autocomplete
-                        options={getEditableRoles(roles, privileges)}
+                        options={getEditableRoles(roles.data, currentUser?.roles)}
                         getOptionLabel={(option) => option.long_name}
                         value={dialog.data?.role || null}
                         onChange={(event, newValue) => setDialog(prev => ({...prev, data: {...prev.data, role: newValue}}))}

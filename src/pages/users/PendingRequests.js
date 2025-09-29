@@ -3,21 +3,21 @@ import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Paper, Button, Typography, Checkbox, TablePagination, Dialog, DialogTitle,
     DialogContent, DialogActions, TextField, Box, Card, CardContent,
-    TableSortLabel, Autocomplete, CircularProgress, Container, Alert
+    TableSortLabel, CircularProgress, Autocomplete, Container, Alert
 } from '@mui/material';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useSelector, useDispatch } from 'react-redux';
 
 import usePageTitle from "../../hooks/usePageTitle";
 import useAuth from '../../hooks/useAuth';
 import usePrivileges from '../../hooks/usePrivileges';
-import sessionService from '../../services/sessionService';
 import { parseApiError } from '../../utils/errorUtils';
 import { getEditableRoles } from '../../utils/permissionUtils';
 
 import { listUserApplications, approveUserApplication, rejectUserApplication } from '../../api/userApplicationApi';
-import { listRoles } from '../../api/roleApi';
-import { listProviders } from '../../api/providerApi';
+// Import the new Redux cache actions
+import { fetchRoles, fetchProviders } from '../../app/reducers/dataCacheSlice';
 
 const headCells = [
     { id: 'name', label: 'Name' },
@@ -29,47 +29,44 @@ const headCells = [
 
 function PendingRequests() {
     usePageTitle("Pending User Requests");
+    
+    const dispatch = useDispatch();
+    const { user: currentUser, activeNgroupId } = useAuth();
+    const { hasPrivilege } = usePrivileges();
 
-    const { privileges, hasPrivilege } = usePrivileges();
-    const ngroupId = useMemo(() => sessionService.getSession()?.active_ngroup_id || null, []);
+    // Get shared data from the central Redux cache
+    const { roles, providers } = useSelector((state) => state.dataCache);
 
-    // State
+    // Page-specific state
     const [applications, setApplications] = useState([]);
-    const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [selected, setSelected] = useState([]);
+    const [dialog, setDialog] = useState({ open: null, data: null });
     
-    // Dialog state
-    const [dialog, setDialog] = useState({ open: null, data: null }); // 'accept', 'reject'
-    
-    // Client-side operation state
+    // Client-side operation state (Restored to individual variables)
     const [searchTerm, setSearchTerm] = useState('');
-    const [pagination, setPagination] = useState({ page: 0, rowsPerPage: 10 });
-    const [sorting, setSorting] = useState({ orderBy: 'name', order: 'asc' });
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [order, setOrder] = useState('asc');
+    const [orderBy, setOrderBy] = useState('name');
+
+    // "Smart" data fetching for cache dependencies
+    useEffect(() => {
+        if (activeNgroupId) {
+            if (roles.status === 'idle') dispatch(fetchRoles());
+            if (providers.status === 'idle') dispatch(fetchProviders());
+        }
+    }, [activeNgroupId, roles.status, providers.status, dispatch]);
 
     const fetchPageData = useCallback(async () => {
-        if (!ngroupId) {
-            setLoading(false);
-            return;
-        }
+        if (!activeNgroupId) { setLoading(false); return; }
         setLoading(true);
         setError(null);
         try {
-            const [rolesData, appsData, providersData] = await Promise.all([
-                listRoles(),
-                listUserApplications('pending'),
-                listProviders()
-            ]);
-            setRoles(rolesData || []);
-
-            const providerMap = new Map((providersData || []).map(provider => [provider.id, provider]));
-            const processedApps = (appsData || []).map(app => ({
-                ...app,
-                providerName: app.provider_id ? providerMap.get(app.provider_id)?.short_name || 'N/A' : '',
-            }));
-            setApplications(processedApps);
+            const appsData = await listUserApplications('pending');
+            setApplications(appsData || []);
         } catch (err) {
             const apiError = parseApiError(err);
             setError(apiError);
@@ -77,36 +74,48 @@ function PendingRequests() {
         } finally {
             setLoading(false);
         }
-    }, [ngroupId]);
+    }, [activeNgroupId]);
 
     useEffect(() => {
-        fetchPageData();
-    }, [fetchPageData]);
+        if (activeNgroupId && roles.status === 'succeeded' && providers.status === 'succeeded') {
+            fetchPageData();
+        } else if (activeNgroupId) {
+            setLoading(roles.status === 'loading' || providers.status === 'loading');
+        }
+    }, [activeNgroupId, roles.status, providers.status, fetchPageData]);
+
+    const processedApps = useMemo(() => {
+        if (!applications || !providers.data) return [];
+        const providerMap = new Map(providers.data.map(provider => [provider.id, provider.short_name]));
+        
+        const appsWithDetails = applications.map(app => ({
+            ...app,
+            providerName: app.provider_id ? providerMap.get(app.provider_id) || 'N/A' : '',
+        }));
+
+        const filtered = appsWithDetails.filter(app =>
+            ['name', 'email', 'username', 'providerName', 'justification'].some(field => 
+                app[field]?.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+        );
+
+        const comparator = (a, b) => {
+            const isAsc = order === 'asc';
+            let aValue = a[orderBy] || '';
+            let bValue = b[orderBy] || '';
+            if (aValue < bValue) return isAsc ? -1 : 1;
+            if (aValue > bValue) return isAsc ? 1 : -1;
+            return 0;
+        };
+        return filtered.sort(comparator);
+    }, [applications, providers.data, order, orderBy, searchTerm]);
 
     const handleRequestSort = (property) => {
-        const isAsc = sorting.orderBy === property && sorting.order === 'asc';
-        setSorting({ order: isAsc ? 'desc' : 'asc', orderBy: property });
+        const isAsc = orderBy === property && order === 'asc';
+        setOrder(isAsc ? 'desc' : 'asc');
+        setOrderBy(property);
     };
     
-    const processedApps = useMemo(() => {
-        let filtered = [...applications];
-        if (searchTerm) {
-            const lowercasedTerm = searchTerm.toLowerCase();
-            filtered = filtered.filter(app =>
-                Object.values(app).some(val => 
-                    String(val).toLowerCase().includes(lowercasedTerm)
-                )
-            );
-        }
-
-        return filtered.sort((a, b) => {
-            const isAsc = sorting.order === 'asc' ? 1 : -1;
-            const aValue = a[sorting.orderBy] || '';
-            const bValue = b[sorting.orderBy] || '';
-            return aValue.toString().localeCompare(bValue.toString()) * isAsc;
-        });
-    }, [applications, sorting, searchTerm]);
-
     const handleSelectAllClick = (event) => {
         if (event.target.checked) setSelected(processedApps.map((app) => app.id));
         else setSelected([]);
@@ -122,7 +131,7 @@ function PendingRequests() {
 
     const handleOpenDialog = (type) => {
         if (type === 'accept') {
-            const app = applications.find(a => a.id === selected[0]);
+            const app = processedApps.find(a => a.id === selected[0]);
             setDialog({ open: 'accept', data: { ...app, role: null } });
         } else {
             setDialog({ open: 'reject', data: null });
@@ -138,10 +147,10 @@ function PendingRequests() {
         setActionLoading(true);
         try {
             await approveUserApplication(dialog.data.id, dialog.data.role.id);
-            toast.success("Application approved successfully!");
             handleCloseDialog();
             setSelected([]);
-            fetchPageData();
+            await fetchPageData(); 
+            toast.success("Application approved successfully!");
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -153,10 +162,10 @@ function PendingRequests() {
         setActionLoading(true);
         try {
             await Promise.all(selected.map(appId => rejectUserApplication(appId)));
-            toast.success(`${selected.length} application(s) rejected successfully!`);
             handleCloseDialog();
             setSelected([]);
-            fetchPageData();
+            await fetchPageData();
+            toast.success(`${selected.length} application(s) rejected successfully!`);
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -188,8 +197,8 @@ function PendingRequests() {
                                 <TableRow>
                                     <TableCell padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedApps.length} checked={processedApps.length > 0 && selected.length === processedApps.length} onChange={handleSelectAllClick} /></TableCell>
                                     {headCells.map((headCell) => (
-                                        <TableCell key={headCell.id} sortDirection={sorting.orderBy === headCell.id ? sorting.order : false}>
-                                            <TableSortLabel active={sorting.orderBy === headCell.id} direction={sorting.orderBy === headCell.id ? sorting.order : 'asc'} onClick={() => handleRequestSort(headCell.id)}>
+                                        <TableCell key={headCell.id} sortDirection={orderBy === headCell.id ? order : false}>
+                                            <TableSortLabel active={orderBy === headCell.id} direction={orderBy === headCell.id ? order : 'asc'} onClick={() => handleRequestSort(headCell.id)}>
                                                 {headCell.label}
                                             </TableSortLabel>
                                         </TableCell>
@@ -198,31 +207,27 @@ function PendingRequests() {
                             </TableHead>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow><TableCell colSpan={headCells.length + 1} align="center" sx={{ py: 5 }}><CircularProgress /></TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={headCells.length + 1} align="center" sx={{py: 5}}><CircularProgress /></TableCell></TableRow>
                                 ) : processedApps.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={headCells.length + 1} align="center">
-                                            <Typography sx={{ py: 5 }} color="text.secondary">
-                                                {searchTerm ? "No requests match your search." : "No pending requests found."}
-                                            </Typography>
-                                        </TableCell>
-                                    </TableRow>
+                                    <TableRow><TableCell colSpan={headCells.length + 1} align="center">
+                                        <Typography sx={{py: 5}} color="text.secondary">
+                                            {searchTerm ? "No requests match your search." : "No pending requests found."}
+                                        </Typography>
+                                    </TableCell></TableRow>
                                 ) : (
-                                    processedApps
-                                        .slice(pagination.page * pagination.rowsPerPage, pagination.page * pagination.rowsPerPage + pagination.rowsPerPage)
-                                        .map(app => {
-                                            const isItemSelected = isSelected(app.id);
-                                            return (
-                                                <TableRow key={app.id} hover onClick={() => handleClick(app.id)} selected={isItemSelected} role="checkbox" tabIndex={-1} sx={{ cursor: 'pointer' }}>
-                                                    <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
-                                                    <TableCell>{app.name}</TableCell>
-                                                    <TableCell>{app.email}</TableCell>
-                                                    <TableCell>{app.username}</TableCell>
-                                                    <TableCell>{app.justification}</TableCell>
-                                                    <TableCell>{app.providerName || 'N/A'}</TableCell>
-                                                </TableRow>
-                                            );
-                                        })
+                                    processedApps.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(app => {
+                                        const isItemSelected = isSelected(app.id);
+                                        return (
+                                            <TableRow key={app.id} hover onClick={() => handleClick(app.id)} selected={isItemSelected} role="checkbox" tabIndex={-1} sx={{ cursor: 'pointer' }}>
+                                                <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
+                                                <TableCell>{app.name}</TableCell>
+                                                <TableCell>{app.email}</TableCell>
+                                                <TableCell>{app.username}</TableCell>
+                                                <TableCell>{app.justification}</TableCell>
+                                                <TableCell>{app.providerName || 'N/A'}</TableCell>
+                                            </TableRow>
+                                        );
+                                    })
                                 )}
                             </TableBody>
                         </Table>
@@ -231,10 +236,10 @@ function PendingRequests() {
                         rowsPerPageOptions={[10, 25, 50]}
                         component="div"
                         count={processedApps.length}
-                        rowsPerPage={pagination.rowsPerPage}
-                        page={pagination.page}
-                        onPageChange={(e, newPage) => setPagination(prev => ({ ...prev, page: newPage }))}
-                        onRowsPerPageChange={(e) => setPagination({ ...pagination, rowsPerPage: parseInt(e.target.value, 10), page: 0 })}
+                        rowsPerPage={rowsPerPage}
+                        page={page}
+                        onPageChange={(e, newPage) => setPage(newPage)}
+                        onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
                     />
                 </CardContent>
             </Card>
@@ -244,7 +249,7 @@ function PendingRequests() {
                 <DialogContent>
                     <Typography gutterBottom>Please assign a role to approve this user.</Typography>
                     <Autocomplete
-                        options={getEditableRoles(roles, privileges)}
+                        options={getEditableRoles(roles.data, currentUser?.roles)}
                         getOptionLabel={(option) => option.long_name}
                         onChange={(e, newValue) => setDialog(prev => ({ ...prev, data: { ...prev.data, role: newValue } }))}
                         renderInput={(params) => <TextField {...params} label="Role" margin="dense" fullWidth />}

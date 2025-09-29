@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Box, Card, CardContent, Typography, Button, TextField,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, 
@@ -8,6 +8,7 @@ import {
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Outlet, useLocation, useOutletContext } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
 
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -19,13 +20,13 @@ import DoneIcon from '@mui/icons-material/Done';
 import CloseIcon from '@mui/icons-material/Close';
 
 import usePageTitle from "../hooks/usePageTitle";
+import useAuth from '../hooks/useAuth';
 import usePrivileges from '../hooks/usePrivileges';
 import { parseApiError } from '../utils/errorUtils';
-import sessionService from '../services/sessionService';
 
 import * as collectionApi from '../api/collectionApi';
-import { listProviders } from '../api/providerApi';
-import { listEgresses } from '../api/egressAPI';
+// UPDATED: Import the new Redux cache actions
+import { fetchCollections, fetchProviders, fetchEgresses } from '../app/reducers/dataCacheSlice';
 
 const headCells = [
     { id: 'short_name', label: 'Short Name' },
@@ -37,86 +38,67 @@ const headCells = [
 function Collections() {
     usePageTitle("Collections");
 
+    const dispatch = useDispatch();
     const { setMenuItems } = useOutletContext();
     const { hasPrivilege } = usePrivileges();
     const location = useLocation();
-    const ngroupId = useMemo(() => sessionService.getSession()?.active_ngroup_id || null, []);
+    const { activeNgroupId } = useAuth(); // Use reactive value for DAAC changes
 
-    // State
-    const [allCollections, setAllCollections] = useState([]);
+    // Get all foundational data from the central Redux cache
+    const { collections, providers, egresses } = useSelector((state) => state.dataCache);
+
+    // Local state for UI operations
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [selected, setSelected] = useState([]);
-    
-    // Client-side operation state
     const [pagination, setPagination] = useState({ page: 0, pageSize: 10 });
     const [sorting, setSorting] = useState({ orderBy: 'short_name', order: 'asc' });
     const [searchTerm, setSearchTerm] = useState('');
-    
-    // Dialog & Form State
     const [dialog, setDialog] = useState({ open: null, data: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [providerOptions, setProviderOptions] = useState([]);
-    const [egressOptions, setEgressOptions] = useState([]);
 
-    // UPDATED: Moved this hook before the conditional return statement
     const firstSelectedStatus = useMemo(() => {
-        if (selected.length === 0) return true; // Default to 'Activate' text
-        return allCollections.find(c => c.id === selected[0])?.active;
-    }, [selected, allCollections]);
+        if (selected.length === 0) return true;
+        return collections.data.find(c => c.id === selected[0])?.active;
+    }, [selected, collections.data]);
 
     useEffect(() => {
         const collectionsMenuItems = [
             { text: 'Collections List', path: '/collections', icon: <CollectionsIcon /> },
-            { text: 'Create Collection', path: '/collections/create', icon: <FolderIcon /> },
-            { text: 'Browse Files', path: '/collections/files', icon: <InsertDriveFileIcon /> },
+            // { text: 'Create Collection', path: '/collections/create', icon: <FolderIcon /> },
+            // { text: 'Browse Files', path: '/collections/files', icon: <InsertDriveFileIcon /> },
         ];
         setMenuItems(collectionsMenuItems);
         return () => setMenuItems([]);
     }, [setMenuItems]);
 
-    const fetchPageData = useCallback(async () => {
-        if (!ngroupId) {
-            setLoading(false);
-            return;
-        }
-        setLoading(true);
-        setError(null);
-        try {
-            const [collectionsData, providersData, egressesData] = await Promise.all([
-                collectionApi.listCollections(),
-                listProviders(),
-                listEgresses()
-            ]);
-
-            const providerMap = new Map(providersData.map(p => [p.id, p.short_name]));
-            const egressMap = new Map(egressesData.map(e => [e.id, e.path]));
-
-            const collectionsWithDetails = (collectionsData || []).map(collection => ({
-                ...collection,
-                provider_name: providerMap.get(collection.provider_id) || 'N/A',
-                egress_path: egressMap.get(collection.egress_id) || 'N/A',
-            }));
-            
-            setAllCollections(collectionsWithDetails);
-            setProviderOptions(providersData || []);
-            setEgressOptions(egressesData || []);
-
-        } catch (err) {
-            const apiError = parseApiError(err);
-            setError(apiError);
-            toast.error(`Failed to load page data: ${apiError}`);
-        } finally {
-            setLoading(false);
-        }
-    }, [ngroupId]);
-
+    // "Smart" data fetching effect that uses the cache
     useEffect(() => {
-        fetchPageData();
-    }, [fetchPageData]);
+        if (activeNgroupId) {
+            if (collections.status === 'idle') dispatch(fetchCollections());
+            if (providers.status === 'idle') dispatch(fetchProviders());
+            if (egresses.status === 'idle') dispatch(fetchEgresses());
+        }
+    }, [activeNgroupId, collections.status, providers.status, egresses.status, dispatch]);
+
+    // Derives the page's loading state from the cache statuses
+    useEffect(() => {
+        const isLoading = collections.status === 'loading' || providers.status === 'loading' || egresses.status === 'loading';
+        setLoading(isLoading);
+    }, [collections.status, providers.status, egresses.status]);
 
     const processedCollections = useMemo(() => {
-        let filtered = [...allCollections];
+        if (!collections.data || !providers.data || !egresses.data) return [];
+        
+        const providerMap = new Map(providers.data.map(p => [p.id, p.short_name]));
+        const egressMap = new Map(egresses.data.map(e => [e.id, e.path]));
+
+        const collectionsWithDetails = collections.data.map(collection => ({
+            ...collection,
+            provider_name: providerMap.get(collection.provider_id) || 'N/A',
+            egress_path: egressMap.get(collection.egress_id) || 'N/A',
+        }));
+
+        let filtered = [...collectionsWithDetails];
         if (searchTerm) {
             const lowercasedTerm = searchTerm.toLowerCase();
             filtered = filtered.filter(c => 
@@ -130,20 +112,16 @@ function Collections() {
             const isAsc = sorting.order === 'asc' ? 1 : -1;
             const aValue = a[sorting.orderBy];
             const bValue = b[sorting.orderBy];
-
             if (aValue === null || aValue === undefined) return 1 * isAsc;
             if (bValue === null || bValue === undefined) return -1 * isAsc;
-            
-            if (typeof aValue === 'boolean') {
-                return (aValue === bValue ? 0 : aValue ? -1 : 1) * isAsc;
-            }
+            if (typeof aValue === 'boolean') return (aValue === bValue ? 0 : aValue ? -1 : 1) * isAsc;
             return aValue.toString().localeCompare(bValue.toString(), undefined, { numeric: true }) * isAsc;
         });
-    }, [allCollections, sorting, searchTerm]);
+    }, [collections.data, providers.data, egresses.data, sorting, searchTerm]);
     
     const handleOpenDialog = (dialogType, data = null) => {
         if (dialogType === 'edit') {
-            const collectionToEdit = allCollections.find(c => c.id === selected[0]);
+            const collectionToEdit = processedCollections.find(c => c.id === selected[0]);
             setDialog({ open: 'edit', data: { ...collectionToEdit } });
         } else {
             setDialog({ open: dialogType, data });
@@ -165,7 +143,7 @@ function Collections() {
             }
             handleCloseDialog();
             setSelected([]);
-            fetchPageData();
+            dispatch(fetchCollections()); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -180,7 +158,7 @@ function Collections() {
             toast.success(`${selected.length} collection(s) deleted successfully!`);
             handleCloseDialog();
             setSelected([]);
-            fetchPageData();
+            dispatch(fetchCollections()); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -193,12 +171,12 @@ function Collections() {
         setIsSubmitting(true);
         try {
             await Promise.all(selected.map(id => {
-                const collection = allCollections.find(c => c.id === id);
+                const collection = processedCollections.find(c => c.id === id);
                 return collection.active ? collectionApi.deactivateCollection(id) : collectionApi.activateCollection(id);
             }));
             toast.success("Collection status updated successfully!");
             setSelected([]);
-            fetchPageData();
+            dispatch(fetchCollections()); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -223,16 +201,13 @@ function Collections() {
         const selectedIndex = selected.indexOf(id);
         let newSelected = [];
         if (selectedIndex === -1) { newSelected = newSelected.concat(selected, id); }
-        else if (selectedIndex === 0) { newSelected = newSelected.concat(selected.slice(1)); }
-        else if (selectedIndex === selected.length - 1) { newSelected = newSelected.concat(selected.slice(0, -1)); }
-        else if (selectedIndex > 0) { newSelected = newSelected.concat(selected.slice(0, selectedIndex), selected.slice(selectedIndex + 1)); }
+        else if (selectedIndex > -1) { newSelected = selected.filter(selId => selId !== id); }
         setSelected(newSelected);
     };
 
     const handlePageChange = (event, newPage) => setPagination(prev => ({...prev, page: newPage}));
     const handleRowsPerPageChange = (event) => setPagination({ ...pagination, pageSize: parseInt(event.target.value, 10), page: 0 });
 
-    // This is the conditional return that was causing the error
     if (location.pathname !== '/collections') {
         return <Outlet key={location.pathname} />;
     }
@@ -255,7 +230,7 @@ function Collections() {
                         </Box>
                     </Box>
                     
-                    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+                    {collections.status === 'failed' && <Alert severity="error" sx={{ mb: 2 }}>{collections.error}</Alert>}
                     
                     <TableContainer component={Paper}>
                         <Table stickyHeader>
@@ -319,8 +294,8 @@ function Collections() {
                     {dialog.data && (
                         <Box component="form" id="collection-form" onSubmit={handleFormSubmit} noValidate sx={{ mt: 1 }}>
                             <TextField autoFocus margin="dense" name="short_name" label="Collection Short Name" fullWidth value={dialog.data.short_name} onChange={(e) => setDialog({...dialog, data: {...dialog.data, short_name: e.target.value}})} required />
-                            <Autocomplete options={providerOptions} getOptionLabel={(option) => option.short_name} value={providerOptions.find(o => o.id === dialog.data.provider_id) || null} onChange={(e, val) => setDialog({...dialog, data: {...dialog.data, provider_id: val?.id || null}})} renderInput={(params) => <TextField {...params} label="Provider" margin="dense" fullWidth required />} />
-                            <Autocomplete options={egressOptions} getOptionLabel={(option) => option.path} value={egressOptions.find(o => o.id === dialog.data.egress_id) || null} onChange={(e, val) => setDialog({...dialog, data: {...dialog.data, egress_id: val?.id || null}})} renderInput={(params) => <TextField {...params} label="Egress Path" margin="dense" fullWidth required />} />
+                            <Autocomplete options={providers.data} getOptionLabel={(option) => option.short_name} value={providers.data.find(o => o.id === dialog.data.provider_id) || null} onChange={(e, val) => setDialog({...dialog, data: {...dialog.data, provider_id: val?.id || null}})} renderInput={(params) => <TextField {...params} label="Provider" margin="dense" fullWidth required />} />
+                            <Autocomplete options={egresses.data} getOptionLabel={(option) => option.path} value={egresses.data.find(o => o.id === dialog.data.egress_id) || null} onChange={(e, val) => setDialog({...dialog, data: {...dialog.data, egress_id: val?.id || null}})} renderInput={(params) => <TextField {...params} label="Egress Path" margin="dense" fullWidth required />} />
                             <TextField select margin="dense" label="Status" fullWidth value={dialog.data.active} onChange={(e) => setDialog({...dialog, data: {...dialog.data, active: e.target.value }})}>
                                 <MenuItem value={true}>Active</MenuItem>
                                 <MenuItem value={false}>Inactive</MenuItem>

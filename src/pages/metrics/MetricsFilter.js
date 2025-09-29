@@ -1,5 +1,3 @@
-// src/pages/metrics/MetricsFilter.js
-
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
@@ -18,22 +16,28 @@ import useAuth from '../../hooks/useAuth';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ClearIcon from '@mui/icons-material/Clear';
 
-import { fetchFilterOptions } from '../../app/reducers/filterOptionsSlice';
+// Import fetch actions from the new central data cache
+import { 
+    fetchProviders, 
+    fetchUsers, 
+    fetchCollections 
+} from '../../app/reducers/dataCacheSlice';
 
 const getDefaultStartDate = () => dayjs().subtract(7, 'day');
 const getDefaultEndDate = () => dayjs();
 
 function MetricsFilter({ onApplyFilters, onClearFilters, isDataLoading }) {
   const dispatch = useDispatch();
-  const { activeNgroupId, accessToken } = useAuth();
+  const { activeNgroupId } = useAuth();
 
-  const {
-    providers,
-    users,
-    collections,
-    status: optionsStatus,
-  } = useSelector((state) => state.filterOptions);
-  const loadingOptions = optionsStatus === 'loading';
+  // Read data and status from the new dataCacheSlice
+  const { 
+    providers, 
+    users, 
+    collections 
+  } = useSelector((state) => state.dataCache);
+
+  const loadingOptions = providers.status === 'loading' || users.status === 'loading' || collections.status === 'loading';
 
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -42,10 +46,19 @@ function MetricsFilter({ onApplyFilters, onClearFilters, isDataLoading }) {
   const [endDate, setEndDate] = useState(getDefaultEndDate);
 
   useEffect(() => {
-    if (optionsStatus === 'idle' && activeNgroupId && accessToken) {
-      dispatch(fetchFilterOptions({ accessToken, ngroupId: activeNgroupId }));
+    // Fetch each data type only if it hasn't been fetched yet for this session
+    if (activeNgroupId) {
+        if (providers.status === 'idle') {
+            dispatch(fetchProviders());
+        }
+        if (users.status === 'idle') {
+            dispatch(fetchUsers());
+        }
+        if (collections.status === 'idle') {
+            dispatch(fetchCollections());
+        }
     }
-  }, [optionsStatus, activeNgroupId, accessToken, dispatch]);
+  }, [activeNgroupId, providers.status, users.status, collections.status, dispatch]);
 
   const handleApplyClick = () => {
     const filters = {
@@ -79,7 +92,6 @@ function MetricsFilter({ onApplyFilters, onClearFilters, isDataLoading }) {
           </Alert>
         )}
 
-        {/* UPDATED: Manual widths and flex-grow */}
         <Grid container spacing={2} alignItems="center">
           <Grid item sx={{ flexGrow: 1 }}>
             <DatePicker
@@ -97,7 +109,7 @@ function MetricsFilter({ onApplyFilters, onClearFilters, isDataLoading }) {
               value={endDate}
               onChange={setEndDate}
               minDate={startDate}
-              disableFuture
+              maxDate={dayjs()}
               disabled={loadingOptions || !activeNgroupId}
               slotProps={{ textField: { fullWidth: true, size: 'small' } }}
             />
@@ -105,7 +117,7 @@ function MetricsFilter({ onApplyFilters, onClearFilters, isDataLoading }) {
           <Grid item sx={{ flexGrow: 1, minWidth: '200px' }}>
             <Autocomplete
               fullWidth
-              options={providers}
+              options={providers.data}
               getOptionLabel={(o) => o.short_name || ''}
               value={selectedProvider}
               onChange={(e, v) => setSelectedProvider(v)}
@@ -119,7 +131,7 @@ function MetricsFilter({ onApplyFilters, onClearFilters, isDataLoading }) {
           <Grid item sx={{ flexGrow: 1, minWidth: '200px' }}>
             <Autocomplete
               fullWidth
-              options={users}
+              options={users.data}
               getOptionLabel={(o) => o.name || ''}
               value={selectedUser}
               onChange={(e, v) => setSelectedUser(v)}
@@ -133,7 +145,7 @@ function MetricsFilter({ onApplyFilters, onClearFilters, isDataLoading }) {
           <Grid item sx={{ flexGrow: 1, minWidth: '200px' }}>
             <Autocomplete
               fullWidth
-              options={collections}
+              options={collections.data}
               getOptionLabel={(o) => o.short_name || ''}
               value={selectedCollection}
               onChange={(e, v) => setSelectedCollection(v)}
@@ -174,3 +186,4 @@ function MetricsFilter({ onApplyFilters, onClearFilters, isDataLoading }) {
 }
 
 export default MetricsFilter;
+

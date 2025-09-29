@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useOutletContext } from 'react-router-dom';
 import {
     Box, Card, CardContent, Button, Table, TableBody, TableCell,
@@ -12,12 +12,14 @@ import AddIcon from "@mui/icons-material/Add";
 import EvStationIcon from '@mui/icons-material/EvStation';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useSelector, useDispatch } from 'react-redux';
 
 import * as egressApi from "../api/egressAPI";
+import useAuth from '../hooks/useAuth';
 import usePrivileges from '../hooks/usePrivileges';
 import usePageTitle from "../hooks/usePageTitle";
-import sessionService from "../services/sessionService";
 import { parseApiError } from "../utils/errorUtils";
+import { fetchEgresses } from '../app/reducers/dataCacheSlice';
 
 const headCells = [
     { id: 'type', label: 'Type' },
@@ -28,56 +30,43 @@ const headCells = [
 export default function DAAC() {
     usePageTitle("DAAC Egress");
     
+    const dispatch = useDispatch();
+    const { activeNgroupId } = useAuth();
     const { hasPrivilege } = usePrivileges();
     const { setMenuItems } = useOutletContext();
-    const ngroupId = useMemo(() => sessionService.getSession()?.active_ngroup_id || null, []);
 
-    // State
-    const [egresses, setEgresses] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [selected, setSelected] = useState([]);
+    // Get data from the central Redux cache
+    const { egresses } = useSelector((state) => state.dataCache);
     
-    // Client-side operations state
+    // Local state for UI operations
+    const [loading, setLoading] = useState(true);
+    const [selected, setSelected] = useState([]);
     const [pagination, setPagination] = useState({ page: 0, rowsPerPage: 10 });
     const [sorting, setSorting] = useState({ orderBy: 'type', order: 'asc' });
     const [searchTerm, setSearchTerm] = useState('');
-    
-    // Dialog state
-    const [dialog, setDialog] = useState({ open: null, data: null }); // 'add', 'edit', 'delete'
+    const [dialog, setDialog] = useState({ open: null, data: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        const daacMenuItems = [{ text: 'Egress Targets', path: '/daac', icon: <EvStationIcon /> }];
+        const daacMenuItems = [{ text: 'Egress', path: '/daac', icon: <EvStationIcon /> }];
         setMenuItems(daacMenuItems);
         return () => setMenuItems([]);
     }, [setMenuItems]);
 
-    const fetchEgressData = useCallback(async () => {
-        if (!ngroupId) {
-            setLoading(false);
-            return;
-        }
-        setLoading(true);
-        setError(null);
-        try {
-            const data = await egressApi.listEgresses();
-            setEgresses(data || []);
-        } catch (err) {
-            const apiError = parseApiError(err);
-            setError(apiError);
-            toast.error(apiError);
-        } finally {
-            setLoading(false);
-        }
-    }, [ngroupId]);
-
+    // "Smart" data fetching that uses the cache
     useEffect(() => {
-        fetchEgressData();
-    }, [fetchEgressData]);
+        if (activeNgroupId && egresses.status === 'idle') {
+            dispatch(fetchEgresses());
+        }
+    }, [activeNgroupId, egresses.status, dispatch]);
+    
+    // Derives the page's loading state from the cache status
+    useEffect(() => {
+        setLoading(egresses.status === 'loading');
+    }, [egresses.status]);
 
     const processedEgresses = useMemo(() => {
-        let filtered = [...egresses];
+        let filtered = [...egresses.data];
         if (searchTerm) {
             const lowercasedTerm = searchTerm.toLowerCase();
             filtered = filtered.filter(e =>
@@ -92,11 +81,11 @@ export default function DAAC() {
             const bValue = b[sorting.orderBy] || '';
             return aValue.localeCompare(bValue) * isAsc;
         });
-    }, [egresses, sorting, searchTerm]);
+    }, [egresses.data, sorting, searchTerm]);
 
     const handleOpenDialog = (type, data = null) => {
         if (type === 'edit') {
-            const egressToEdit = egresses.find(e => e.id === selected[0]);
+            const egressToEdit = egresses.data.find(e => e.id === selected[0]);
             const prettyConfig = JSON.stringify(egressToEdit.config, null, 2);
             setDialog({ open: 'edit', data: { ...egressToEdit, config: prettyConfig } });
         } else if (type === 'add') {
@@ -131,7 +120,7 @@ export default function DAAC() {
             }
             handleCloseDialog();
             setSelected([]);
-            fetchEgressData();
+            dispatch(fetchEgresses()); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -146,7 +135,7 @@ export default function DAAC() {
             toast.success("Egress deleted successfully!");
             handleCloseDialog();
             setSelected([]);
-            fetchEgressData();
+            dispatch(fetchEgresses()); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -175,7 +164,7 @@ export default function DAAC() {
             <Card>
                 <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-                        <Typography variant="h5">Egress Targets</Typography>
+                        <Typography variant="h5">Egress</Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <TextField label="Search" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                             <Button variant="contained" color="primary" onClick={() => handleOpenDialog('add')} startIcon={<AddIcon />} disabled={!hasPrivilege('egress:create')}>Add</Button>
@@ -184,7 +173,7 @@ export default function DAAC() {
                         </Box>
                     </Box>
 
-                    {error && <Alert severity="error" sx={{ my: 2 }}>{error}</Alert>}
+                    {egresses.error && <Alert severity="error" sx={{ my: 2 }}>{egresses.error}</Alert>}
 
                     <TableContainer component={Paper}>
                         <Table stickyHeader>
@@ -212,19 +201,17 @@ export default function DAAC() {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    processedEgresses
-                                        .slice(pagination.page * pagination.rowsPerPage, pagination.page * pagination.rowsPerPage + pagination.rowsPerPage)
-                                        .map((row) => {
-                                            const isItemSelected = selected.indexOf(row.id) !== -1;
-                                            return (
-                                                <TableRow key={row.id} hover onClick={() => handleClick(row.id)} role="checkbox" tabIndex={-1} selected={isItemSelected}>
-                                                    <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
-                                                    <TableCell>{row.type}</TableCell>
-                                                    <TableCell>{row.path}</TableCell>
-                                                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{JSON.stringify(row.config)}</TableCell>
-                                                </TableRow>
-                                            );
-                                        })
+                                    processedEgresses.slice(pagination.page * pagination.rowsPerPage, pagination.page * pagination.rowsPerPage + pagination.rowsPerPage).map((row) => {
+                                        const isItemSelected = selected.indexOf(row.id) !== -1;
+                                        return (
+                                            <TableRow key={row.id} hover onClick={() => handleClick(row.id)} role="checkbox" tabIndex={-1} selected={isItemSelected}>
+                                                <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
+                                                <TableCell>{row.type}</TableCell>
+                                                <TableCell>{row.path}</TableCell>
+                                                <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{JSON.stringify(row.config)}</TableCell>
+                                            </TableRow>
+                                        );
+                                    })
                                 )}
                             </TableBody>
                         </Table>
@@ -242,7 +229,7 @@ export default function DAAC() {
             </Card>
 
             <Dialog open={dialog.open === 'add' || dialog.open === 'edit'} onClose={handleCloseDialog} fullWidth maxWidth="sm">
-                <DialogTitle>{dialog.open === 'add' ? 'Add Egress Target' : 'Edit Egress Target'}</DialogTitle>
+                <DialogTitle>{dialog.open === 'add' ? 'Add Egress' : 'Edit Egress'}</DialogTitle>
                 <Box component="form" onSubmit={handleSubmit}>
                     <DialogContent>
                         {dialog.data && (
