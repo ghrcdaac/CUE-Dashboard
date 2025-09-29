@@ -1,5 +1,5 @@
 # Use a base image with Node.js 16 pre-installed
-FROM node:22
+FROM node:22.19.0-trixie-slim
 
 # Set the working directory inside the container
 WORKDIR /app

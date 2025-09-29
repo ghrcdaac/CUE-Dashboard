@@ -10,20 +10,22 @@ const getEnvConfig = () => {
     switch (env) {
         case 'sit':
             return {
-                apiBaseUrl: 'https://upload.sit.earthdata.nasa.gov/api',
-                keycloakHost: 'https://idfs.sit.earthdatacloud.nasa.gov',
+                apiBaseUrl: 'https://upload.sit.earthdata.nasa.gov/api/v2',
+                keycloakHost: 'https://idfs.uat.earthdata.nasa.gov',
                 keycloakClientId: 'cue-uat' // SIT-specific Client ID
             };
         case 'prod':
             return {
-                apiBaseUrl: 'https://upload.earthdata.nasa.gov/api',
+                apiBaseUrl: 'https://upload.earthdata.nasa.gov/api/v2',
                 keycloakHost: 'https://idfs.earthdata.nasa.gov',
                 keycloakClientId: 'cue-uat' // Production Client ID
             };
         case 'uat':
         default:
             return {
-                apiBaseUrl: 'http://localhost:8000/v2',
+                apiBaseUrl: 'https://upload.uat.earthdata.nasa.gov/api/v2',
+                // http://localhost:8000/v2
+                // https://upload.uat.earthdata.nasa.gov/api/v2
                 keycloakHost: 'https://idfs.uat.earthdata.nasa.gov',
                 keycloakClientId: 'cue-uat' // UAT-specific Client ID
             };
@@ -38,7 +40,7 @@ export const config = {
     ...envConfig,
 
     // Static settings that are the same across all environments
-    version: "0.0.21",
+    version: "0.0.30",
     keycloakRealm: "cue",
 };
 

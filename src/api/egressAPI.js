@@ -1,138 +1,45 @@
-// src/api/egress.js
-import { config } from "../config";
+// src/api/egressAPI.js
 
-const API_BASE_URL = config.apiBaseUrl; // Keep the base URL from config
+import apiClient from './apiClient';
 
-export async function fetchEgresses(accessToken, ngroupId) {
-    if (!accessToken) {
-        throw new Error("Not authenticated: No access token available.");
-    }
-    let url = `${API_BASE_URL}/v1/egress/`; // Added /v1/ here
-    if (ngroupId) {
-        url += `?ngroup_id=${ngroupId}`;
-    }
-    const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`
-        },
-    });
+/**
+ * Retrieves all egress records for the user's currently active ngroup.
+ * The backend filters based on the X-Active-Ngroup-Id header sent by the apiClient.
+ */
+export const listEgresses = () => {
+    return apiClient.get('/egress/');
+};
 
-    if (!response.ok) {
-        throw new Error(`Failed to fetch egresses: ${response.statusText}`);
-    }
-    return await response.json();
-}
+/**
+ * Retrieves a single egress target by its ID.
+ * @param {string} egressId - The UUID of the egress target.
+ */
+export const getEgressById = (egressId) => {
+    return apiClient.get(`/egress/${egressId}`);
+};
 
-export async function fetchEgressById(egressId, accessToken, ngroupId) {
-    if (!accessToken) {
-        throw new Error("Not authenticated: No access token available.");
-    }
-    let url = `${API_BASE_URL}/v1/egress/${egressId}`; // Added /v1/ here
-    if (ngroupId) {
-        url += `?ngroup_id=${ngroupId}`;
-    }
-    const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`
-        }
-    });
+/**
+ * Creates a new egress target.
+ * The backend associates it with the active ngroup from the request header.
+ * @param {object} egressData - { type, path, config }
+ */
+export const createEgress = (egressData) => {
+    return apiClient.post('/egress/', egressData);
+};
 
-    if (!response.ok) {
-        if (response.status === 404) {
-            throw new Error(`Egress not found: ${egressId}`);
-        }
-        throw new Error(`Failed to fetch egress: ${response.statusText}`);
-    }
-    return await response.json();
-}
+/**
+ * Updates an existing egress target.
+ * @param {string} egressId - The UUID of the egress target to update.
+ * @param {object} updateData - The fields to update.
+ */
+export const updateEgress = (egressId, updateData) => {
+    return apiClient.patch(`/egress/${egressId}`, updateData);
+};
 
-export async function createEgress(egressData, accessToken) {
-    if (!accessToken) {
-        throw new Error("Not authenticated: No access token available.");
-    }
-    const response = await fetch(`${API_BASE_URL}/v1/egress/`, { // Added /v1/ here
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify(egressData),
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Failed to create egress: ${errorData.message || response.statusText}`);
-    }
-    return await response.json();
-}
-
-export async function updateEgress(egressId, egressData, accessToken) {
-    if (!accessToken) {
-        throw new Error("Not authenticated: No access token available.");
-    }
-    const response = await fetch(`${API_BASE_URL}/v1/egress/${egressId}`, { // Added /v1/ here
-        method: "PATCH",
-        headers: {
-            "Content-Type": "application/json",
-            'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify(egressData),
-    });
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Failed to update egress: ${errorData.message || response.statusText}`);
-    }
-    return await response.json();
-}
-
-export async function deleteEgress(egressId, accessToken, ngroupId) {
-    if (!accessToken) {
-        throw new Error("Not authenticated: No access token available.");
-    }
-    let url = `${API_BASE_URL}/v1/egress/${egressId}`; // Added /v1/ here
-    if (ngroupId) {
-        url += `?ngroup_id=${ngroupId}`;
-    }
-    const response = await fetch(url, {
-        method: "DELETE",
-        headers: {
-            'Authorization': `Bearer ${accessToken}`
-        }
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Failed to delete egress: ${errorData.message || response.statusText}`);
-    }
-    return true;
-}
-
-
-// List Egresses (added ngroupId parameter)
-export async function listEgresses(ngroupId, accessToken) {
-    if (!accessToken) {
-        throw new Error("Access token is required.");
-    }
-    if (!ngroupId) {
-        throw new Error("ngroupId is required.");
-    }
-
-    const url = `${API_BASE_URL}/v1/egress/?ngroup_id=${ngroupId}`;  // Added /v1/ here
-    const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-        },
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to list egresses');
-    }
-    return await response.json();
-}
+/**
+ * Deletes an egress target.
+ * @param {string} egressId - The UUID of the egress target to delete.
+ */
+export const deleteEgress = (egressId) => {
+    return apiClient.delete(`/egress/${egressId}`);
+};

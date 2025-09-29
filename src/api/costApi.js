@@ -1,47 +1,17 @@
-import { config } from "../config";
+// src/api/costApi.js
 
-const API_BASE_URL = config.apiBaseUrl;
+import apiClient from './apiClient';
 
-// Reusing the same helper functions from fileApi.js
-async function handleResponse(response, errorMessagePrefix) {
-    // ... (same handleResponse implementation as in fileApi.js) ...
-     if (!response.ok) {
-        let errorData;
-        try {
-            const contentType = response.headers.get("content-type");
-            if (contentType && contentType.indexOf("application/json") !== -1) {
-                errorData = await response.json();
-            } else {
-                errorData = { message: await response.text() };
-            }
-        } catch (e) {
-            errorData = { message: response.statusText };
-        }
-        const message = `${errorMessagePrefix}: ${errorData?.detail || errorData?.message || response.statusText} (Status: ${response.status})`;
-        console.error(message, errorData);
-        const error = new Error(message);
-        error.status = response.status;
-        error.data = errorData;
-        throw error;
-    }
-    if (response.status === 204) { return null; }
-     try {
-        return await response.json();
-     } catch(e) {
-         if (response.ok && response.status !== 204) {
-             console.warn(`Response was OK but not JSON for ${response.url}`);
-             return { success: true };
-         }
-         throw e;
-     }
-}
-
+/**
+ * Helper to build a query string from a filters object.
+ * @param {object} params - The object of query parameters.
+ * @returns {string} A URL query string.
+ */
 function buildQueryString(params) {
-    // ... (same buildQueryString implementation as in fileApi.js) ...
     const queryParams = new URLSearchParams();
     if (params) {
         Object.entries(params).forEach(([key, value]) => {
-            if (value != null) { // Check for null or undefined
+            if (value != null && value !== '') {
                 queryParams.append(key, value);
             }
         });
@@ -50,41 +20,38 @@ function buildQueryString(params) {
     return queryString ? `?${queryString}` : '';
 }
 
-export async function getFileByCost(params, accessToken) {
-    if (!accessToken) throw new Error("Authentication required.");
+/**
+ * Retrieves the summary of all cost metrics. (V2)
+ * Corresponds to: GET /file-metrics/cost-summary
+ * @param {object} filters - Optional filters { startDate, endDate, userId, etc. }
+ */
+export const getCostSummary = (filters) => {
+    const queryString = buildQueryString(filters);
+    return apiClient.get(`/file-metrics/cost-summary${queryString}`);
+};
 
-    const queryString = buildQueryString(params); // Use helper
-    const url = `${API_BASE_URL}/v1/file_metrics/file_cost${queryString}`;
+/**
+ * Retrieves a paginated list of costs aggregated by collection. (V2)
+ * Corresponds to: GET /file-metrics/cost-by-collection
+ * @param {object} params - { filters, page, pageSize }
+ */
+export const getCostByCollection = (params) => {
+    const { filters, ...pagination } = params;
+    const filtersQuery = buildQueryString(filters);
+    const paginationQuery = buildQueryString(pagination);
+    const separator = filtersQuery && paginationQuery ? '&' : '';
+    return apiClient.get(`/file-metrics/cost-by-collection${filtersQuery}${separator}${paginationQuery}`);
+};
 
-    const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' }
-    });
-    return handleResponse(response,"failed to fetch files cost")
-}
-
-export async function getCollectionByCost(params, accessToken) {
-    if (!accessToken) throw new Error("Authentication required.");
-
-    const queryString = buildQueryString(params); // Use helper
-    const url = `${API_BASE_URL}/v1/file_metrics/collection_cost${queryString}`;
-
-    const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' }
-    });
-    return handleResponse(response, "failed to fetch collection cost")
-}
-
-export async function getCostSummary(params, accessToken) {
-    if (!accessToken) throw new Error("Authentication required.");
-
-    const queryString = buildQueryString(params); // Use helper
-    const url = `${API_BASE_URL}/v1/file_metrics/cost_summary${queryString}`;
-
-    const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' }
-    });
-    return handleResponse(response,"failed to fetch summary")
-}
+/**
+ * Retrieves a paginated list of costs for individual files. (V2)
+ * Corresponds to: GET /file-metrics/cost-by-file
+ * @param {object} params - { filters, page, pageSize }
+ */
+export const getCostByFile = (params) => {
+    const { filters, ...pagination } = params;
+    const filtersQuery = buildQueryString(filters);
+    const paginationQuery = buildQueryString(pagination);
+    const separator = filtersQuery && paginationQuery ? '&' : '';
+    return apiClient.get(`/file-metrics/cost-by-file${filtersQuery}${separator}${paginationQuery}`);
+};

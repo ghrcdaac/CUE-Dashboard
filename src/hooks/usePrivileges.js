@@ -1,26 +1,23 @@
+// src/hooks/usePrivileges.js
+
 import { useSelector } from 'react-redux';
+import { useCallback } from 'react'; // --- 1. Import useCallback ---
 
 /**
  * A custom hook to check if the current user has a specific privilege.
  * @returns {{hasPrivilege: (privilege: string) => boolean, privileges: string[]}}
  */
 function usePrivileges() {
-    // Get the entire user object from the Redux store
-    const user = useSelector((state) => state.auth.user);
+  const user = useSelector((state) => state.auth.user);
+  const privileges = user?.privileges || [];
 
-    // The user's flat list of permissions
-    const privileges = user?.privileges || [];
+  // --- 2. Wrap the function in useCallback ---
+  // This ensures the function reference is stable unless the user's privileges change.
+  const hasPrivilege = useCallback((privilege) => {
+    return privileges.includes(privilege);
+  }, [privileges]); // --- 3. Add privileges as a dependency ---
 
-    /**
-     * Checks if the user's privilege list includes a specific privilege.
-     * @param {string} privilege - The name of the privilege to check (e.g., "create_provider").
-     * @returns {boolean} - True if the user has the privilege, false otherwise.
-     */
-    const hasPrivilege = (privilege) => {
-        return privileges.includes(privilege);
-    };
-
-    return { hasPrivilege, privileges };
+  return { hasPrivilege, privileges };
 }
 
 export default usePrivileges;

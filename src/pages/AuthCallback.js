@@ -32,7 +32,7 @@ function AuthCallback() {
             try {
                 const { status, id_token } = await handleAuthCallback(code, state);
                 
-                // --- FIX: This logic now correctly routes based on the user's actual status ---
+                // --- This logic now correctly routes based on the user's actual status ---
                 switch (status) {
                     case 'registered':
                         navigate('/', { replace: true });

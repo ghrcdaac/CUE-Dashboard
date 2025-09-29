@@ -1,7 +1,10 @@
-import React, { useEffect } from "react";
+// src/App.js
+
+import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import SideNav from "./components/SideNav";
 import Home from "./pages/Home";
 import Collections from "./pages/Collections";
 import Providers from "./pages/Providers";
@@ -20,16 +23,17 @@ import { useSelector } from 'react-redux';
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { CircularProgress, Box } from "@mui/material";
 
-// --- NEW IMPORTS ---
-import LoginPage from "./components/LoginPage"; // The new login page
-import AuthCallback from './pages/AuthCallback'; // The new callback page
-import PendingApproval from './pages/PendingApproval'; // A simple new page
+import LoginPage from "./components/LoginPage";
+import AuthCallback from './pages/AuthCallback';
+import PendingApproval from './pages/PendingApproval';
 
 import FilesByCost from './pages/metrics/FilesByCost';
-import { Box } from '@mui/material';
 import CollectionFileBrowser from "./pages/collections/CollectionFileBrowser";
 import CollectionOverview from "./pages/collections/CollectionOverview";
 import NotificationPreferences from "./pages/Profile/NotificationPreference";
+
+import ProfileInfo from "./pages/Profile/ProfileInfo";
+import ApiKeys from "./pages/Profile/ApiKeys";
 
 
 const theme = createTheme({
@@ -83,7 +87,9 @@ function Layout() {
                 <Box
                     component="main"
                     sx={{
-                        flexGrow: 1,
+                        // UPDATED: This is the definitive fix for the content area
+                        flex: 1,
+                        minWidth: 0, // A flexbox failsafe to allow shrinking
                         overflowY: 'auto',
                         p: 3,
                         backgroundColor: '#f4f6f8',
@@ -103,7 +109,6 @@ function App() {
     const { initializeAuth } = useAuth();
 
     useEffect(() => {
-        // The initializeAuth function now handles checking for a valid session
         initializeAuth();
     }, [initializeAuth]);
 
@@ -117,7 +122,6 @@ function App() {
 
     return (
         <ThemeProvider theme={theme}>
-
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                  <Routes>
                     <Route element={<SimpleLayout />}>
@@ -125,7 +129,6 @@ function App() {
                     </Route>
                     <Route element={<Layout />}>
                         <Route path="collections" element={<ProtectedRoute><Collections /></ProtectedRoute>}>
-
                             <Route index element={<Collections />} />
                             <Route path="create" element={<CollectionOverview />} />
                             <Route path="files" element={<CollectionFileBrowser />} />
@@ -142,8 +145,10 @@ function App() {
                         </Route>
 
                         <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />
+
                         <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} >
-                            <Route index element={<Navigate to="notification" replace />} />
+                            <Route index element={<ProfileInfo />} />
+                            <Route path="api-keys" element={<ApiKeys />} />
                             <Route path="notification" element={<NotificationPreferences />} />
                         </Route>
                     </Route>
@@ -154,9 +159,8 @@ function App() {
                     <Route path="/signup" element={<SignupPage />} />
                     <Route path="/pending-approval" element={<PendingApproval />} />
 
-                    {/* Fallback route */}
                     <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                 </Routes>
             </BrowserRouter>
         </ThemeProvider>
     );

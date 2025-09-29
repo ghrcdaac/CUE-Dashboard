@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Toolbar from "@mui/material/Toolbar";
@@ -17,10 +17,12 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import useAuth from '../hooks/useAuth';
 import usePageTitle from "../hooks/usePageTitle";
 import usePrivileges from "../hooks/usePrivileges";
+import { resetCache } from '../app/reducers/dataCacheSlice';
 
 export default function Header() {
     const { isAuthenticated, user, logout, activeNgroupId, setActiveNgroup } = useAuth();
     const { hasPrivilege } = usePrivileges();
+    const dispatch = useDispatch();
     
     const [anchorEl, setAnchorEl] = useState(null);
     const location = useLocation();
@@ -35,7 +37,7 @@ export default function Header() {
     const handleNgroupChange = (event) => {
         const newNgroupId = event.target.value;
         setActiveNgroup(newNgroupId);
-        window.location.reload();
+        dispatch(resetCache());
     };
 
     let sectionTitle = "Home";
@@ -52,48 +54,49 @@ export default function Header() {
         <Box>
             <AppBar position="static" sx={{ height: "150px" }}>
                 <Toolbar sx={{ alignItems: "flex-start", pt: 2, justifyContent: "space-between", flexDirection: "column" }}>
-                    <Box sx={{ display: "flex", alignItems: "center", width: "100%", mb: 1 }}>
-                        <img src="/nasa_logo.png" alt="NASA Logo" height="60" />
-                        <Box sx={{ display: "flex", alignItems: "center", ml: 2 }}>
-                            <Box sx={{ mr: 5 }}>
+                    <Box sx={{ display: "flex", justifyContent: 'space-between', alignItems: "center", width: "100%", mb: 1 }}>
+                        <Box sx={{ display: "flex", alignItems: "center" }}>
+                            {/* UPDATED: This Box is now a clickable link to the home page */}
+                            <Box
+                                component={RouterLink}
+                                to="/"
+                                sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    textDecoration: 'none',
+                                    color: 'inherit',
+                                    mr: 5
+                                }}
+                            >
+                                <img src="/nasa_logo.png" alt="NASA Logo" height="60" style={{ marginRight: '16px' }} />
                                 <Typography variant="h4" sx={{ fontWeight: "bold" }}>CUE</Typography>
                             </Box>
+                            
                             <Box sx={{ display: "flex", alignItems: "center" }}>
-                                {hasPrivilege("view_collection") && <Button color="inherit" component={RouterLink} to="/collections">Collections</Button>}
-                                {hasPrivilege("view_provider") && <Button color="inherit" component={RouterLink} to="/providers">Providers</Button>}
-                                {hasPrivilege("metrics") && <Button color="inherit" component={RouterLink} to="/metrics">Metrics</Button>}
-                                {hasPrivilege("approve_user") && <Button color="inherit" component={RouterLink} to="/users">Users</Button>}
-                                {hasPrivilege("admin") && <Button color="inherit" component={RouterLink} to="/daac">DAAC</Button>}
+                                {hasPrivilege("collection:read") && <Button color="inherit" component={RouterLink} to="/collections">Collections</Button>}
+                                {hasPrivilege("provider:read") && <Button color="inherit" component={RouterLink} to="/providers">Providers</Button>}
+                                {hasPrivilege("metrics:read") && <Button color="inherit" component={RouterLink} to="/metrics">Metrics</Button>}
+                                {hasPrivilege("user:read") && <Button color="inherit" component={RouterLink} to="/users">Users</Button>}
+                                {hasPrivilege("egress:read") && <Button color="inherit" component={RouterLink} to="/daac">DAAC</Button>}
                             </Box>
                         </Box>
-                        <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", width: "100%" }}>
+                        <Box sx={{ display: "flex", alignItems: "center" }}>
                             {isAuthenticated ? (
                                 <>
-                                    {/* --- UPDATED: DAAC SELECTOR / DISPLAY --- */}
-                                    {user?.ngroups && user.ngroups.length > 0 && (
-                                        user.ngroups.length === 1 ? (
-                                            // If only one group, display it as text
-                                            <Typography sx={{ color: 'white', mr: 2, border: '1px solid rgba(255, 255, 255, 0.5)', borderRadius: 1, px: 1.5, py: 0.5, fontSize: '0.875rem' }}>
-                                                {/* This handles if the backend sends a string or an object */}
-                                                {typeof user.ngroups[0] === 'object' ? user.ngroups[0].short_name : user.ngroups[0]}
-                                            </Typography>
-                                        ) : (
-                                            // If multiple groups, display the selector dropdown
-                                            <FormControl sx={{ m: 1, minWidth: 120, mr: 2 }} size="small">
-                                                <Select
-                                                    value={activeNgroupId || ''}
-                                                    onChange={handleNgroupChange}
-                                                    sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.5)' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'white' }, '.MuiSvgIcon-root': { color: 'white' } }}
-                                                >
-                                                    {user.ngroups.map((ngroup) => (
-                                                        // This assumes the backend will send an object with id and short_name for multi-group users
-                                                        <MenuItem key={ngroup.id} value={ngroup.id}>
-                                                            {ngroup.short_name}
-                                                        </MenuItem>
-                                                    ))}
-                                                </Select>
-                                            </FormControl>
-                                        )
+                                    {user?.ngroups && user.ngroups.length > 1 && (
+                                        <FormControl sx={{ m: 1, minWidth: 120, mr: 2 }} size="small">
+                                            <Select
+                                                value={activeNgroupId || ''}
+                                                onChange={handleNgroupChange}
+                                                sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.5)' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'white' }, '.MuiSvgIcon-root': { color: 'white' } }}
+                                            >
+                                                {user.ngroups.map((ngroup) => (
+                                                    <MenuItem key={ngroup.id} value={ngroup.id}>
+                                                        {ngroup.short_name}
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
                                     )}
                                     <IconButton size="large" aria-controls="menu-appbar" aria-haspopup="true" onClick={handleMenu} color="inherit" sx={{ padding: 0 }}>
                                         <AccountCircle />

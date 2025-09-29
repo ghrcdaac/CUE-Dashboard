@@ -20,7 +20,7 @@ const apiClient = async (endpoint, options = {}) => {
 
     if (accessToken && session?.expiresAt) {
         // --- FIX: Reduced the refresh buffer from 5 minutes to 1 minute ---
-        const isTokenExpiring = Date.now() > (session.expiresAt - 1 * 60 * 1000);
+        const isTokenExpiring = Date.now() > (session.expiresAt - 3 * 60 * 1000);
 
         if (isTokenExpiring) {
             console.log('Access token is expiring, attempting to refresh...');
@@ -62,6 +62,10 @@ const apiClient = async (endpoint, options = {}) => {
         }
         console.error(`API Error on ${endpoint}:`, error.response);
         throw error;
+    }
+    
+    if (response.status === 204) {
+        return { success: true };
     }
 
     const contentType = response.headers.get("content-type");
