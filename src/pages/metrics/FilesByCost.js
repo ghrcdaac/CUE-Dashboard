@@ -17,7 +17,6 @@ import MetricsFilter from './MetricsFilter';
 
 import { parseApiError } from '../../utils/errorUtils';
 import * as costApi from '../../api/costApi';
-import { generateCostReport } from '../reports/PdfReport';
 
 
 // Icons
@@ -132,74 +131,74 @@ function FilesByCost() {
         }).catch(err => toast.error(`Failed to load files: ${parseApiError(err)}`)).finally(() => setLoadingFiles(false));
     };
 
-    // const handleExportCostReport = async () => {
-    //     try {
-    //         toast.info("Generating Files by Cost report. This may take a moment...");
+    const handleExportCostReport = async () => {
+        try {
+            toast.info("Generating Files by Cost report. This may take a moment...");
 
-    //         const userInfo = {
-    //             name: localStorage.getItem('CUE_username'),
-    //             // ngroup: localStorage.getItem('CUE_ngroup_id'), // need to replace to name
-    //             // role: localStorage.getItem('CUE_role_id'), //need to replace to name
-    //             start: startDate.format(DATE_FORMAT_API_DAYJS),
-    //             end: endDate.format(DATE_FORMAT_API_DAYJS)
-    //         };
+            const userInfo = {
+                name: localStorage.getItem('CUE_username'),
+                // ngroup: localStorage.getItem('CUE_ngroup_id'), // need to replace to name
+                // role: localStorage.getItem('CUE_role_id'), //need to replace to name
+                start: startDate.format(DATE_FORMAT_API_DAYJS),
+                end: endDate.format(DATE_FORMAT_API_DAYJS)
+            };
 
-    //         //  Summary
-    //         const summaryParams = {
-    //         ngroup_id: ngroupId,
-    //         start_date: startDate?.format(DATE_FORMAT_API_DAYJS),
-    //         end_date: endDate?.format(DATE_FORMAT_API_DAYJS),
-    //         };
-    //         const summary = await costMetricsApi.getCostSummary(summaryParams, accessToken);
+            //  Summary
+            const summaryParams = {
+            ngroup_id: ngroupId,
+            start_date: startDate?.format(DATE_FORMAT_API_DAYJS),
+            end_date: endDate?.format(DATE_FORMAT_API_DAYJS),
+            };
+            const summary = await costMetricsApi.getCostSummary(summaryParams, accessToken);
 
-    //         //  Daily cost (fetch all pages)
-    //         let daily = [];
-    //         let page = 1;
-    //         const pageSize = 100;
-    //         let total = 0;
-    //         daily = daily.concat(summary?.daily_cost || []);
+            //  Daily cost (fetch all pages)
+            let daily = [];
+            let page = 1;
+            const pageSize = 100;
+            let total = 0;
+            daily = daily.concat(summary?.daily_cost || []);
 
-    //         //  Collection cost (fetch all pages)
-    //         let collections = [];
-    //         do {
-    //         const res = await costMetricsApi.getCollectionByCost(
-    //             { ...summaryParams, page, page_size: pageSize },
-    //             accessToken
-    //         );
-    //         collections = collections.concat(res?.costs || []);
-    //         total = res?.total || 0;
-    //         page++;
-    //         } while (collections.length < total);
+            //  Collection cost (fetch all pages)
+            let collections = [];
+            do {
+            const res = await costMetricsApi.getCollectionByCost(
+                { ...summaryParams, page, page_size: pageSize },
+                accessToken
+            );
+            collections = collections.concat(res?.costs || []);
+            total = res?.total || 0;
+            page++;
+            } while (collections.length < total);
 
-    //         //  Files by cost (fetch all pages)
-    //         let files = [];
-    //         page = 1;
-    //         total = 0;
-    //         do {
-    //         const res = await costMetricsApi.getFileByCost(
-    //             { ...summaryParams, page, page_size: pageSize },
-    //             accessToken
-    //         );
-    //         const items = Array.isArray(res) ? res : res?.costs || [];
-    //         files = files.concat(items);
-    //         total = res?.total || items.length;
-    //         page++;
-    //         } while (files.length < total);
+            //  Files by cost (fetch all pages)
+            let files = [];
+            page = 1;
+            total = 0;
+            do {
+            const res = await costMetricsApi.getFileByCost(
+                { ...summaryParams, page, page_size: pageSize },
+                accessToken
+            );
+            const items = Array.isArray(res) ? res : res?.costs || [];
+            files = files.concat(items);
+            total = res?.total || items.length;
+            page++;
+            } while (files.length < total);
 
-    //         // Build summary data
-    //         const summaryData = {
-    //         "Total Cost": `$${summary?.total_cost?.cost || 0}`,
-    //         "Number of Files": summary?.files_metadata?.number_of_files || 0,
-    //         "Cost per Byte": `$${summary?.files_metadata?.cost_per_byte || 0}`,
-    //         };
+            // Build summary data
+            const summaryData = {
+            "Total Cost": `$${summary?.total_cost?.cost || 0}`,
+            "Number of Files": summary?.files_metadata?.number_of_files || 0,
+            "Cost per Byte": `$${summary?.files_metadata?.cost_per_byte || 0}`,
+            };
 
-    //         generateCostReport(summaryData, daily, collections, files, userInfo);
+            generateCostReport(summaryData, daily, collections, files, userInfo);
 
-    //         toast.success("Files by Cost report downloaded successfully!");
-    //     } catch (err) {
-    //         toast.error("Failed to generate report: " + err.message);
-    //     }
-    // };
+            toast.success("Files by Cost report downloaded successfully!");
+        } catch (err) {
+            toast.error("Failed to generate report: " + err.message);
+        }
+    };
 
     return (
 
