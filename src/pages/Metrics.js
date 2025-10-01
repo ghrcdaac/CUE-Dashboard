@@ -35,7 +35,7 @@ import usePageTitle from '../hooks/usePageTitle';
 import sessionService from '../services/sessionService';
 import MetricsFilter from './metrics/MetricsFilter';
 import ExportMenu from './reports/ExportMenu';
-import { generatePDFReport } from './reports/PdfReport';
+import { generateMetricsReport } from './reports/PdfReport';
 
 // API Imports
 import * as fileMetricsApi from '../api/fileMetricsApi';
@@ -154,23 +154,17 @@ function Metrics() {
 
   const handleExport = (format) => {
     if (format !== 'pdf') return;
-    const reportData = {
-        summary: {
-            totalVolume: overallVolumeData ? formatBytes(overallVolumeData.total_volume_gb) : 'N/A',
-            totalCount: overallCountData ? overallCountData.total_count.toLocaleString() : 'N/A',
-            statusCounts: statusCountsData,
-        },
-        dailyVolume: dailyVolumeData,
-        dailyCount: dailyCountData,
-    };
-    const reportFilters = {
-        name: currentUser?.name || 'N/A',
-        start: activeFilters.start_date,
-        end: activeFilters.end_date,
-    };
+    const summaryData = {
+            "Total Volume": overallVolumeData ? formatBytes(overallVolumeData.total_volume_gb) : 'N/A',
+            "Total Files": overallCountData ? overallCountData.total_count.toLocaleString() : 'N/A',
+        };
+    const userInfo = {
+            name: currentUser?.name || '',
+            start: activeFilters.start_date,
+            end: activeFilters.end_date
+        };
     // Assuming a report generator for this specific data structure exists
-    // generateMetricsReport(reportData, reportFilters);
-    toast.info("PDF export for this view is not yet implemented.");
+    generateMetricsReport(summaryData,statusCountsData,dailyVolumeData,dailyCountData, userInfo);
   };
 
   const volumeTooltipFormatter = (value) => [`${value.toFixed(4)} GB`, 'Volume'];
