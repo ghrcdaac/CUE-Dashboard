@@ -182,6 +182,13 @@ function Providers() {
     const handleRowsPerPageChange = (event) => setPagination({ ...pagination, rowsPerPage: parseInt(event.target.value, 10), page: 0 });
     
     const handleExportProviders = async (format) => {
+        const userInfo = {
+                name: localStorage.getItem('CUE_username'),
+                // ngroup: localStorage.getItem('CUE_ngroup_id'), // need to replace to name
+                // role: localStorage.getItem('CUE_role_id'), //need to replace to name
+                start: new Date().toLocaleString(),
+                end: new Date().toLocaleString()
+        };
         if (format !== 'pdf') return;
         try {
             const suspended = processedProviders.filter(p => !p.can_upload);
@@ -195,7 +202,7 @@ function Providers() {
                 { header: "Point of Contact", dataKey: "point_of_contact_name" },
                 { header: "Reason", dataKey: "reason" },
             ];
-            generatePDFReport("Suspended Providers Report", columns, suspended);
+            generatePDFReport("Suspended Providers Report", columns, suspended, null, userInfo);
         } catch (err) {
             toast.error("Failed to export suspended providers: " + parseApiError(err));
         }
