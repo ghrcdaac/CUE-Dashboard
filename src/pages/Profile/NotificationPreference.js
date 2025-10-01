@@ -41,7 +41,7 @@ function NotificationPreferences() {
   const fetchPreferences = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getUserNotification(accessToken);
+      const data = await getUserNotification();
 
       if (Array.isArray(data) && data.length > 0) {
         // Store notification IDs for update
@@ -159,7 +159,7 @@ function NotificationPreferences() {
                 {/* Email Reports Toggle */}
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 3, gap: 2 }}>
                   <Typography variant="subtitle1">
-                    Send Email Reports
+                    Daily Metrics Digest
                   </Typography>
                   <FormControlLabel
                     control={
@@ -174,24 +174,38 @@ function NotificationPreferences() {
                   />
                 </Box>
 
-                {/* Infected File Report Frequency */}
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 3, gap: 2 }}>
                   <Typography variant="subtitle1">
-                    Infected File Scan Report Frequency
+                    Weekly Metrics Digest
                   </Typography>
-                  <FormControl size="small" sx={{ minWidth: 150 }}>
-                    <InputLabel>Frequency</InputLabel>
-                    <Select
-                      value={preferences.infected_file}
-                      onChange={(e) => handleChange(e, 'infected_file')}
-                    >
-                      <MenuItem value="none">None</MenuItem>
-                      <MenuItem value="daily">Daily</MenuItem>
-                      <MenuItem value="weekly">Weekly</MenuItem>
-                      <MenuItem value="biweekly">Biweekly</MenuItem>
-                      <MenuItem value="monthly">Monthly</MenuItem>
-                    </Select>
-                  </FormControl>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={prefs.emailReports}
+                        onChange={(e) =>
+                          setPrefs(prev => ({ ...prev, emailReports: e.target.checked }))
+                        }
+                      />
+                    }
+                    label=""
+                  />
+                </Box>
+
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', mb: 3, gap: 2 }}>
+                  <Typography variant="subtitle1">
+                    Monthly Metrics Digest
+                  </Typography>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={prefs.emailReports}
+                        onChange={(e) =>
+                          setPrefs(prev => ({ ...prev, emailReports: e.target.checked }))
+                        }
+                      />
+                    }
+                    label=""
+                  />
                 </Box>
 
                 {/* Save Button */}
