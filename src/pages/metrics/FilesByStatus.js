@@ -205,7 +205,7 @@ function FilesByStatus() {
     }, [selectedStatusTab]);
 
     const handleExport = async (format) => {
-        if (format !== "pdf") return; // You can extend for CSV/XLSX later
+        if (format !== "pdf") return; //can extend for CSV/XLSX later
 
         try {
             const userInfo = {
@@ -245,7 +245,7 @@ function FilesByStatus() {
             let columns = [
             { header: "File Name", dataKey: "name" },
             { header: "Collection", dataKey: "collection_name" },
-            { header: "Size (Bytes)", dataKey: "size_bytes" },
+            { header: "Size", dataKey: "size_bytes" },
             ];
 
             if (selectedStatusTab === "failed") {
@@ -281,13 +281,22 @@ function FilesByStatus() {
             "dateScanned",
             ];
 
+            const sizeFields = ["size_bytes"];
+            
             const rows = filesWithCollections.map((f) => {
             const row = {};
             columns.forEach((c) => {
                 let value = f[c.dataKey] ?? "";
+                // Format date fields
                 if (dateFields.includes(c.dataKey) && value) {
                 value = formatDisplayDate(value);
                 }
+
+                // Format size fields
+                if (sizeFields.includes(c.dataKey) && value !== "") {
+                value = formatBytes(value);
+                }
+
                 row[c.dataKey] = value;
             });
             return row;
