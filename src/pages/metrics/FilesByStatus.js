@@ -206,12 +206,16 @@ function FilesByStatus() {
 
     const handleExport = async (format) => {
         if (format !== "pdf") return; //can extend for CSV/XLSX later
-
+        
         try {
+            const now = new Date();
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(now.getDate() - 7);
+
             const userInfo = {
             name: localStorage.getItem("CUE_username"),
-            start: activeFilters.start_date || "N/A",
-            end: activeFilters.end_date || "N/A",
+            start: activeFilters?.start_date || sevenDaysAgo,
+            end: activeFilters?.end_date || now,
             };
 
             // Fetch all files (if not already fully loaded)
@@ -282,7 +286,7 @@ function FilesByStatus() {
             ];
 
             const sizeFields = ["size_bytes"];
-            
+
             const rows = filesWithCollections.map((f) => {
             const row = {};
             columns.forEach((c) => {

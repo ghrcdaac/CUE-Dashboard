@@ -158,10 +158,13 @@ function Metrics() {
             "Total Volume": overallVolumeData ? formatBytes(overallVolumeData.total_volume_gb) : 'N/A',
             "Total Files": overallCountData ? overallCountData.total_count.toLocaleString() : 'N/A',
         };
+    const now = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(now.getDate() - 7);
     const userInfo = {
             name: currentUser?.name || '',
-            start: activeFilters.start_date,
-            end: activeFilters.end_date
+            start: activeFilters?.start_date || sevenDaysAgo,
+            end: activeFilters?.end_date || now
         };
     // Assuming a report generator for this specific data structure exists
     generateMetricsReport(summaryData,statusCountsData,dailyVolumeData,dailyCountData, userInfo);
