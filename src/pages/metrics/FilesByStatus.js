@@ -214,8 +214,8 @@ function FilesByStatus() {
 
             const userInfo = {
             name: localStorage.getItem("CUE_username"),
-            start: activeFilters?.start_date || sevenDaysAgo,
-            end: activeFilters?.end_date || now,
+            start: activeFilters?.start_date || sevenDaysAgo.toISOString().split('T')[0],
+            end: activeFilters?.end_date || now.toISOString().split('T')[0],
             };
 
             // Fetch all files (if not already fully loaded)

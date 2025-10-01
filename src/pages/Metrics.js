@@ -163,8 +163,8 @@ function Metrics() {
     sevenDaysAgo.setDate(now.getDate() - 7);
     const userInfo = {
             name: currentUser?.name || '',
-            start: activeFilters?.start_date || sevenDaysAgo,
-            end: activeFilters?.end_date || now
+            start: activeFilters?.start_date || sevenDaysAgo.toISOString().split('T')[0],
+            end: activeFilters?.end_date || now.toISOString().split('T')[0]
         };
     // Assuming a report generator for this specific data structure exists
     generateMetricsReport(summaryData,statusCountsData,dailyVolumeData,dailyCountData, userInfo);
