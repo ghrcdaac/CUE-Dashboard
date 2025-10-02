@@ -17,6 +17,8 @@ import MetricsFilter from './MetricsFilter';
 
 import { parseApiError } from '../../utils/errorUtils';
 import * as costApi from '../../api/costApi';
+import { generateCostReport } from '../reports/PdfReport';
+import ExportMenu from '../reports/ExportMenu';
 
 
 // Icons
@@ -135,64 +137,56 @@ function FilesByCost() {
         try {
             toast.info("Generating Files by Cost report. This may take a moment...");
 
+            // Extract filter values (adapt based on your actual filters)
+            const startDate = activeFilters.startDate;
+            const endDate = activeFilters.endDate;
+
             const userInfo = {
-                name: localStorage.getItem('CUE_username'),
-                // ngroup: localStorage.getItem('CUE_ngroup_id'), // need to replace to name
-                // role: localStorage.getItem('CUE_role_id'), //need to replace to name
-                start: startDate.format(DATE_FORMAT_API_DAYJS),
-                end: endDate.format(DATE_FORMAT_API_DAYJS)
+                name: localStorage.getItem('CUE_username') || 'Unknown User',
+                start: startDate,
+                end: endDate
             };
 
-            //  Summary
-            const summaryParams = {
-            ngroup_id: ngroupId,
-            start_date: startDate?.format(DATE_FORMAT_API_DAYJS),
-            end_date: endDate?.format(DATE_FORMAT_API_DAYJS),
-            };
-            const summary = await costMetricsApi.getCostSummary(summaryParams, accessToken);
+            const summaryParams = { filters: activeFilters };
 
-            //  Daily cost (fetch all pages)
-            let daily = [];
-            let page = 1;
-            const pageSize = 100;
-            let total = 0;
-            daily = daily.concat(summary?.daily_cost || []);
+            // Summary
+            const summaryData = await costApi.getCostSummary(summaryParams);
 
-            //  Collection cost (fetch all pages)
+            // Daily Cost
+            const daily = summaryData?.daily_cost || [];
+
+            // Collections (fetch all)
             let collections = [];
+            let page = 1;
+            let total = 0;
+            const pageSize = 100;
             do {
-            const res = await costMetricsApi.getCollectionByCost(
-                { ...summaryParams, page, page_size: pageSize },
-                accessToken
-            );
-            collections = collections.concat(res?.costs || []);
-            total = res?.total || 0;
-            page++;
+                const res = await costApi.getCostByCollection({ filters: activeFilters, page, page_size: pageSize });
+                collections = collections.concat(res.items || []);
+                total = res.total || 0;
+                page++;
             } while (collections.length < total);
 
-            //  Files by cost (fetch all pages)
+            // Files (fetch all)
             let files = [];
             page = 1;
             total = 0;
             do {
-            const res = await costMetricsApi.getFileByCost(
-                { ...summaryParams, page, page_size: pageSize },
-                accessToken
-            );
-            const items = Array.isArray(res) ? res : res?.costs || [];
-            files = files.concat(items);
-            total = res?.total || items.length;
-            page++;
+                const res = await costApi.getCostByFile({ filters: activeFilters, page, page_size: pageSize });
+                files = files.concat(res.items || []);
+                total = res.total || 0;
+                page++;
             } while (files.length < total);
 
-            // Build summary data
-            const summaryData = {
-            "Total Cost": `$${summary?.total_cost?.cost || 0}`,
-            "Number of Files": summary?.files_metadata?.number_of_files || 0,
-            "Cost per Byte": `$${summary?.files_metadata?.cost_per_byte || 0}`,
+            // Build summary info
+            const summaryInfo = {
+                "Total Cost": `$${summaryData?.total_cost?.value?.toFixed(2) ?? '0.00'}`,
+                "Total Files": summaryData?.total_files ?? 0,
+                "Total Size (GB)": `${summaryData?.total_size_gb?.toFixed(2) ?? '0.00'} GB`
             };
 
-            generateCostReport(summaryData, daily, collections, files, userInfo);
+            // Generate PDF (ensure generateCostReport is imported)
+            generateCostReport(summaryInfo, daily, collections, files, userInfo);
 
             toast.success("Files by Cost report downloaded successfully!");
         } catch (err) {
@@ -210,6 +204,9 @@ function FilesByCost() {
                     onClearFilters={handleClearFilters}
                     isDataLoading={loadingSummary || loadingCollections || loadingFiles}
                 />
+                <Box display="flex" justifyContent="flex-end" sx={{ mb: 2 }}>
+                    <ExportMenu onExport={handleExportCostReport} />
+                </Box>
                 
                 {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
                 
