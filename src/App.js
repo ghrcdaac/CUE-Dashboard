@@ -149,7 +149,7 @@ function App() {
                         <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} >
                             <Route index element={<ProfileInfo />} />
                             <Route path="api-keys" element={<ApiKeys />} />
-                            <Route path="notification" element={<NotificationPreferences />} />
+                            {/* <Route path="notification" element={<NotificationPreferences />} /> */}
                         </Route>
                     </Route>
 
