@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Box, Card, CardContent, Typography, Grid,
     CircularProgress, Alert, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, Paper, TablePagination, Container
+    TableContainer, TableHead, TableRow, Paper, TablePagination, Container, Skeleton, OutlinedInput, InputAdornment, TableSortLabel
 } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -25,6 +25,7 @@ import ExportMenu from '../reports/ExportMenu';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import FilePresentIcon from '@mui/icons-material/FilePresent';
 import MoneyIcon from '@mui/icons-material/Money';
+import SearchIcon from '@mui/icons-material/Search';
 
 function FilesByCost() {
     usePageTitle("Files by Cost");
@@ -49,6 +50,9 @@ function FilesByCost() {
 
     // Combined error state
     const [error, setError] = useState(null);
+
+    const [fileSearchTerm, setFileSearchTerm] = useState('');
+    const [fileSort, setFileSort] = useState({ field: 'name', direction: 'asc' });
 
     // Side Nav Menu
     useEffect(() => {
@@ -105,14 +109,15 @@ function FilesByCost() {
     };
 
     // --- Pagination Handlers ---
-    const handleCollectionPageChange = (event, newPage) => {
+    const handleCollectionPageChange = useCallback((event, newPage) => {
         setLoadingCollections(true);
-        const params = { filters: activeFilters, page: newPage, page_size: collectionPagination.pageSize }; // MUI Pagination is 1-based for display
+        const apiPage = newPage + 1;
+        const params = { filters: activeFilters, page: apiPage, page_size: collectionPagination.pageSize };
         costApi.getCostByCollection(params).then(res => {
             setCollectionCosts(res.items || []);
-            setCollectionPagination(prev => ({ ...prev, page: newPage - 1 })); // Store as 0-based
+            setCollectionPagination(prev => ({ ...prev, page: newPage }));
         }).catch(err => toast.error(`Failed to load collections page: ${parseApiError(err)}`)).finally(() => setLoadingCollections(false));
-    };
+    }, [activeFilters, collectionPagination.pageSize]);
 
     const handleFilePageChange = (event, newPage) => {
         setLoadingFiles(true);
@@ -132,6 +137,59 @@ function FilesByCost() {
             setFilePagination({ total: res.total || 0, pageSize: newPageSize, page: 0 });
         }).catch(err => toast.error(`Failed to load files: ${parseApiError(err)}`)).finally(() => setLoadingFiles(false));
     };
+
+    const handleFileSort = (field) => {
+        const isAsc = fileSort.field === field && fileSort.direction === 'asc';
+        const newDirection = isAsc ? 'desc' : 'asc';
+
+        const sortedFiles = [...fileCosts].sort((a, b) => {
+            let aValue = a[field];
+            let bValue = b[field];
+
+            if (typeof aValue === 'string') {
+                aValue = aValue.toLowerCase();
+                bValue = bValue.toLowerCase();
+            }
+
+            if (aValue < bValue) {
+                return newDirection === 'asc' ? -1 : 1;
+            }
+            if (aValue > bValue) {
+                return newDirection === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+
+        setFileSort({ field, direction: newDirection });
+        setFileCosts(sortedFiles);
+    };
+
+    const handleFileSearchChange = (event) => {
+        const newSearchTerm = event.target.value;
+        setFileSearchTerm(newSearchTerm);
+    };
+
+    const filteredAndSortedFiles = useMemo(() => {
+        const filtered = fileCosts.filter(file => 
+            file.name.toLowerCase().includes(fileSearchTerm.toLowerCase())
+        );
+
+        const sorted = [...filtered].sort((a, b) => {
+            const aValue = a[fileSort.field];
+            const bValue = b[fileSort.field];
+
+            let comparison = 0;
+            if (typeof aValue === 'string') {
+                comparison = aValue.localeCompare(bValue);
+            } else {
+                if (aValue < bValue) comparison = -1;
+                if (aValue > bValue) comparison = 1;
+            }
+
+            return fileSort.direction === 'asc' ? comparison : -comparison;
+        });
+        return sorted;
+    }, [fileCosts, fileSearchTerm, fileSort]);
 
     const handleExportCostReport = async () => {
         try {
@@ -208,51 +266,119 @@ function FilesByCost() {
                     onClearFilters={handleClearFilters}
                     isDataLoading={loadingSummary || loadingCollections || loadingFiles}
                 />
-                <Box display="flex" justifyContent="flex-end" sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h5">Cost Overview</Typography>
                     <ExportMenu onExport={handleExportCostReport} />
                 </Box>
                 
+                {loadingSummary && (
+                    <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
+                        <Grid item sx={{ width: '33.333%', p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
+                        <Grid item sx={{ width: '33.333%', p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
+                        <Grid item sx={{ width: '33.333%', p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
+                    </Grid>
+                )}
                 {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
                 
                 {/* Summary Cards */}
-                <Grid container spacing={3} mb={3}>
-                    <Grid item xs={12} md={4}><Card sx={{ height: '100%' }}><CardContent><Typography variant="subtitle1" color="text.secondary">Total Cost</Typography><Typography variant="h4">{loadingSummary ? <CircularProgress size={20}/> : `$${summary?.total_cost?.value?.toFixed(2) ?? '0.00'}`}</Typography></CardContent></Card></Grid>
-                    <Grid item xs={12} md={4}><Card sx={{ height: '100%' }}><CardContent><Typography variant="subtitle1" color="text.secondary">Total Files</Typography><Typography variant="h4">{loadingSummary ? <CircularProgress size={20}/> : summary?.total_files?.toLocaleString() ?? 0}</Typography></CardContent></Card></Grid>
-                    <Grid item xs={12} md={4}><Card sx={{ height: '100%' }}><CardContent><Typography variant="subtitle1" color="text.secondary">Total Size (GB)</Typography><Typography variant="h4">{loadingSummary ? <CircularProgress size={20}/> : `${summary?.total_size_gb?.toFixed(2) ?? '0.00'} GB`}</Typography></CardContent></Card></Grid>
-                </Grid>
+                {!loadingSummary && !error && (
+                    <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
+                        <Grid item sx={{ width: '33.333%', p: 1.5 }}>
+                            <Card sx={{ height: '100%' }}>
+                                <CardContent>
+                                    <Typography variant="subtitle1" color="text.secondary">Total Cost</Typography>
+                                    <Typography variant="h4">{`$${summary?.total_cost?.value?.toFixed(2) ?? '0.00'}`}</Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item sx={{ width: '33.333%', p: 1.5 }}>
+                            <Card sx={{ height: '100%' }}>
+                                <CardContent>
+                                    <Typography variant="subtitle1" color="text.secondary">Total Files</Typography>
+                                    <Typography variant="h4">{summary?.total_files?.toLocaleString() ?? 0}</Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item sx={{ width: '33.333%', p: 1.5 }}>
+                            <Card sx={{ height: '100%' }}>
+                                <CardContent>
+                                    <Typography variant="subtitle1" color="text.secondary">Total Size (GB)</Typography>
+                                    <Typography variant="h4">{`${summary?.total_size_gb?.toFixed(2) ?? '0.00'} GB`}</Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    </Grid>
+                )}
 
                 {/* Chart Cards */}
-                <Grid container spacing={3} mb={3}>
-                    <Grid item xs={12} lg={6}>
-                        <Card><CardContent><Typography variant="h5" gutterBottom>Daily Cost</Typography>
-                            {loadingSummary ? <CircularProgress/> : !summary?.daily_cost?.length ? <Typography variant="body2">No data available.</Typography> : 
-                            <ResponsiveContainer width="100%" height={300}>
-                                <LineChart data={summary.daily_cost} margin={{ right: 30, left: 20 }}><CartesianGrid /><XAxis dataKey="day" /><YAxis /><Tooltip formatter={(value) => [`$${value.toFixed(2)}`, "Cost"]}/><Legend /><Line type="monotone" dataKey="value" stroke="#8884d8" name="Cost"/></LineChart>
-                            </ResponsiveContainer>}
-                        </CardContent></Card>
-
+                <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
+                    <Grid item sx={{ width: '50%', p: 1.5 }}>
+                        <Card sx={{ height: 450 }}>
+                            <CardContent>
+                                <Typography variant="h5" gutterBottom>Daily Cost</Typography>
+                                {loadingSummary ? <Skeleton variant="rounded" height={300} /> : !summary?.daily_cost?.length ? <Typography variant="body2">No data available.</Typography> : 
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <LineChart data={summary.daily_cost} margin={{ right: 30, left: 20 }}>
+                                        <CartesianGrid /><XAxis dataKey="day" /><YAxis /><Tooltip formatter={(value) => [`$${value.toFixed(2)}`, "Cost"]}/><Legend /><Line type="monotone" dataKey="value" stroke="#8884d8" name="Cost"/>
+                                    </LineChart>
+                                </ResponsiveContainer>}
+                            </CardContent>
+                        </Card>
                     </Grid>
-                    <Grid item xs={12} lg={6}>
-                        <Card><CardContent><Typography variant="h5" gutterBottom>Cost by Collection</Typography>
-                            {loadingCollections ? <CircularProgress/> : !collectionCosts?.length ? <Typography variant="body2">No data available.</Typography> : 
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={collectionCosts} margin={{ right: 30, left: 20 }}><CartesianGrid /><XAxis dataKey="name" /><YAxis /><Tooltip formatter={(value) => [`$${value.toFixed(2)}`, "Cost"]}/><Legend /><Bar dataKey="cost" fill="#82ca9d" name="Total Cost" /></BarChart>
-                            </ResponsiveContainer>}
-                            <TablePagination component="div" count={collectionPagination.total} page={collectionPagination.page + 1} onPageChange={handleCollectionPageChange} rowsPerPage={collectionPagination.pageSize} rowsPerPageOptions={[collectionPagination.pageSize]}/>
-                        </CardContent></Card>
+                    <Grid item sx={{ width: '50%', p: 1.5 }}>
+                        <Card sx={{ height: 450 }}>
+                            <CardContent>
+                                <Typography variant="h5" gutterBottom>Cost by Collection</Typography>
+                                {loadingCollections ? <Skeleton variant="rounded" height={300} /> : !collectionCosts?.length ? <Typography variant="body2">No data available.</Typography> : 
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <BarChart data={collectionCosts} margin={{ right: 30, left: 20 }}>
+                                        <CartesianGrid />
+                                        <XAxis dataKey="name" />
+                                        <YAxis domain={[0, 'dataMax']} />
+                                        <Tooltip cursor={{fill: 'transparent'}} formatter={(value) => [`$${value.toFixed(2)}`, "Cost"]}/>
+                                        <Legend />
+                                        <Bar dataKey="cost" fill="#82ca9d" name="Total Cost" />
+                                    </BarChart>
+                                </ResponsiveContainer>}
+                            </CardContent>
+                            <TablePagination component="div" count={collectionPagination.total} page={collectionPagination.page} onPageChange={handleCollectionPageChange} rowsPerPage={collectionPagination.pageSize} rowsPerPageOptions={[collectionPagination.pageSize]}/>
+                        </Card>
                     </Grid>
                 </Grid>
 
                 {/* Table: Cost by File */}
                 <Card>
                     <CardContent>
-                        <Typography variant="h5" gutterBottom>Cost by File</Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                            <Typography variant="h5">Files by Cost</Typography>
+                            <OutlinedInput
+                                placeholder="Search files..."
+                                size="small"
+                                value={fileSearchTerm}
+                                onChange={handleFileSearchChange}
+                                endAdornment={<InputAdornment position="end"><SearchIcon /></InputAdornment>}
+                            />
+                        </Box>
                         {loadingFiles ? <CircularProgress /> :
                             <>
-                                <TableContainer component={Paper}><Table><TableHead><TableRow><TableCell>File Name</TableCell><TableCell>Collection</TableCell><TableCell align="right">Size (GB)</TableCell><TableCell align="right">Cost</TableCell></TableRow></TableHead>
+                                <TableContainer component={Paper}><Table><TableHead><TableRow>
+                                    <TableCell sortDirection={fileSort.field === 'name' ? fileSort.direction : false}>
+                                        <TableSortLabel active={fileSort.field === 'name'} direction={fileSort.field === 'name' ? fileSort.direction : 'asc'} onClick={() => handleFileSort('name')}>File Name</TableSortLabel>
+                                    </TableCell>
+                                    <TableCell align="left" sortDirection={fileSort.field === 'size_gb' ? fileSort.direction : false}>
+                                        <TableSortLabel active={fileSort.field === 'size_gb'} direction={fileSort.field === 'size_gb' ? fileSort.direction : 'asc'} onClick={() => handleFileSort('size_gb')}>Size (GB)</TableSortLabel>
+                                    </TableCell>
+                                    <TableCell align="left" sortDirection={fileSort.field === 'cost' ? fileSort.direction : false}>
+                                        <TableSortLabel active={fileSort.field === 'cost'} direction={fileSort.field === 'cost' ? fileSort.direction : 'asc'} onClick={() => handleFileSort('cost')}>Cost</TableSortLabel>
+                                    </TableCell>
+                                </TableRow></TableHead>
                                 <TableBody>
-                                    {fileCosts.map((file) => (
-                                        <TableRow key={file.name}><TableCell>{file.name}</TableCell><TableCell>{file.collection_name}</TableCell><TableCell align="right">{file.size_gb.toFixed(4)}</TableCell><TableCell align="right">${file.cost.toFixed(6)}</TableCell></TableRow>
+                                    {filteredAndSortedFiles.map((file) => (
+                                        <TableRow key={file.name}>
+                                            <TableCell>{file.name}</TableCell>
+                                            <TableCell align="left">{file.size_gb.toFixed(4)}</TableCell>
+                                            <TableCell align="left">${file.cost.toFixed(6)}</TableCell>
+                                        </TableRow>
                                     ))}
                                 </TableBody></Table></TableContainer>
                                 <TablePagination rowsPerPageOptions={[10, 25, 50]} component="div" count={filePagination.total} rowsPerPage={filePagination.pageSize} page={filePagination.page} onPageChange={handleFilePageChange} onRowsPerPageChange={handleFileRowsPerPageChange}/>
