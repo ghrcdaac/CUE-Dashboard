@@ -211,131 +211,33 @@ function FilesByCost() {
                 {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
                 
                 {/* Summary Cards */}
-                <Box sx={{ px: 3 }}>
-                    {/*Summary Cards */}
-                        <Grid container spacing={3} mb={3}>
-                        <Grid item xs={12} sm={4}>
-                            <Card sx={{ height: '100%', width: '100%' }}>
-                            <CardContent>
-                                <Typography variant="subtitle1" color="text.secondary">
-                                Total Cost
-                                </Typography>
-                                <Typography variant="h4">
-                                {loadingSummary ? (
-                                    <CircularProgress size={20}/>
-                                ) : (
-                                    `$${summary?.total_cost?.value?.toFixed(2) ?? '0.00'}`
-                                )}
-                                </Typography>
-                            </CardContent>
-                            </Card>
-                        </Grid>
+                <Grid container spacing={3} mb={3}>
+                    <Grid item xs={12} md={4}><Card sx={{ height: '100%' }}><CardContent><Typography variant="subtitle1" color="text.secondary">Total Cost</Typography><Typography variant="h4">{loadingSummary ? <CircularProgress size={20}/> : `$${summary?.total_cost?.value?.toFixed(2) ?? '0.00'}`}</Typography></CardContent></Card></Grid>
+                    <Grid item xs={12} md={4}><Card sx={{ height: '100%' }}><CardContent><Typography variant="subtitle1" color="text.secondary">Total Files</Typography><Typography variant="h4">{loadingSummary ? <CircularProgress size={20}/> : summary?.total_files?.toLocaleString() ?? 0}</Typography></CardContent></Card></Grid>
+                    <Grid item xs={12} md={4}><Card sx={{ height: '100%' }}><CardContent><Typography variant="subtitle1" color="text.secondary">Total Size (GB)</Typography><Typography variant="h4">{loadingSummary ? <CircularProgress size={20}/> : `${summary?.total_size_gb?.toFixed(2) ?? '0.00'} GB`}</Typography></CardContent></Card></Grid>
+                </Grid>
 
-                        <Grid item xs={12} sm={4}>
-                            <Card sx={{ height: '100%', width: '100%' }}>
-                            <CardContent>
-                                <Typography variant="subtitle1" color="text.secondary">
-                                Total Files
-                                </Typography>
-                                <Typography variant="h4">
-                                {loadingSummary ? (
-                                    <CircularProgress size={20}/>
-                                ) : (
-                                    summary?.total_files?.toLocaleString() ?? 0
-                                )}
-                                </Typography>
-                            </CardContent>
-                            </Card>
-                        </Grid>
+                {/* Chart Cards */}
+                <Grid container spacing={3} mb={3}>
+                    <Grid item xs={12} lg={6}>
+                        <Card><CardContent><Typography variant="h5" gutterBottom>Daily Cost</Typography>
+                            {loadingSummary ? <CircularProgress/> : !summary?.daily_cost?.length ? <Typography variant="body2">No data available.</Typography> : 
+                            <ResponsiveContainer width="100%" height={300}>
+                                <LineChart data={summary.daily_cost} margin={{ right: 30, left: 20 }}><CartesianGrid /><XAxis dataKey="day" /><YAxis /><Tooltip formatter={(value) => [`$${value.toFixed(2)}`, "Cost"]}/><Legend /><Line type="monotone" dataKey="value" stroke="#8884d8" name="Cost"/></LineChart>
+                            </ResponsiveContainer>}
+                        </CardContent></Card>
 
-                        <Grid item xs={12} sm={4}>
-                            <Card sx={{ height: '100%', width: '100%' }}>
-                            <CardContent>
-                                <Typography variant="subtitle1" color="text.secondary">
-                                Total Size (GB)
-                                </Typography>
-                                <Typography variant="h4">
-                                {loadingSummary ? (
-                                    <CircularProgress size={20}/>
-                                ) : (
-                                    `${summary?.total_size_gb?.toFixed(2) ?? '0.00'} GB`
-                                )}
-                                </Typography>
-                            </CardContent>
-                            </Card>
-                        </Grid>
-                        </Grid>
-
-                        {/* 🔹 Chart Cards */}
-                        <Grid container spacing={3} mb={3}>
-                        <Grid item xs={12} lg={6}>
-                            <Card sx={{ width: '100%' }}>
-                            <CardContent>
-                                <Typography variant="h5" gutterBottom>Daily Cost</Typography>
-                                {loadingSummary ? (
-                                <CircularProgress/>
-                                ) : !summary?.daily_cost?.length ? (
-                                <Typography variant="body2">No data available.</Typography>
-                                ) : (
-                                <ResponsiveContainer width="100%" height={300}>
-                                    <LineChart
-                                    data={summary.daily_cost}
-                                    margin={{ right: 30, left: 20 }}
-                                    >
-                                    <CartesianGrid />
-                                    <XAxis dataKey="day" />
-                                    <YAxis />
-                                    <Tooltip formatter={(value) => [`$${value.toFixed(2)}`, "Cost"]}/>
-                                    <Legend />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="value"
-                                        stroke="#8884d8"
-                                        name="Cost"
-                                    />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                                )}
-                            </CardContent>
-                            </Card>
-                        </Grid>
-
-                        <Grid item xs={12} lg={6}>
-                            <Card sx={{ width: '100%' }}>
-                            <CardContent>
-                                <Typography variant="h5" gutterBottom>Cost by Collection</Typography>
-                                {loadingCollections ? (
-                                <CircularProgress/>
-                                ) : !collectionCosts?.length ? (
-                                <Typography variant="body2">No data available.</Typography>
-                                ) : (
-                                <ResponsiveContainer width="100%" height={300}>
-                                    <BarChart
-                                    data={collectionCosts}
-                                    margin={{ right: 30, left: 20 }}
-                                    >
-                                    <CartesianGrid />
-                                    <XAxis dataKey="name" />
-                                    <YAxis />
-                                    <Tooltip formatter={(value) => [`$${value.toFixed(2)}`, "Cost"]}/>
-                                    <Legend />
-                                    <Bar dataKey="cost" fill="#82ca9d" name="Total Cost" />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                                )}
-                                <TablePagination
-                                component="div"
-                                count={collectionPagination.total}
-                                page={collectionPagination.page + 1}
-                                onPageChange={handleCollectionPageChange}
-                                rowsPerPage={collectionPagination.pageSize}
-                                rowsPerPageOptions={[collectionPagination.pageSize]}
-                                />
-                            </CardContent>
-                            </Card>
-                        </Grid>
                     </Grid>
-                </Box>
+                    <Grid item xs={12} lg={6}>
+                        <Card><CardContent><Typography variant="h5" gutterBottom>Cost by Collection</Typography>
+                            {loadingCollections ? <CircularProgress/> : !collectionCosts?.length ? <Typography variant="body2">No data available.</Typography> : 
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={collectionCosts} margin={{ right: 30, left: 20 }}><CartesianGrid /><XAxis dataKey="name" /><YAxis /><Tooltip formatter={(value) => [`$${value.toFixed(2)}`, "Cost"]}/><Legend /><Bar dataKey="cost" fill="#82ca9d" name="Total Cost" /></BarChart>
+                            </ResponsiveContainer>}
+                            <TablePagination component="div" count={collectionPagination.total} page={collectionPagination.page + 1} onPageChange={handleCollectionPageChange} rowsPerPage={collectionPagination.pageSize} rowsPerPageOptions={[collectionPagination.pageSize]}/>
+                        </CardContent></Card>
+                    </Grid>
+                </Grid>
 
                 {/* Table: Cost by File */}
                 <Card>
