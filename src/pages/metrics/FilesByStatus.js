@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo  } from 'react';
 import {
     Box, Card, CardContent, Typography, CircularProgress, Alert, Table, 
     TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, 
     TablePagination, Tabs, Tab, Container, TextField, TableSortLabel
 } from '@mui/material';
 import { useOutletContext } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -22,6 +22,7 @@ import { generatePDFReport } from '../reports/PdfReport';
 
 // API
 import { listFiles } from '../../api/fileApi';
+import { fetchFilterOptions } from '../../app/reducers/filterOptionsSlice'; 
 
 // Icons
 import AssessmentIcon from '@mui/icons-material/Assessment';
@@ -94,7 +95,8 @@ function FilesByStatus() {
     usePageTitle("Files by Status");
     const { setMenuItems } = useOutletContext();
     const ngroupId = useMemo(() => sessionService.getSession()?.active_ngroup_id || null, []);
-    const { collections } = useSelector((state) => state.filterOptions);
+    const { collections, status } = useSelector((state) => state.filterOptions);
+    const dispatch = useDispatch();
 
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -104,6 +106,12 @@ function FilesByStatus() {
     const [pagination, setPagination] = useState({ page: 0, pageSize: 10 });
     const [searchTerm, setSearchTerm] = useState('');
     const [sorting, setSorting] = useState({ orderBy: 'name', order: 'asc' });
+
+    useEffect(() => {
+        if (status === 'idle' && ngroupId) {
+            dispatch(fetchFilterOptions({ ngroupId }));
+        }
+    }, [status, dispatch, ngroupId]);
 
     const collectionMap = useMemo(() => {
         if (!collections || collections.length === 0) return new Map();
