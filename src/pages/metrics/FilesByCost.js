@@ -138,8 +138,12 @@ function FilesByCost() {
             toast.info("Generating Files by Cost report. This may take a moment...");
 
             // Extract filter values (adapt based on your actual filters)
-            const startDate = activeFilters.startDate;
-            const endDate = activeFilters.endDate;
+            const now = new Date();
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(now.getDate() - 7);
+
+            const startDate = activeFilters?.startDate || sevenDaysAgo.toISOString().split('T')[0];
+            const endDate = activeFilters?.endDate || now.toISOString().split('T')[0];
 
             const userInfo = {
                 name: localStorage.getItem('CUE_username') || 'Unknown User',
@@ -151,10 +155,10 @@ function FilesByCost() {
 
             // Summary
             const summaryData = await costApi.getCostSummary(summaryParams);
-
+            
             // Daily Cost
             const daily = summaryData?.daily_cost || [];
-
+            
             // Collections (fetch all)
             let collections = [];
             let page = 1;
