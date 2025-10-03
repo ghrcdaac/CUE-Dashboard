@@ -9,7 +9,6 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
-import EvStationIcon from '@mui/icons-material/EvStation';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useSelector, useDispatch } from 'react-redux';
@@ -20,10 +19,11 @@ import usePrivileges from '../hooks/usePrivileges';
 import usePageTitle from "../hooks/usePageTitle";
 import { parseApiError } from "../utils/errorUtils";
 import { fetchEgresses } from '../app/reducers/dataCacheSlice';
+import OutputIcon from '@mui/icons-material/Output';
 
 const headCells = [
     { id: 'type', label: 'Type' },
-    { id: 'path', label: 'Path' },
+    { id: 'path', label: 'Path ID Name' },
     { id: 'config', label: 'Config' },
 ];
 
@@ -48,7 +48,7 @@ export default function DAAC() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        const daacMenuItems = [{ text: 'Egress', path: '/daac', icon: <EvStationIcon /> }];
+        const daacMenuItems = [{ text: 'Egress', path: '/daac', icon: <OutputIcon /> }];
         setMenuItems(daacMenuItems);
         return () => setMenuItems([]);
     }, [setMenuItems]);

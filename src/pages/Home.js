@@ -83,7 +83,7 @@ const MetricCard = ({ title, value, icon, color = "inherit", loading }) => (
 );
 
 export default function Home() {
-    usePageTitle("Home Dashboard");
+    usePageTitle("Home");
     
     const dispatch = useDispatch();
     const navigate = useNavigate();

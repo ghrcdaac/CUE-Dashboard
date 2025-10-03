@@ -56,7 +56,6 @@ export default function Header() {
                 <Toolbar sx={{ alignItems: "flex-start", pt: 2, justifyContent: "space-between", flexDirection: "column" }}>
                     <Box sx={{ display: "flex", justifyContent: 'space-between', alignItems: "center", width: "100%", mb: 1 }}>
                         <Box sx={{ display: "flex", alignItems: "center" }}>
-                            {/* UPDATED: This Box is now a clickable link to the home page */}
                             <Box
                                 component={RouterLink}
                                 to="/"
@@ -83,20 +82,26 @@ export default function Header() {
                         <Box sx={{ display: "flex", alignItems: "center" }}>
                             {isAuthenticated ? (
                                 <>
-                                    {user?.ngroups && user.ngroups.length > 1 && (
-                                        <FormControl sx={{ m: 1, minWidth: 120, mr: 2 }} size="small">
-                                            <Select
-                                                value={activeNgroupId || ''}
-                                                onChange={handleNgroupChange}
-                                                sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.5)' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'white' }, '.MuiSvgIcon-root': { color: 'white' } }}
-                                            >
-                                                {user.ngroups.map((ngroup) => (
-                                                    <MenuItem key={ngroup.id} value={ngroup.id}>
-                                                        {ngroup.short_name}
-                                                    </MenuItem>
-                                                ))}
-                                            </Select>
-                                        </FormControl>
+                                    {user?.ngroups && user.ngroups.length > 0 && (
+                                        user.ngroups.length === 1 ? (
+                                            <Typography sx={{ color: 'white', mr: 2, border: '1px solid rgba(255, 255, 255, 0.5)', borderRadius: 1, px: 1.5, py: 0.5, fontSize: '0.875rem' }}>
+                                                {typeof user.ngroups[0] === 'object' ? user.ngroups[0].short_name : user.ngroups[0]}
+                                            </Typography>
+                                        ) : (
+                                            <FormControl sx={{ m: 1, minWidth: 120, mr: 2 }} size="small">
+                                                <Select
+                                                    value={activeNgroupId || ''}
+                                                    onChange={handleNgroupChange}
+                                                    sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.5)' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'white' }, '.MuiSvgIcon-root': { color: 'white' } }}
+                                                >
+                                                    {user.ngroups.map((ngroup) => (
+                                                        <MenuItem key={ngroup.id} value={ngroup.id}>
+                                                            {ngroup.short_name}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        )
                                     )}
                                     <IconButton size="large" aria-controls="menu-appbar" aria-haspopup="true" onClick={handleMenu} color="inherit" sx={{ padding: 0 }}>
                                         <AccountCircle />
