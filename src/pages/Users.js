@@ -164,7 +164,7 @@ function Users() {
                         <TableCell padding="checkbox"><Checkbox checked={isItemSelected} disabled={!isManageable} /></TableCell>
                         <TableCell>{user.name}</TableCell>
                         <TableCell>{user.email}</TableCell>
-                        <TableCell>{user.username}</TableCell>
+                        <TableCell>{user.cueusername}</TableCell>
                         <TableCell>{user.role?.long_name || "N/A"}</TableCell>
                         <TableCell>{user.providerName}</TableCell>
                     </TableRow>
