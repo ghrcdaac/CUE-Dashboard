@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo  } from 'react';
 import {
-    Box, Card, CardContent, Typography, CircularProgress, Alert, Table, 
-    TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, 
+    Box, Card, CardContent, Typography, CircularProgress, Alert, Table,
+    TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
     TablePagination, Tabs, Tab, Container, TextField, TableSortLabel
 } from '@mui/material';
 import { useOutletContext } from 'react-router-dom';
@@ -22,7 +22,7 @@ import { generatePDFReport } from '../reports/PdfReport';
 
 // API
 import { listFiles } from '../../api/fileApi';
-import { fetchFilterOptions } from '../../app/reducers/filterOptionsSlice'; 
+import { fetchFilterOptions } from '../../app/reducers/filterOptionsSlice';
 
 // Icons
 import AssessmentIcon from '@mui/icons-material/Assessment';
@@ -58,38 +58,61 @@ const baseHeadCells = [
     { id: 'upload_time', label: 'Upload Time' },
 ];
 
-const ScanResultsDisplay = ({ results }) => {
-    if (!results) {
-        return <Typography variant="body2" color="text.secondary">Scan result data not available.</Typography>;
-    }
-    
-    let resultsArray = Array.isArray(results) ? results : [results];
-    if (resultsArray.length > 0 && resultsArray[0].scanResults) {
-        resultsArray = resultsArray[0].scanResults;
-    }
 
-    if (resultsArray.length === 0) {
+const ScanResultsDisplay = ({ results }) => {
+    if (!results || !Array.isArray(results) || results.length === 0) {
         return <Typography variant="body2" color="text.secondary">No detailed results.</Typography>;
     }
 
+    // Normalize the results array. Infected status has a nested `scanResults` array.
+    let displayableResults = [];
+    results.forEach(item => {
+        if (item.scanResults && Array.isArray(item.scanResults)) {
+            displayableResults = displayableResults.concat(item.scanResults);
+        } else {
+            displayableResults.push(item);
+        }
+    });
+
     return (
         <Box>
-            {resultsArray.map((scan, index) => (
-                <Box key={index} sx={{ mb: index < resultsArray.length - 1 ? 2 : 0 }}>
-                    <Typography variant="body2" component="div"><strong>Engine:</strong> {scan.engine || 'N/A'}</Typography>
-                    <Typography variant="body2" component="div"><strong>Result:</strong> {scan.result || 'N/A'}</Typography>
-                    {scan.virusName && scan.virusName.length > 0 && (
-                        <Typography variant="body2" component="div"><strong>Viruses:</strong> {scan.virusName.join(', ')}</Typography>
-                    )}
-                    {scan.message && scan.message.length > 0 && (
-                         <Typography variant="body2" component="div"><strong>File ID:</strong> {scan.message.join(', ')}</Typography>
-                    )}
-                    <Typography variant="body2" component="div"><strong>Scanned:</strong> {formatDisplayDate(scan.dateScanned)}</Typography>
-                </Box>
-            ))}
+            {displayableResults.map((item, index) => {
+                // Case 1: This is a standard virus scan result
+                if (item.engine) {
+                    return (
+                        <Box key={index} sx={{ mb: index < displayableResults.length - 1 ? 1 : 0 }}>
+                            <Typography variant="body2" component="div"><strong>Engine:</strong> {item.engine}</Typography>
+                            <Typography variant="body2" component="div"><strong>Result:</strong> {item.result || 'N/A'}</Typography>
+                            {item.virusName && item.virusName.length > 0 && (
+                                <Typography variant="body2" component="div"><strong>Viruses:</strong> {item.virusName.join(', ')}</Typography>
+                            )}
+                            <Typography variant="body2" component="div"><strong>Scanned:</strong> {formatDisplayDate(item.dateScanned)}</Typography>
+                        </Box>
+                    );
+                }
+                
+                // Case 2: This is a checksum validation result
+                if (item.checksum_validation) {
+                    const validation = item.checksum_validation;
+                    return (
+                        <Box key={index} sx={{ mb: index < displayableResults.length - 1 ? 1 : 0 }}>
+                            <Typography variant="body2" component="div"><strong>Event:</strong> Checksum Validation</Typography>
+                            <Typography variant="body2" component="div" sx={{ textTransform: 'capitalize' }}>
+                                <strong>Status:</strong> {validation.status || 'N/A'}
+                            </Typography>
+                            <Typography variant="body2" component="div"><strong>Timestamp:</strong> {formatDisplayDate(validation.timestamp)}</Typography>
+                        </Box>
+                    );
+                }
+
+                // Fallback for any other unknown result types
+                return null;
+            })}
         </Box>
     );
 };
+
+
 
 function FilesByStatus() {
     usePageTitle("Files by Status");
@@ -105,7 +128,7 @@ function FilesByStatus() {
     const [selectedStatusTab, setSelectedStatusTab] = useState(FILE_STATUSES[0]);
     const [pagination, setPagination] = useState({ page: 0, pageSize: 10 });
     const [searchTerm, setSearchTerm] = useState('');
-    const [sorting, setSorting] = useState({ orderBy: 'name', order: 'asc' });
+    const [sorting, setSorting] = useState({ orderBy: 'upload_time', order: 'desc' }); // Default sort by upload time
 
     useEffect(() => {
         if (status === 'idle' && ngroupId) {
@@ -179,6 +202,16 @@ function FilesByStatus() {
             const isAsc = sorting.order === 'asc' ? 1 : -1;
             const aValue = a[sorting.orderBy] || '';
             const bValue = b[sorting.orderBy] || '';
+            
+            if (aValue === null || aValue === '') return 1 * isAsc;
+            if (bValue === null || bValue === '') return -1 * isAsc;
+
+            // Simple numeric sort for size
+            if (sorting.orderBy === 'size_bytes') {
+                return (aValue - bValue) * isAsc;
+            }
+
+            // Date or string comparison
             return aValue.toString().localeCompare(bValue.toString(), undefined, { numeric: true }) * isAsc;
         });
     }, [files, sorting, searchTerm]);
@@ -213,7 +246,7 @@ function FilesByStatus() {
     }, [selectedStatusTab]);
 
     const handleExport = async (format) => {
-        if (format !== "pdf") return; //can extend for CSV/XLSX later
+        if (format !== "pdf") return; 
         
         try {
             const now = new Date();
@@ -226,7 +259,6 @@ function FilesByStatus() {
             end: activeFilters?.end_date || now.toISOString().split('T')[0],
             };
 
-            // Fetch all files (if not already fully loaded)
             let allFiles = [];
             let page = 1;
             const pageSize = 100;
@@ -247,13 +279,11 @@ function FilesByStatus() {
             page++;
             } while (allFiles.length < total);
 
-            // Add collection names
             const filesWithCollections = allFiles.map((file) => ({
             ...file,
             collection_name: collectionMap.get(file.collection_id) || file.collection_id,
             }));
 
-            // Define columns dynamically
             let columns = [
             { header: "File Name", dataKey: "name" },
             { header: "Collection", dataKey: "collection_name" },
@@ -299,12 +329,10 @@ function FilesByStatus() {
             const row = {};
             columns.forEach((c) => {
                 let value = f[c.dataKey] ?? "";
-                // Format date fields
                 if (dateFields.includes(c.dataKey) && value) {
                 value = formatDisplayDate(value);
                 }
 
-                // Format size fields
                 if (sizeFields.includes(c.dataKey) && value !== "") {
                 value = formatBytes(value);
                 }
@@ -321,7 +349,6 @@ function FilesByStatus() {
         }
     };
             
-
     return (
         <Container maxWidth={false} disableGutters>
             <LocalizationProvider dateAdapter={AdapterDayjs}>

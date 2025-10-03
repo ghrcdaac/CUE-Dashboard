@@ -75,7 +75,7 @@ export default function Header() {
                                 {hasPrivilege("collection:read") && <Button color="inherit" component={RouterLink} to="/collections">Collections</Button>}
                                 {hasPrivilege("provider:read") && <Button color="inherit" component={RouterLink} to="/providers">Providers</Button>}
                                 {hasPrivilege("metrics:read") && <Button color="inherit" component={RouterLink} to="/metrics">Metrics</Button>}
-                                {hasPrivilege("user:read") && <Button color="inherit" component={RouterLink} to="/users">Users</Button>}
+                                {hasPrivilege("user:page") && <Button color="inherit" component={RouterLink} to="/users">Users</Button>}
                                 {hasPrivilege("egress:read") && <Button color="inherit" component={RouterLink} to="/daac">DAAC</Button>}
                             </Box>
                         </Box>

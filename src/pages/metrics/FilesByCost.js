@@ -6,6 +6,8 @@ import {
 } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+// MODIFICATION: Added dayjs for default date filters
+import dayjs from 'dayjs';
 import { LineChart, BarChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useOutletContext } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
@@ -14,7 +16,6 @@ import 'react-toastify/dist/ReactToastify.css';
 // Hooks, Components & Utils
 import usePageTitle from "../../hooks/usePageTitle";
 import MetricsFilter from './MetricsFilter';
-
 import { parseApiError } from '../../utils/errorUtils';
 import * as costApi from '../../api/costApi';
 import { generateCostReport } from '../reports/PdfReport';
@@ -27,12 +28,34 @@ import FilePresentIcon from '@mui/icons-material/FilePresent';
 import MoneyIcon from '@mui/icons-material/Money';
 import SearchIcon from '@mui/icons-material/Search';
 
+const formatBytes = (bytes, decimals = 2) => {
+    if (!+bytes) return '0 Bytes';
+  
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+};
+
+// MODIFICATION START: Added default date logic for consistent filtering
+const DATE_FORMAT_API_DAYJS = 'YYYY-MM-DD';
+const getDefaultStartDate = () => dayjs().subtract(7, 'day');
+const getDefaultEndDate = () => dayjs();
+// MODIFICATION END
+
 function FilesByCost() {
     usePageTitle("Files by Cost");
     const { setMenuItems } = useOutletContext();
 
     // State
-    const [activeFilters, setActiveFilters] = useState({});
+    // MODIFICATION: Initialized activeFilters with a 7-day default range.
+    const [activeFilters, setActiveFilters] = useState({
+        start_date: getDefaultStartDate().format(DATE_FORMAT_API_DAYJS),
+        end_date: getDefaultEndDate().format(DATE_FORMAT_API_DAYJS),
+    });
     
     // Summary State
     const [summary, setSummary] = useState(null);
@@ -52,7 +75,7 @@ function FilesByCost() {
     const [error, setError] = useState(null);
 
     const [fileSearchTerm, setFileSearchTerm] = useState('');
-    const [fileSort, setFileSort] = useState({ field: 'name', direction: 'asc' });
+    const [fileSort, setFileSort] = useState({ field: 'cost', direction: 'desc' });
 
     // Side Nav Menu
     useEffect(() => {
@@ -94,18 +117,23 @@ function FilesByCost() {
     }, [collectionPagination.pageSize, filePagination.pageSize]);
 
     // Initial fetch
+    // MODIFICATION: Updated to use the initialized activeFilters state.
     useEffect(() => {
-        fetchAllData({});
-    }, [fetchAllData]);
+        fetchAllData(activeFilters);
+    }, [fetchAllData, activeFilters]);
 
     const handleApplyFilters = (filters) => {
         setActiveFilters(filters);
-        fetchAllData(filters);
+        // Data will be re-fetched by the useEffect above
     };
 
     const handleClearFilters = () => {
-        setActiveFilters({});
-        fetchAllData({});
+        // Clearing filters now resets to the 7-day default
+        setActiveFilters({
+            start_date: getDefaultStartDate().format(DATE_FORMAT_API_DAYJS),
+            end_date: getDefaultEndDate().format(DATE_FORMAT_API_DAYJS),
+        });
+        // Data will be re-fetched by the useEffect above
     };
 
     // --- Pagination Handlers ---
@@ -140,33 +168,11 @@ function FilesByCost() {
 
     const handleFileSort = (field) => {
         const isAsc = fileSort.field === field && fileSort.direction === 'asc';
-        const newDirection = isAsc ? 'desc' : 'asc';
-
-        const sortedFiles = [...fileCosts].sort((a, b) => {
-            let aValue = a[field];
-            let bValue = b[field];
-
-            if (typeof aValue === 'string') {
-                aValue = aValue.toLowerCase();
-                bValue = bValue.toLowerCase();
-            }
-
-            if (aValue < bValue) {
-                return newDirection === 'asc' ? -1 : 1;
-            }
-            if (aValue > bValue) {
-                return newDirection === 'asc' ? 1 : -1;
-            }
-            return 0;
-        });
-
-        setFileSort({ field, direction: newDirection });
-        setFileCosts(sortedFiles);
+        setFileSort({ field, direction: isAsc ? 'desc' : 'asc' });
     };
 
     const handleFileSearchChange = (event) => {
-        const newSearchTerm = event.target.value;
-        setFileSearchTerm(newSearchTerm);
+        setFileSearchTerm(event.target.value);
     };
 
     const filteredAndSortedFiles = useMemo(() => {
@@ -174,50 +180,34 @@ function FilesByCost() {
             file.name.toLowerCase().includes(fileSearchTerm.toLowerCase())
         );
 
-        const sorted = [...filtered].sort((a, b) => {
+        return [...filtered].sort((a, b) => {
             const aValue = a[fileSort.field];
             const bValue = b[fileSort.field];
+            const isAsc = fileSort.direction === 'asc' ? 1 : -1;
 
-            let comparison = 0;
-            if (typeof aValue === 'string') {
-                comparison = aValue.localeCompare(bValue);
-            } else {
-                if (aValue < bValue) comparison = -1;
-                if (aValue > bValue) comparison = 1;
-            }
-
-            return fileSort.direction === 'asc' ? comparison : -comparison;
+            if (aValue < bValue) return -1 * isAsc;
+            if (aValue > bValue) return 1 * isAsc;
+            return 0;
         });
-        return sorted;
     }, [fileCosts, fileSearchTerm, fileSort]);
 
     const handleExportCostReport = async () => {
         try {
             toast.info("Generating Files by Cost report. This may take a moment...");
-
-            // Extract filter values (adapt based on your actual filters)
             const now = new Date();
             const sevenDaysAgo = new Date();
             sevenDaysAgo.setDate(now.getDate() - 7);
-
-            const startDate = activeFilters?.startDate || sevenDaysAgo.toISOString().split('T')[0];
-            const endDate = activeFilters?.endDate || now.toISOString().split('T')[0];
-
+            const startDate = activeFilters?.start_date || sevenDaysAgo.toISOString().split('T')[0];
+            const endDate = activeFilters?.end_date || now.toISOString().split('T')[0];
             const userInfo = {
                 name: localStorage.getItem('CUE_username') || 'Unknown User',
                 start: startDate,
                 end: endDate
             };
 
-            const summaryParams = { filters: activeFilters };
-
-            // Summary
-            const summaryData = await costApi.getCostSummary(summaryParams);
-            
-            // Daily Cost
+            const summaryData = await costApi.getCostSummary({ filters: activeFilters });
             const daily = summaryData?.daily_cost || [];
             
-            // Collections (fetch all)
             let collections = [];
             let page = 1;
             let total = 0;
@@ -229,7 +219,6 @@ function FilesByCost() {
                 page++;
             } while (collections.length < total);
 
-            // Files (fetch all)
             let files = [];
             page = 1;
             total = 0;
@@ -240,24 +229,20 @@ function FilesByCost() {
                 page++;
             } while (files.length < total);
 
-            // Build summary info
             const summaryInfo = {
                 "Total Cost": `$${summaryData?.total_cost?.value?.toFixed(2) ?? '0.00'}`,
-                "Total Files": summaryData?.total_files ?? 0,
-                "Total Size (GB)": `${summaryData?.total_size_gb?.toFixed(2) ?? '0.00'} GB`
+                "Total Files": summaryData?.total_files?.toLocaleString() ?? 0,
+                "Total Size": formatBytes(summaryData?.total_size_bytes ?? 0)
             };
 
-            // Generate PDF (ensure generateCostReport is imported)
             generateCostReport(summaryInfo, daily, collections, files, userInfo);
-
             toast.success("Files by Cost report downloaded successfully!");
         } catch (err) {
-            toast.error("Failed to generate report: " + err.message);
+            toast.error("Failed to generate report: " + parseApiError(err));
         }
     };
 
     return (
-
         <Container maxWidth={false} disableGutters>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <ToastContainer position="top-center" />
@@ -271,17 +256,13 @@ function FilesByCost() {
                     <ExportMenu onExport={handleExportCostReport} />
                 </Box>
                 
-                {loadingSummary && (
+                {loadingSummary ? (
                     <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
                         <Grid item sx={{ width: '33.333%', p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
                         <Grid item sx={{ width: '33.333%', p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
                         <Grid item sx={{ width: '33.333%', p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
                     </Grid>
-                )}
-                {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-                
-                {/* Summary Cards */}
-                {!loadingSummary && !error && (
+                ) : error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : (
                     <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
                         <Grid item sx={{ width: '33.333%', p: 1.5 }}>
                             <Card sx={{ height: '100%' }}>
@@ -302,8 +283,8 @@ function FilesByCost() {
                         <Grid item sx={{ width: '33.333%', p: 1.5 }}>
                             <Card sx={{ height: '100%' }}>
                                 <CardContent>
-                                    <Typography variant="subtitle1" color="text.secondary">Total Size (GB)</Typography>
-                                    <Typography variant="h4">{`${summary?.total_size_gb?.toFixed(2) ?? '0.00'} GB`}</Typography>
+                                    <Typography variant="subtitle1" color="text.secondary">Total Size</Typography>
+                                    <Typography variant="h4">{formatBytes(summary?.total_size_bytes ?? 0)}</Typography>
                                 </CardContent>
                             </Card>
                         </Grid>
@@ -365,19 +346,20 @@ function FilesByCost() {
                                     <TableCell sortDirection={fileSort.field === 'name' ? fileSort.direction : false}>
                                         <TableSortLabel active={fileSort.field === 'name'} direction={fileSort.field === 'name' ? fileSort.direction : 'asc'} onClick={() => handleFileSort('name')}>File Name</TableSortLabel>
                                     </TableCell>
-                                    <TableCell align="left" sortDirection={fileSort.field === 'size_gb' ? fileSort.direction : false}>
-                                        <TableSortLabel active={fileSort.field === 'size_gb'} direction={fileSort.field === 'size_gb' ? fileSort.direction : 'asc'} onClick={() => handleFileSort('size_gb')}>Size (GB)</TableSortLabel>
+                                    <TableCell align="left" sortDirection={fileSort.field === 'size_bytes' ? fileSort.direction : false}>
+                                        <TableSortLabel active={fileSort.field === 'size_bytes'} direction={fileSort.field === 'size_bytes' ? fileSort.direction : 'asc'} onClick={() => handleFileSort('size_bytes')}>Size</TableSortLabel>
                                     </TableCell>
                                     <TableCell align="left" sortDirection={fileSort.field === 'cost' ? fileSort.direction : false}>
                                         <TableSortLabel active={fileSort.field === 'cost'} direction={fileSort.field === 'cost' ? fileSort.direction : 'asc'} onClick={() => handleFileSort('cost')}>Cost</TableSortLabel>
                                     </TableCell>
                                 </TableRow></TableHead>
                                 <TableBody>
-                                    {filteredAndSortedFiles.map((file) => (
-                                        <TableRow key={file.name}>
+                                    {filteredAndSortedFiles.map((file, index) => (
+                                        <TableRow key={`${file.name}-${index}`}>
                                             <TableCell>{file.name}</TableCell>
-                                            <TableCell align="left">{file.size_gb.toFixed(4)}</TableCell>
-                                            <TableCell align="left">${file.cost.toFixed(6)}</TableCell>
+                                            <TableCell align="left">{formatBytes(file.size_bytes)}</TableCell>
+                                            {/* MODIFICATION: Changed toFixed(6) to toFixed(3) */}
+                                            <TableCell align="left">${file.cost.toFixed(3)}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody></Table></TableContainer>
