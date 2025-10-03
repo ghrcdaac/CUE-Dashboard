@@ -12,7 +12,6 @@ import MarkEmailUnreadIcon from '@mui/icons-material/MarkEmailUnread';
 const profileMenuItems = [
     { text: 'Profile Info', path: '/profile', icon: <AccountCircleIcon /> },
     { text: 'API Keys', path: '/profile/api-keys', icon: <VpnKeyIcon /> },
-    { text: 'Notification Preferences', path: '/profile/notification', icon: <MarkEmailUnreadIcon /> },
 ];
 
 function Profile() {
