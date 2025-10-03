@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo  } from 'react';
 import {
     Box, Card, CardContent, Typography, CircularProgress, Alert, Table, 
     TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, 
     TablePagination, Tabs, Tab, Container, TextField, TableSortLabel
 } from '@mui/material';
 import { useOutletContext } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -22,6 +22,7 @@ import { generatePDFReport } from '../reports/PdfReport';
 
 // API
 import { listFiles } from '../../api/fileApi';
+import { fetchFilterOptions } from '../../app/reducers/filterOptionsSlice'; 
 
 // Icons
 import AssessmentIcon from '@mui/icons-material/Assessment';
@@ -94,7 +95,8 @@ function FilesByStatus() {
     usePageTitle("Files by Status");
     const { setMenuItems } = useOutletContext();
     const ngroupId = useMemo(() => sessionService.getSession()?.active_ngroup_id || null, []);
-    const { collections } = useSelector((state) => state.filterOptions);
+    const { collections, status } = useSelector((state) => state.filterOptions);
+    const dispatch = useDispatch();
 
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -104,6 +106,12 @@ function FilesByStatus() {
     const [pagination, setPagination] = useState({ page: 0, pageSize: 10 });
     const [searchTerm, setSearchTerm] = useState('');
     const [sorting, setSorting] = useState({ orderBy: 'name', order: 'asc' });
+
+    useEffect(() => {
+        if (status === 'idle' && ngroupId) {
+            dispatch(fetchFilterOptions({ ngroupId }));
+        }
+    }, [status, dispatch, ngroupId]);
 
     const collectionMap = useMemo(() => {
         if (!collections || collections.length === 0) return new Map();
@@ -204,20 +212,115 @@ function FilesByStatus() {
         return dynamicCells;
     }, [selectedStatusTab]);
 
+    const handleExport = async (format) => {
+        if (format !== "pdf") return; //can extend for CSV/XLSX later
+        
+        try {
+            const now = new Date();
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(now.getDate() - 7);
 
-    const handleExport = (format) => {
-        if (format !== 'pdf') return;
-        const columns = visibleHeadCells.map(cell => ({
-            header: cell.label,
-            dataKey: cell.id,
-            format: (val) => {
-                if (cell.id.endsWith('_time') || cell.id.endsWith('_start')) return formatDisplayDate(val);
-                if (cell.id === 'size_bytes') return formatBytes(val);
-                return val;
+            const userInfo = {
+            name: localStorage.getItem("CUE_username"),
+            start: activeFilters?.start_date || sevenDaysAgo.toISOString().split('T')[0],
+            end: activeFilters?.end_date || now.toISOString().split('T')[0],
+            };
+
+            // Fetch all files (if not already fully loaded)
+            let allFiles = [];
+            let page = 1;
+            const pageSize = 100;
+            let total = 0;
+
+            do {
+            const params = {
+                ngroup_id: ngroupId,
+                status: selectedStatusTab,
+                ...activeFilters,
+                page,
+                page_size: pageSize,
+            };
+
+            const res = await listFiles(params);
+            allFiles = allFiles.concat(res?.items || []);
+            total = res?.total || 0;
+            page++;
+            } while (allFiles.length < total);
+
+            // Add collection names
+            const filesWithCollections = allFiles.map((file) => ({
+            ...file,
+            collection_name: collectionMap.get(file.collection_id) || file.collection_id,
+            }));
+
+            // Define columns dynamically
+            let columns = [
+            { header: "File Name", dataKey: "name" },
+            { header: "Collection", dataKey: "collection_name" },
+            { header: "Size", dataKey: "size_bytes" },
+            ];
+
+            if (selectedStatusTab === "failed") {
+            columns.push({ header: "Failure Reason", dataKey: "failure_reason" });
             }
-        }));
-        generatePDFReport(`Files Report - ${selectedStatusTab.replace('_', ' ').toUpperCase()}`, columns, processedFiles);
+
+            if (selectedStatusTab === "infected" || selectedStatusTab === "scan_failed") {
+            columns.push({ header: "Scan Result", dataKey: "scan_results" });
+            }
+
+            if (selectedStatusTab === "suspended") {
+            columns.push({ header: "Suspension Reason", dataKey: "reason" });
+            }
+
+            if (selectedStatusTab === "distributed") {
+            columns.push({ header: "Distributed Time", dataKey: "egress_start" });
+            }
+
+            if (selectedStatusTab === "clean") {
+            columns.push({ header: "Scan Start", dataKey: "scan_start" });
+            columns.push({ header: "Scan End", dataKey: "scan_end" });
+            }
+
+            if (selectedStatusTab === "unscanned") {
+            columns.push({ header: "Upload Time", dataKey: "upload_time" });
+            }
+
+            const dateFields = [
+            "upload_time",
+            "egress_start",
+            "scan_start",
+            "scan_end",
+            "dateScanned",
+            ];
+
+            const sizeFields = ["size_bytes"];
+
+            const rows = filesWithCollections.map((f) => {
+            const row = {};
+            columns.forEach((c) => {
+                let value = f[c.dataKey] ?? "";
+                // Format date fields
+                if (dateFields.includes(c.dataKey) && value) {
+                value = formatDisplayDate(value);
+                }
+
+                // Format size fields
+                if (sizeFields.includes(c.dataKey) && value !== "") {
+                value = formatBytes(value);
+                }
+
+                row[c.dataKey] = value;
+            });
+            return row;
+            });
+            await generatePDFReport(`${selectedStatusTab} Files`, columns, rows, null, userInfo);
+            toast.success("PDF report generated successfully!");
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to download files report: " + err.message);
+        }
     };
+            
 
     return (
         <Container maxWidth={false} disableGutters>

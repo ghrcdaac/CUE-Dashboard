@@ -135,7 +135,7 @@ export function generateCostReport(summary, daily, collections, files, userInfo)
     autoTable(doc, {
       startY: y + 5,
       head: [["Date", "Cost ($)"]],
-      body: daily.map((d) => [d.date, d.cost]),
+      body: daily.map((d) => [d.day, d.value]),
     });
     y = doc.lastAutoTable.finalY + 10;
   }
