@@ -40,7 +40,7 @@ export const config = {
     ...envConfig,
 
     // Static settings that are the same across all environments
-    version: "0.0.35",
+    version: "0.0.36",
     keycloakRealm: "cue",
 };
 

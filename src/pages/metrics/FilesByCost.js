@@ -6,7 +6,6 @@ import {
 } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-// MODIFICATION: Added dayjs for default date filters
 import dayjs from 'dayjs';
 import { LineChart, BarChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useOutletContext } from 'react-router-dom';
@@ -15,6 +14,8 @@ import 'react-toastify/dist/ReactToastify.css';
 
 // Hooks, Components & Utils
 import usePageTitle from "../../hooks/usePageTitle";
+// MODIFICATION: Added useAuth import
+import useAuth from '../../hooks/useAuth';
 import MetricsFilter from './MetricsFilter';
 import { parseApiError } from '../../utils/errorUtils';
 import * as costApi from '../../api/costApi';
@@ -30,28 +31,27 @@ import SearchIcon from '@mui/icons-material/Search';
 
 const formatBytes = (bytes, decimals = 2) => {
     if (!+bytes) return '0 Bytes';
-  
+ 
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-  
+ 
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+ 
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 };
 
-// MODIFICATION START: Added default date logic for consistent filtering
 const DATE_FORMAT_API_DAYJS = 'YYYY-MM-DD';
 const getDefaultStartDate = () => dayjs().subtract(7, 'day');
 const getDefaultEndDate = () => dayjs();
-// MODIFICATION END
 
 function FilesByCost() {
     usePageTitle("Files by Cost");
     const { setMenuItems } = useOutletContext();
+    // MODIFICATION: Get the reactive activeNgroupId from useAuth.
+    const { activeNgroupId } = useAuth();
 
     // State
-    // MODIFICATION: Initialized activeFilters with a 7-day default range.
     const [activeFilters, setActiveFilters] = useState({
         start_date: getDefaultStartDate().format(DATE_FORMAT_API_DAYJS),
         end_date: getDefaultEndDate().format(DATE_FORMAT_API_DAYJS),
@@ -116,24 +116,22 @@ function FilesByCost() {
         }).catch(err => toast.error(`Failed to load files: ${parseApiError(err)}`)).finally(() => setLoadingFiles(false));
     }, [collectionPagination.pageSize, filePagination.pageSize]);
 
-    // Initial fetch
-    // MODIFICATION: Updated to use the initialized activeFilters state.
+    // MODIFICATION: This useEffect now depends on activeNgroupId and will re-fetch all data when it changes.
     useEffect(() => {
-        fetchAllData(activeFilters);
-    }, [fetchAllData, activeFilters]);
+        if (activeNgroupId) {
+            fetchAllData(activeFilters);
+        }
+    }, [fetchAllData, activeFilters, activeNgroupId]);
 
     const handleApplyFilters = (filters) => {
         setActiveFilters(filters);
-        // Data will be re-fetched by the useEffect above
     };
 
     const handleClearFilters = () => {
-        // Clearing filters now resets to the 7-day default
         setActiveFilters({
             start_date: getDefaultStartDate().format(DATE_FORMAT_API_DAYJS),
             end_date: getDefaultEndDate().format(DATE_FORMAT_API_DAYJS),
         });
-        // Data will be re-fetched by the useEffect above
     };
 
     // --- Pagination Handlers ---
@@ -358,7 +356,6 @@ function FilesByCost() {
                                         <TableRow key={`${file.name}-${index}`}>
                                             <TableCell>{file.name}</TableCell>
                                             <TableCell align="left">{formatBytes(file.size_bytes)}</TableCell>
-                                            {/* MODIFICATION: Changed toFixed(6) to toFixed(3) */}
                                             <TableCell align="left">${file.cost.toFixed(3)}</TableCell>
                                         </TableRow>
                                     ))}

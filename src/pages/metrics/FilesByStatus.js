@@ -14,7 +14,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
 // Hooks, Components & Utils
 import usePageTitle from "../../hooks/usePageTitle";
-import sessionService from '../../services/sessionService';
+import useAuth from '../../hooks/useAuth';
 import { parseApiError } from '../../utils/errorUtils';
 import MetricsFilter from './MetricsFilter';
 import ExportMenu from '../reports/ExportMenu';
@@ -22,7 +22,8 @@ import { generatePDFReport } from '../reports/PdfReport';
 
 // API
 import { listFiles } from '../../api/fileApi';
-import { fetchFilterOptions } from '../../app/reducers/filterOptionsSlice';
+// MODIFICATION: Switched to use the shared dataCacheSlice action
+import { fetchCollections } from '../../app/reducers/dataCacheSlice';
 
 // Icons
 import AssessmentIcon from '@mui/icons-material/Assessment';
@@ -38,7 +39,8 @@ const formatBytes = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    // Handle potential log(0) or negative number issues
+    const i = bytes > 0 ? Math.floor(Math.log(bytes) / Math.log(k)) : 0;
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 };
 
@@ -117,29 +119,33 @@ const ScanResultsDisplay = ({ results }) => {
 function FilesByStatus() {
     usePageTitle("Files by Status");
     const { setMenuItems } = useOutletContext();
-    const ngroupId = useMemo(() => sessionService.getSession()?.active_ngroup_id || null, []);
-    const { collections, status } = useSelector((state) => state.filterOptions);
+    const { activeNgroupId } = useAuth();
+    // MODIFICATION: Switched to use the shared dataCacheSlice for collections
+    const { collections } = useSelector((state) => state.dataCache);
     const dispatch = useDispatch();
 
-    const [files, setFiles] = useState([]);
+    const [rawFiles, setRawFiles] = useState([]); 
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeFilters, setActiveFilters] = useState({});
     const [selectedStatusTab, setSelectedStatusTab] = useState(FILE_STATUSES[0]);
     const [pagination, setPagination] = useState({ page: 0, pageSize: 10 });
     const [searchTerm, setSearchTerm] = useState('');
-    const [sorting, setSorting] = useState({ orderBy: 'upload_time', order: 'desc' }); // Default sort by upload time
+    const [sorting, setSorting] = useState({ orderBy: 'upload_time', order: 'desc' });
 
+    // MODIFICATION: This now correctly fetches collections from the shared cache when needed.
     useEffect(() => {
-        if (status === 'idle' && ngroupId) {
-            dispatch(fetchFilterOptions({ ngroupId }));
+        if (collections.status === 'idle' && activeNgroupId) {
+            dispatch(fetchCollections());
         }
-    }, [status, dispatch, ngroupId]);
+    }, [collections.status, dispatch, activeNgroupId]);
 
+    // MODIFICATION: Now reads from collections.data to build the map.
     const collectionMap = useMemo(() => {
-        if (!collections || collections.length === 0) return new Map();
-        return new Map(collections.map(c => [c.id, c.short_name]));
-    }, [collections]);
+        if (!collections.data || collections.data.length === 0) return new Map();
+        return new Map(collections.data.map(c => [c.id, c.short_name]));
+    }, [collections.data]);
 
     useEffect(() => {
         const metricsMenuItems = [
@@ -152,7 +158,7 @@ function FilesByStatus() {
     }, [setMenuItems]);
 
     const fetchFiles = useCallback(async () => {
-        if (!ngroupId) { setLoading(false); return; }
+        if (!activeNgroupId) { setLoading(false); return; }
         setLoading(true);
         setError(null);
 
@@ -172,11 +178,7 @@ function FilesByStatus() {
                 additionalResponses.forEach(res => { allItems = allItems.concat(res.items || []); });
             }
             
-            const filesWithCollectionNames = allItems.map(file => ({
-                ...file,
-                collection_name: collectionMap.get(file.collection_id) || file.collection_id,
-            }));
-            setFiles(filesWithCollectionNames);
+            setRawFiles(allItems);
             setPagination(prev => ({ ...prev, page: 0 }));
         } catch (err) {
             const errorMessage = parseApiError(err);
@@ -185,14 +187,21 @@ function FilesByStatus() {
         } finally {
             setLoading(false);
         }
-    }, [ngroupId, activeFilters, selectedStatusTab, collectionMap]);
+    }, [activeNgroupId, activeFilters, selectedStatusTab]);
     
     useEffect(() => {
         fetchFiles();
     }, [fetchFiles]);
     
+    const mappedFiles = useMemo(() => {
+        return rawFiles.map(file => ({
+            ...file,
+            collection_name: collectionMap.get(file.collection_id) || file.collection_id,
+        }));
+    }, [rawFiles, collectionMap]);
+
     const processedFiles = useMemo(() => {
-        let filtered = [...files];
+        let filtered = [...mappedFiles];
         if (searchTerm) {
             const lowercasedTerm = searchTerm.toLowerCase();
             filtered = filtered.filter(file => file.name?.toLowerCase().includes(lowercasedTerm));
@@ -206,15 +215,13 @@ function FilesByStatus() {
             if (aValue === null || aValue === '') return 1 * isAsc;
             if (bValue === null || bValue === '') return -1 * isAsc;
 
-            // Simple numeric sort for size
             if (sorting.orderBy === 'size_bytes') {
                 return (aValue - bValue) * isAsc;
             }
 
-            // Date or string comparison
             return aValue.toString().localeCompare(bValue.toString(), undefined, { numeric: true }) * isAsc;
         });
-    }, [files, sorting, searchTerm]);
+    }, [mappedFiles, sorting, searchTerm]);
 
     const handleApplyFilters = (filters) => {
         setPagination(prev => ({ ...prev, page: 0 }));
@@ -266,7 +273,7 @@ function FilesByStatus() {
 
             do {
             const params = {
-                ngroup_id: ngroupId,
+                ngroup_id: activeNgroupId,
                 status: selectedStatusTab,
                 ...activeFilters,
                 page,
@@ -446,3 +453,4 @@ function FilesByStatus() {
 }
 
 export default FilesByStatus;
+
