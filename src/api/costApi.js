@@ -4,8 +4,9 @@ import apiClient from './apiClient';
 
 /**
  * Helper to build a query string from a filters object.
+ * MODIFICATION: This function no longer adds the leading '?'.
  * @param {object} params - The object of query parameters.
- * @returns {string} A URL query string.
+ * @returns {string} A URL query string (e.g., "key=value&key2=value2").
  */
 function buildQueryString(params) {
     const queryParams = new URLSearchParams();
@@ -16,8 +17,7 @@ function buildQueryString(params) {
             }
         });
     }
-    const queryString = queryParams.toString();
-    return queryString ? `?${queryString}` : '';
+    return queryParams.toString();
 }
 
 /**
@@ -27,7 +27,8 @@ function buildQueryString(params) {
  */
 export const getCostSummary = (filters) => {
     const queryString = buildQueryString(filters);
-    return apiClient.get(`/file-metrics/cost-summary${queryString}`);
+    const url = `/file-metrics/cost-summary${queryString ? `?${queryString}` : ''}`;
+    return apiClient.get(url);
 };
 
 /**
@@ -37,10 +38,10 @@ export const getCostSummary = (filters) => {
  */
 export const getCostByCollection = (params) => {
     const { filters, ...pagination } = params;
-    const filtersQuery = buildQueryString(filters);
-    const paginationQuery = buildQueryString(pagination);
-    const separator = filtersQuery && paginationQuery ? '&' : '';
-    return apiClient.get(`/file-metrics/cost-by-collection${filtersQuery}${separator}${paginationQuery}`);
+    const allParams = { ...filters, ...pagination };
+    const queryString = buildQueryString(allParams);
+    const url = `/file-metrics/cost-by-collection${queryString ? `?${queryString}` : ''}`;
+    return apiClient.get(url);
 };
 
 /**
@@ -50,8 +51,8 @@ export const getCostByCollection = (params) => {
  */
 export const getCostByFile = (params) => {
     const { filters, ...pagination } = params;
-    const filtersQuery = buildQueryString(filters);
-    const paginationQuery = buildQueryString(pagination);
-    const separator = filtersQuery && paginationQuery ? '&' : '';
-    return apiClient.get(`/file-metrics/cost-by-file${filtersQuery}${separator}${paginationQuery}`);
+    const allParams = { ...filters, ...pagination };
+    const queryString = buildQueryString(allParams);
+    const url = `/file-metrics/cost-by-file${queryString ? `?${queryString}` : ''}`;
+    return apiClient.get(url);
 };

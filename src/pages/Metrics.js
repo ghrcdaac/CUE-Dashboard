@@ -32,7 +32,6 @@ import { useOutletContext } from 'react-router-dom';
 // Hooks & Components
 import useAuth from '../hooks/useAuth';
 import usePageTitle from '../hooks/usePageTitle';
-import sessionService from '../services/sessionService';
 import MetricsFilter from './metrics/MetricsFilter';
 import ExportMenu from './reports/ExportMenu';
 import { generateMetricsReport } from './reports/PdfReport';
@@ -50,16 +49,26 @@ const DATE_FORMAT_API_DAYJS = 'YYYY-MM-DD';
 const getDefaultStartDate = () => dayjs().subtract(7, 'day');
 const getDefaultEndDate = () => dayjs();
 
+
+/**
+ * Converts a file size in bytes to a human-readable string (e.g., KB, MB, GB).
+ * @param {number} bytes - The file size in bytes.
+ * @param {number} [decimals=2] - The number of decimal places to display.
+ * @returns {string} A formatted file size string.
+ */
 const formatBytes = (bytes, decimals = 2) => {
-  if (bytes == null || bytes === 0) return '0 Bytes';
-  if (typeof bytes !== 'number' || isNaN(bytes)) return 'N/A';
+  if (!+bytes) return '0 Bytes';
+
   const k = 1024;
-  const gb = bytes * k * k * k; 
   const dm = decimals < 0 ? 0 : decimals;
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-  const i = Math.max(0, Math.floor(Math.log(gb) / Math.log(k)));
-  return parseFloat((gb / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+
+  
+  const i = Math.max(0, Math.floor(Math.log(bytes) / Math.log(k)));
+
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 };
+
 
 const statusColors = {
   uploading: '#bbdefb', // light blue
@@ -75,11 +84,7 @@ const getStatusColor = (status) =>
 
 function Metrics() {
   usePageTitle('Metrics Overview');
-  const { user: currentUser } = useAuth();
-  const ngroupId = useMemo(
-    () => sessionService.getSession()?.active_ngroup_id || null,
-    [],
-  );
+  const { user: currentUser, activeNgroupId } = useAuth();
 
   const [activeFilters, setActiveFilters] = useState({
     start_date: getDefaultStartDate().format(DATE_FORMAT_API_DAYJS),
@@ -104,9 +109,12 @@ function Metrics() {
     return () => setMenuItems([]);
   }, [setMenuItems]);
 
+  // MODIFICATION START: The data fetching logic has been updated.
+  // It now depends on both activeNgroupId and activeFilters, ensuring it re-runs
+  // when either the group is changed or a new filter is applied.
   const fetchMetrics = useCallback(
-    async (filtersToUse) => {
-      if (!ngroupId) {
+    async () => {
+      if (!activeNgroupId) {
         setLoadingMetrics(false);
         setErrorMetrics('Cannot fetch metrics. No NGROUP ID found.');
         return;
@@ -115,13 +123,14 @@ function Metrics() {
       setErrorMetrics(null);
       
       try {
-        const summaryData = await fileMetricsApi.getMetricsSummary(filtersToUse);
+        // Now uses the activeFilters state directly
+        const summaryData = await fileMetricsApi.getMetricsSummary(activeFilters);
         if (summaryData) {
           setDailyVolumeData(summaryData.daily_volume || []);
           setDailyCountData(summaryData.daily_count || []);
           setStatusCountsData(summaryData.status_counts || []);
           setOverallCountData(summaryData.overall_count ? { total_count: summaryData.overall_count.value } : null);
-          setOverallVolumeData(summaryData.overall_volume ? { total_volume_gb: summaryData.overall_volume.value } : null);
+          setOverallVolumeData(summaryData.overall_volume ? { total_volume_bytes: summaryData.overall_volume.value } : null);
         }
       } catch (error) {
         const message = `Failed to load metrics: ${parseApiError(error)}`;
@@ -131,16 +140,17 @@ function Metrics() {
         setLoadingMetrics(false);
       }
     },
-    [ngroupId],
+    [activeNgroupId, activeFilters], // Added activeFilters to dependency array
   );
 
   useEffect(() => {
-    fetchMetrics(activeFilters);
+    // Call fetchMetrics directly. It will re-run when its dependencies change.
+    fetchMetrics();
   }, [fetchMetrics]);
+  // MODIFICATION END
 
   const handleApplyFilters = (filters) => {
     setActiveFilters(filters);
-    fetchMetrics(filters);
   };
 
   const handleClearFilters = () => {
@@ -149,28 +159,27 @@ function Metrics() {
       end_date: getDefaultEndDate().format(DATE_FORMAT_API_DAYJS),
     };
     setActiveFilters(defaultFilters);
-    fetchMetrics(defaultFilters);
   };
 
   const handleExport = (format) => {
     if (format !== 'pdf') return;
     const summaryData = {
-            "Total Volume": overallVolumeData ? formatBytes(overallVolumeData.total_volume_gb) : 'N/A',
-            "Total Files": overallCountData ? overallCountData.total_count.toLocaleString() : 'N/A',
-        };
+        "Total Volume": overallVolumeData ? formatBytes(overallVolumeData.total_volume_bytes) : 'N/A',
+        "Total Files": overallCountData ? overallCountData.total_count.toLocaleString() : 'N/A',
+    };
     const now = new Date();
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(now.getDate() - 7);
     const userInfo = {
-            name: currentUser?.name || '',
-            start: activeFilters?.start_date || sevenDaysAgo.toISOString().split('T')[0],
-            end: activeFilters?.end_date || now.toISOString().split('T')[0]
-        };
-    // Assuming a report generator for this specific data structure exists
+        name: currentUser?.name || '',
+        start: activeFilters?.start_date || sevenDaysAgo.toISOString().split('T')[0],
+        end: activeFilters?.end_date || now.toISOString().split('T')[0]
+    };
     generateMetricsReport(summaryData,statusCountsData,dailyVolumeData,dailyCountData, userInfo);
   };
 
-  const volumeTooltipFormatter = (value) => [`${value.toFixed(4)} GB`, 'Volume'];
+  const volumeTooltipFormatter = (value) => [formatBytes(value), 'Volume'];
+  const yAxisVolumeFormatter = (tick) => formatBytes(tick);
   const countTooltipFormatter = (value) => [value.toLocaleString(), 'Files'];
 
   return (
@@ -212,7 +221,7 @@ function Metrics() {
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
                     <Typography variant="subtitle1" color="text.secondary" gutterBottom>Total Volume</Typography>
-                    <Typography variant="h4">{overallVolumeData ? formatBytes(overallVolumeData.total_volume_gb) : 'N/A'}</Typography>
+                    <Typography variant="h4">{overallVolumeData ? formatBytes(overallVolumeData.total_volume_bytes) : 'N/A'}</Typography>
                   </CardContent>
                 </Card>
               </Grid>
@@ -244,11 +253,16 @@ function Metrics() {
               <Grid item sx={{ width: '50%', p: 1.5 }}>
                 <Card>
                   <CardContent>
-                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Daily Volume (GB)</Typography>
+                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Daily Volume</Typography>
                     {dailyVolumeData.length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
                         <LineChart data={dailyVolumeData} margin={{ top: 5, right: 30, left: 50, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="day" /><YAxis /><Tooltip formatter={volumeTooltipFormatter} /><Legend /><Line type="monotone" dataKey="value" stroke="#8884d8" name="Volume (GB)" />
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="day" />
+                          <YAxis tickFormatter={yAxisVolumeFormatter} />
+                          <Tooltip formatter={volumeTooltipFormatter} />
+                          <Legend />
+                          <Line type="monotone" dataKey="value" stroke="#8884d8" name="Volume" />
                         </LineChart>
                       </ResponsiveContainer>
                     ) : ( <Typography variant="body2" color="text.secondary">No daily volume data.</Typography> )}
@@ -262,7 +276,12 @@ function Metrics() {
                     {dailyCountData.length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
                         <LineChart data={dailyCountData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="day" /><YAxis /><Tooltip formatter={countTooltipFormatter} /><Legend /><Line type="monotone" dataKey="value" stroke="#82ca9d" name="Files" />
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="day" />
+                          <YAxis />
+                          <Tooltip formatter={countTooltipFormatter} />
+                          <Legend />
+                          <Line type="monotone" dataKey="value" stroke="#82ca9d" name="Files" />
                         </LineChart>
                       </ResponsiveContainer>
                     ) : ( <Typography variant="body2" color="text.secondary">No daily file count data.</Typography> )}
@@ -278,3 +297,4 @@ function Metrics() {
 }
 
 export default Metrics;
+

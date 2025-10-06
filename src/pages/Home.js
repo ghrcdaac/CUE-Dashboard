@@ -9,7 +9,7 @@ import {
     Container,
     CardActionArea,
     Divider,
-    CircularProgress // Import CircularProgress
+    CircularProgress 
 } from '@mui/material';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -26,23 +26,26 @@ import StorageIcon from '@mui/icons-material/Storage';
 
 import usePageTitle from "../hooks/usePageTitle";
 import useAuth from '../hooks/useAuth';
+// MODIFICATION: Imported usePrivileges hook
+import usePrivileges from '../hooks/usePrivileges';
 import { parseApiError } from '../utils/errorUtils';
 
 import * as fileMetricsApi from '../api/fileMetricsApi';
 import { fetchCollections, fetchProviders, fetchEgresses, fetchUsers } from '../app/reducers/dataCacheSlice';
 
+// MODIFICATION: Replaced with a correct and robust formatBytes function.
 const formatBytes = (bytes, decimals = 2) => {
-    if (bytes == null || bytes === 0) return '0 Bytes';
-    if (typeof bytes !== 'number' || isNaN(bytes)) return 'N/A';
+    if (!+bytes) return '0 Bytes';
+  
     const k = 1024;
-    const gb = bytes * k * k * k; 
     const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.max(0, Math.floor(Math.log(gb) / Math.log(k)));
-    return parseFloat((gb / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 };
 
-// UPDATED: Now shows an internal spinner when loading
 const StatCard = ({ title, value, icon, onClick, loading }) => (
     <Grid item xs={12} sm={6} md={3}>
         <Card sx={{ height: '100%' }}>
@@ -61,12 +64,11 @@ const StatCard = ({ title, value, icon, onClick, loading }) => (
     </Grid>
 );
 
-// UPDATED: Now shows an internal spinner when loading, preserving vertical space
 const MetricCard = ({ title, value, icon, color = "inherit", loading }) => (
     <Grid item xs={12} sm={4}>
         <Card sx={{ height: '100%' }}>
             <CardContent sx={{ py: 2, px: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     {icon}
                     <Typography variant="h6" color="text.secondary">{title}</Typography>
                 </Box>
@@ -88,6 +90,8 @@ export default function Home() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { activeNgroupId } = useAuth();
+    // MODIFICATION: Get the hasPrivilege function from the hook
+    const { hasPrivilege } = usePrivileges();
 
     const { collections, providers, egresses, users } = useSelector((state) => state.dataCache);
     const [summary, setSummary] = useState(null);
@@ -99,9 +103,12 @@ export default function Home() {
             if (collections.status === 'idle') dispatch(fetchCollections());
             if (providers.status === 'idle') dispatch(fetchProviders());
             if (egresses.status === 'idle') dispatch(fetchEgresses());
-            if (users.status === 'idle') dispatch(fetchUsers());
+            // MODIFICATION: Conditionally fetch users based on privilege
+            if (users.status === 'idle' && hasPrivilege('user:page')) {
+                dispatch(fetchUsers());
+            }
         }
-    }, [activeNgroupId, collections.status, providers.status, egresses.status, users.status, dispatch]);
+    }, [activeNgroupId, collections.status, providers.status, egresses.status, users.status, dispatch, hasPrivilege]);
     
     const fetchMetricsSummary = useCallback(async () => {
         if (!activeNgroupId) { setLoadingSummary(false); return; }
@@ -137,12 +144,15 @@ export default function Home() {
 
     return (
         <Container maxWidth="lg" sx={{ py: 4 }}>
-          <Typography variant="h5" sx={{ mb: 2, textAlign: 'center' }}>Cloud Upload Environment (CUE)</Typography>
+         <Typography variant="h5" sx={{ mb: 2, textAlign: 'center' }}>Cloud Upload Environment (CUE)</Typography>
             <Grid container spacing={3} justifyContent="center">
                 <StatCard title="Collections" value={collections.data.length} onClick={() => navigate('/collections')} icon={<CollectionsIcon color="action" />} loading={collections.status === 'loading'} />
                 <StatCard title="Providers" value={providers.data.length} onClick={() => navigate('/providers')} icon={<AccountBoxIcon color="action" />} loading={providers.status === 'loading'} />
                 <StatCard title="Egress" value={egresses.data.length} onClick={() => navigate('/daac')} icon={<OutputIcon color="action" />} loading={egresses.status === 'loading'} />
-                <StatCard title="Users" value={users.data.length} onClick={() => navigate('/users')} icon={<GroupIcon color="action" />} loading={users.status === 'loading'} />
+                {/* MODIFICATION: The Users card is now only rendered if the user has the 'user:page' privilege. */}
+                {hasPrivilege("user:page") && (
+                    <StatCard title="Users" value={users.data.length} onClick={() => navigate('/users')} icon={<GroupIcon color="action" />} loading={users.status === 'loading'} />
+                )}
             </Grid>
 
             <Divider sx={{ my: 4 }} />
@@ -154,6 +164,7 @@ export default function Home() {
                     <Grid container spacing={3}>
                         <MetricCard title="Total Files" value={summary?.overall_count?.value?.toLocaleString() || 0} icon={<DescriptionIcon color="action" />} loading={loadingSummary} />
                         <MetricCard title="Infected Files" value={infectedCount.toLocaleString()} color={infectedCount > 0 ? "error.main" : "inherit"} icon={<BugReportIcon color="action" />} loading={loadingSummary} />
+                        {/* MODIFICATION: The value now uses the corrected formatBytes function with the 'overall_volume' in bytes. */}
                         <MetricCard title="Total Volume" value={formatBytes(summary?.overall_volume?.value) || '0 Bytes'} icon={<StorageIcon color="action" />} loading={loadingSummary} />
                     </Grid>
                 </Grid>

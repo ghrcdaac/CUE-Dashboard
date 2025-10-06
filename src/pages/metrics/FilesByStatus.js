@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo  } from 'react';
 import {
-    Box, Card, CardContent, Typography, CircularProgress, Alert, Table, 
-    TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, 
+    Box, Card, CardContent, Typography, CircularProgress, Alert, Table,
+    TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
     TablePagination, Tabs, Tab, Container, TextField, TableSortLabel
 } from '@mui/material';
 import { useOutletContext } from 'react-router-dom';
@@ -14,7 +14,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
 // Hooks, Components & Utils
 import usePageTitle from "../../hooks/usePageTitle";
-import sessionService from '../../services/sessionService';
+import useAuth from '../../hooks/useAuth';
 import { parseApiError } from '../../utils/errorUtils';
 import MetricsFilter from './MetricsFilter';
 import ExportMenu from '../reports/ExportMenu';
@@ -22,7 +22,8 @@ import { generatePDFReport } from '../reports/PdfReport';
 
 // API
 import { listFiles } from '../../api/fileApi';
-import { fetchFilterOptions } from '../../app/reducers/filterOptionsSlice'; 
+// MODIFICATION: Switched to use the shared dataCacheSlice action
+import { fetchCollections } from '../../app/reducers/dataCacheSlice';
 
 // Icons
 import AssessmentIcon from '@mui/icons-material/Assessment';
@@ -38,7 +39,8 @@ const formatBytes = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    // Handle potential log(0) or negative number issues
+    const i = bytes > 0 ? Math.floor(Math.log(bytes) / Math.log(k)) : 0;
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 };
 
@@ -58,65 +60,92 @@ const baseHeadCells = [
     { id: 'upload_time', label: 'Upload Time' },
 ];
 
-const ScanResultsDisplay = ({ results }) => {
-    if (!results) {
-        return <Typography variant="body2" color="text.secondary">Scan result data not available.</Typography>;
-    }
-    
-    let resultsArray = Array.isArray(results) ? results : [results];
-    if (resultsArray.length > 0 && resultsArray[0].scanResults) {
-        resultsArray = resultsArray[0].scanResults;
-    }
 
-    if (resultsArray.length === 0) {
+const ScanResultsDisplay = ({ results }) => {
+    if (!results || !Array.isArray(results) || results.length === 0) {
         return <Typography variant="body2" color="text.secondary">No detailed results.</Typography>;
     }
 
+    // Normalize the results array. Infected status has a nested `scanResults` array.
+    let displayableResults = [];
+    results.forEach(item => {
+        if (item.scanResults && Array.isArray(item.scanResults)) {
+            displayableResults = displayableResults.concat(item.scanResults);
+        } else {
+            displayableResults.push(item);
+        }
+    });
+
     return (
         <Box>
-            {resultsArray.map((scan, index) => (
-                <Box key={index} sx={{ mb: index < resultsArray.length - 1 ? 2 : 0 }}>
-                    <Typography variant="body2" component="div"><strong>Engine:</strong> {scan.engine || 'N/A'}</Typography>
-                    <Typography variant="body2" component="div"><strong>Result:</strong> {scan.result || 'N/A'}</Typography>
-                    {scan.virusName && scan.virusName.length > 0 && (
-                        <Typography variant="body2" component="div"><strong>Viruses:</strong> {scan.virusName.join(', ')}</Typography>
-                    )}
-                    {scan.message && scan.message.length > 0 && (
-                         <Typography variant="body2" component="div"><strong>File ID:</strong> {scan.message.join(', ')}</Typography>
-                    )}
-                    <Typography variant="body2" component="div"><strong>Scanned:</strong> {formatDisplayDate(scan.dateScanned)}</Typography>
-                </Box>
-            ))}
+            {displayableResults.map((item, index) => {
+                // Case 1: This is a standard virus scan result
+                if (item.engine) {
+                    return (
+                        <Box key={index} sx={{ mb: index < displayableResults.length - 1 ? 1 : 0 }}>
+                            <Typography variant="body2" component="div"><strong>Engine:</strong> {item.engine}</Typography>
+                            <Typography variant="body2" component="div"><strong>Result:</strong> {item.result || 'N/A'}</Typography>
+                            {item.virusName && item.virusName.length > 0 && (
+                                <Typography variant="body2" component="div"><strong>Viruses:</strong> {item.virusName.join(', ')}</Typography>
+                            )}
+                            <Typography variant="body2" component="div"><strong>Scanned:</strong> {formatDisplayDate(item.dateScanned)}</Typography>
+                        </Box>
+                    );
+                }
+                
+                // Case 2: This is a checksum validation result
+                if (item.checksum_validation) {
+                    const validation = item.checksum_validation;
+                    return (
+                        <Box key={index} sx={{ mb: index < displayableResults.length - 1 ? 1 : 0 }}>
+                            <Typography variant="body2" component="div"><strong>Event:</strong> Checksum Validation</Typography>
+                            <Typography variant="body2" component="div" sx={{ textTransform: 'capitalize' }}>
+                                <strong>Status:</strong> {validation.status || 'N/A'}
+                            </Typography>
+                            <Typography variant="body2" component="div"><strong>Timestamp:</strong> {formatDisplayDate(validation.timestamp)}</Typography>
+                        </Box>
+                    );
+                }
+
+                // Fallback for any other unknown result types
+                return null;
+            })}
         </Box>
     );
 };
 
+
+
 function FilesByStatus() {
     usePageTitle("Files by Status");
     const { setMenuItems } = useOutletContext();
-    const ngroupId = useMemo(() => sessionService.getSession()?.active_ngroup_id || null, []);
-    const { collections, status } = useSelector((state) => state.filterOptions);
+    const { activeNgroupId } = useAuth();
+    // MODIFICATION: Switched to use the shared dataCacheSlice for collections
+    const { collections } = useSelector((state) => state.dataCache);
     const dispatch = useDispatch();
 
-    const [files, setFiles] = useState([]);
+    const [rawFiles, setRawFiles] = useState([]); 
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeFilters, setActiveFilters] = useState({});
     const [selectedStatusTab, setSelectedStatusTab] = useState(FILE_STATUSES[0]);
     const [pagination, setPagination] = useState({ page: 0, pageSize: 10 });
     const [searchTerm, setSearchTerm] = useState('');
-    const [sorting, setSorting] = useState({ orderBy: 'name', order: 'asc' });
+    const [sorting, setSorting] = useState({ orderBy: 'upload_time', order: 'desc' });
 
+    // MODIFICATION: This now correctly fetches collections from the shared cache when needed.
     useEffect(() => {
-        if (status === 'idle' && ngroupId) {
-            dispatch(fetchFilterOptions({ ngroupId }));
+        if (collections.status === 'idle' && activeNgroupId) {
+            dispatch(fetchCollections());
         }
-    }, [status, dispatch, ngroupId]);
+    }, [collections.status, dispatch, activeNgroupId]);
 
+    // MODIFICATION: Now reads from collections.data to build the map.
     const collectionMap = useMemo(() => {
-        if (!collections || collections.length === 0) return new Map();
-        return new Map(collections.map(c => [c.id, c.short_name]));
-    }, [collections]);
+        if (!collections.data || collections.data.length === 0) return new Map();
+        return new Map(collections.data.map(c => [c.id, c.short_name]));
+    }, [collections.data]);
 
     useEffect(() => {
         const metricsMenuItems = [
@@ -129,7 +158,7 @@ function FilesByStatus() {
     }, [setMenuItems]);
 
     const fetchFiles = useCallback(async () => {
-        if (!ngroupId) { setLoading(false); return; }
+        if (!activeNgroupId) { setLoading(false); return; }
         setLoading(true);
         setError(null);
 
@@ -149,11 +178,7 @@ function FilesByStatus() {
                 additionalResponses.forEach(res => { allItems = allItems.concat(res.items || []); });
             }
             
-            const filesWithCollectionNames = allItems.map(file => ({
-                ...file,
-                collection_name: collectionMap.get(file.collection_id) || file.collection_id,
-            }));
-            setFiles(filesWithCollectionNames);
+            setRawFiles(allItems);
             setPagination(prev => ({ ...prev, page: 0 }));
         } catch (err) {
             const errorMessage = parseApiError(err);
@@ -162,14 +187,21 @@ function FilesByStatus() {
         } finally {
             setLoading(false);
         }
-    }, [ngroupId, activeFilters, selectedStatusTab, collectionMap]);
+    }, [activeNgroupId, activeFilters, selectedStatusTab]);
     
     useEffect(() => {
         fetchFiles();
     }, [fetchFiles]);
     
+    const mappedFiles = useMemo(() => {
+        return rawFiles.map(file => ({
+            ...file,
+            collection_name: collectionMap.get(file.collection_id) || file.collection_id,
+        }));
+    }, [rawFiles, collectionMap]);
+
     const processedFiles = useMemo(() => {
-        let filtered = [...files];
+        let filtered = [...mappedFiles];
         if (searchTerm) {
             const lowercasedTerm = searchTerm.toLowerCase();
             filtered = filtered.filter(file => file.name?.toLowerCase().includes(lowercasedTerm));
@@ -179,9 +211,17 @@ function FilesByStatus() {
             const isAsc = sorting.order === 'asc' ? 1 : -1;
             const aValue = a[sorting.orderBy] || '';
             const bValue = b[sorting.orderBy] || '';
+            
+            if (aValue === null || aValue === '') return 1 * isAsc;
+            if (bValue === null || bValue === '') return -1 * isAsc;
+
+            if (sorting.orderBy === 'size_bytes') {
+                return (aValue - bValue) * isAsc;
+            }
+
             return aValue.toString().localeCompare(bValue.toString(), undefined, { numeric: true }) * isAsc;
         });
-    }, [files, sorting, searchTerm]);
+    }, [mappedFiles, sorting, searchTerm]);
 
     const handleApplyFilters = (filters) => {
         setPagination(prev => ({ ...prev, page: 0 }));
@@ -213,7 +253,7 @@ function FilesByStatus() {
     }, [selectedStatusTab]);
 
     const handleExport = async (format) => {
-        if (format !== "pdf") return; //can extend for CSV/XLSX later
+        if (format !== "pdf") return; 
         
         try {
             const now = new Date();
@@ -226,7 +266,6 @@ function FilesByStatus() {
             end: activeFilters?.end_date || now.toISOString().split('T')[0],
             };
 
-            // Fetch all files (if not already fully loaded)
             let allFiles = [];
             let page = 1;
             const pageSize = 100;
@@ -234,7 +273,7 @@ function FilesByStatus() {
 
             do {
             const params = {
-                ngroup_id: ngroupId,
+                ngroup_id: activeNgroupId,
                 status: selectedStatusTab,
                 ...activeFilters,
                 page,
@@ -247,13 +286,11 @@ function FilesByStatus() {
             page++;
             } while (allFiles.length < total);
 
-            // Add collection names
             const filesWithCollections = allFiles.map((file) => ({
             ...file,
             collection_name: collectionMap.get(file.collection_id) || file.collection_id,
             }));
 
-            // Define columns dynamically
             let columns = [
             { header: "File Name", dataKey: "name" },
             { header: "Collection", dataKey: "collection_name" },
@@ -299,12 +336,10 @@ function FilesByStatus() {
             const row = {};
             columns.forEach((c) => {
                 let value = f[c.dataKey] ?? "";
-                // Format date fields
                 if (dateFields.includes(c.dataKey) && value) {
                 value = formatDisplayDate(value);
                 }
 
-                // Format size fields
                 if (sizeFields.includes(c.dataKey) && value !== "") {
                 value = formatBytes(value);
                 }
@@ -321,7 +356,6 @@ function FilesByStatus() {
         }
     };
             
-
     return (
         <Container maxWidth={false} disableGutters>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -419,3 +453,4 @@ function FilesByStatus() {
 }
 
 export default FilesByStatus;
+
