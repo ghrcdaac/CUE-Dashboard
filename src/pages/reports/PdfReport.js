@@ -1,13 +1,14 @@
 // src/reports/pdfReport.js
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import getSession from "../../services/sessionService"
 
 
 function getUserInfo(userInfo){
+  const session = localStorage.getItem('CUE_USER_SESSION');
+  const parsedData = JSON.parse(session);
     return {
-      "User Name": userInfo?.name,
-      // "NGroup": userInfo?.ngroup,
-      // "Email": userInfo?.role,
+      "Name": parsedData?.user?.name,
       "Generated At": new Date().toLocaleString(),
       "Report Start": userInfo?.start,
       "Report End" :userInfo?.end
