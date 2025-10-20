@@ -260,8 +260,7 @@ function FilesByStatus() {
             const sevenDaysAgo = new Date();
             sevenDaysAgo.setDate(now.getDate() - 7);
 
-            const userInfo = {
-            name: localStorage.getItem("CUE_username"),
+            const info = {
             start: activeFilters?.start_date || sevenDaysAgo.toISOString().split('T')[0],
             end: activeFilters?.end_date || now.toISOString().split('T')[0],
             };
@@ -348,7 +347,7 @@ function FilesByStatus() {
             });
             return row;
             });
-            await generatePDFReport(`${selectedStatusTab} Files`, columns, rows, null, userInfo);
+            await generatePDFReport(`${selectedStatusTab} Files`, columns, rows, null, info);
             toast.success("PDF report generated successfully!");
         } catch (err) {
             console.error(err);
