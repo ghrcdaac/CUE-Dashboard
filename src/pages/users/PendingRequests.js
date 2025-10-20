@@ -16,7 +16,6 @@ import { parseApiError } from '../../utils/errorUtils';
 import { getEditableRoles } from '../../utils/permissionUtils';
 
 import { listUserApplications, approveUserApplication, rejectUserApplication } from '../../api/userApplicationApi';
-// Import the new Redux cache actions
 import { fetchRoles, fetchProviders } from '../../app/reducers/dataCacheSlice';
 
 const headCells = [
@@ -34,10 +33,8 @@ function PendingRequests() {
     const { user: currentUser, activeNgroupId } = useAuth();
     const { hasPrivilege } = usePrivileges();
 
-    // Get shared data from the central Redux cache
     const { roles, providers } = useSelector((state) => state.dataCache);
 
-    // Page-specific state
     const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -45,27 +42,36 @@ function PendingRequests() {
     const [selected, setSelected] = useState([]);
     const [dialog, setDialog] = useState({ open: null, data: null });
     
-    // Client-side operation state (Restored to individual variables)
     const [searchTerm, setSearchTerm] = useState('');
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [order, setOrder] = useState('asc');
     const [orderBy, setOrderBy] = useState('name');
 
-    // "Smart" data fetching for cache dependencies
+    // --- ADDED: Check if the user is an admin or security user ---
+    const isPrivilegedViewer = useMemo(() =>
+        currentUser?.roles?.includes('admin') || currentUser?.roles?.includes('security'),
+        [currentUser?.roles]
+    );
+
     useEffect(() => {
-        if (activeNgroupId) {
-            if (roles.status === 'idle') dispatch(fetchRoles());
-            if (providers.status === 'idle') dispatch(fetchProviders());
-        }
-    }, [activeNgroupId, roles.status, providers.status, dispatch]);
+        // Fetch dependencies regardless of activeNgroupId, since privileged users don't need one
+        if (roles.status === 'idle') dispatch(fetchRoles());
+        if (providers.status === 'idle') dispatch(fetchProviders());
+    }, [roles.status, providers.status, dispatch]);
 
     const fetchPageData = useCallback(async () => {
-        if (!activeNgroupId) { setLoading(false); return; }
+        // --- MODIFIED: The check for activeNgroupId is now conditional ---
+        if (!isPrivilegedViewer && !activeNgroupId) {
+            setLoading(false);
+            setApplications([]); // Clear applications if no DAAC is selected for a non-privileged user
+            return;
+        }
         setLoading(true);
         setError(null);
         try {
-            const appsData = await listUserApplications('pending');
+            // --- MODIFIED: Pass the new option to the API call ---
+            const appsData = await listUserApplications('pending', { forceGlobal: isPrivilegedViewer });
             setApplications(appsData || []);
         } catch (err) {
             const apiError = parseApiError(err);
@@ -74,15 +80,15 @@ function PendingRequests() {
         } finally {
             setLoading(false);
         }
-    }, [activeNgroupId]);
+    // --- Add isPrivilegedViewer to the dependency array ---
+    }, [activeNgroupId, isPrivilegedViewer]);
 
     useEffect(() => {
-        if (activeNgroupId && roles.status === 'succeeded' && providers.status === 'succeeded') {
+        // This effect now correctly triggers the fetch when dependencies are ready
+        if (roles.status === 'succeeded' && providers.status === 'succeeded') {
             fetchPageData();
-        } else if (activeNgroupId) {
-            setLoading(roles.status === 'loading' || providers.status === 'loading');
         }
-    }, [activeNgroupId, roles.status, providers.status, fetchPageData]);
+    }, [roles.status, providers.status, fetchPageData]);
 
     const processedApps = useMemo(() => {
         if (!applications || !providers.data) return [];

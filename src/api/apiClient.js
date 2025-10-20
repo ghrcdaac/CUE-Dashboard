@@ -44,8 +44,13 @@ const apiClient = async (endpoint, options = {}) => {
     if (accessToken) {
         headers['Authorization'] = `Bearer ${accessToken}`;
     }
-    if (activeNgroupId) {
+    if (activeNgroupId && headers['X-Skip-Ngroup-Filter'] !== 'true') {
         headers['X-Active-Ngroup-Id'] = activeNgroupId;
+    }
+
+    // We can now safely delete our custom signal header so it's not sent to the API.
+    if (headers['X-Skip-Ngroup-Filter']) {
+        delete headers['X-Skip-Ngroup-Filter'];
     }
 
     const response = await fetch(`${config.apiBaseUrl}${endpoint}`, {

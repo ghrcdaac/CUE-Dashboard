@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-// --- ADDED: Import sessionService for logging ---
+// ---  Import sessionService for logging ---
 import sessionService from '../services/sessionService';
 
 /**
@@ -8,7 +8,7 @@ import sessionService from '../services/sessionService';
  * @param {object} applicationData - The data for the new user application.
  */
 export const createUserApplication = (applicationData) => {
-    // --- ADDED: Logging for verification ---
+    // ---  Logging for verification ---
     const session = sessionService.getSession();
     const token = session ? session.accessToken : null;
     console.log("Attempting to create user application. Token found in session:", !!token);
@@ -24,15 +24,29 @@ export const createUserApplication = (applicationData) => {
 // --- All other functions use the apiClient for protected routes ---
 
 /**
- * Lists user applications, optionally filtered by status. Requires 'approve_user' privilege.
- * @param {string} [status] - The status to filter by (e.g., "pending", "rejected").
+ * Lists user applications, optionally filtered by status.
+ * @param {string} [status] - The status to filter by (e.g., "pending").
+ * @param {object} [options] - Additional options for the request.
+ * @param {boolean} [options.forceGlobal] - If true, bypasses the ngroup filter.
  */
-export const listUserApplications = (status) => {
+export const listUserApplications = (status, options = {}) => {
+    const { forceGlobal = false } = options;
     let url = `/user_application/`;
     if (status) {
         url += `?status=${status}`;
     }
-    return apiClient.get(url);
+    
+    const config = {
+        headers: {}
+    };
+
+    if (forceGlobal) {
+        // This custom header will be caught by our apiClient to prevent
+        // it from adding the x-active-ngroup-id header.
+        config.headers['X-Skip-Ngroup-Filter'] = 'true';
+    }
+
+    return apiClient.get(url, config);
 };
 
 /**
