@@ -170,12 +170,11 @@ function Metrics() {
     const now = new Date();
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(now.getDate() - 7);
-    const userInfo = {
-        name: currentUser?.name || '',
+    const info = {
         start: activeFilters?.start_date || sevenDaysAgo.toISOString().split('T')[0],
         end: activeFilters?.end_date || now.toISOString().split('T')[0]
     };
-    generateMetricsReport(summaryData,statusCountsData,dailyVolumeData,dailyCountData, userInfo);
+    generateMetricsReport(summaryData,statusCountsData,dailyVolumeData,dailyCountData, info);
   };
 
   const volumeTooltipFormatter = (value) => [formatBytes(value), 'Volume'];
