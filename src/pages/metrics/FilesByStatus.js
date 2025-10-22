@@ -294,33 +294,17 @@ function FilesByStatus() {
             { header: "File Name", dataKey: "name" },
             { header: "Collection", dataKey: "collection_name" },
             { header: "Size", dataKey: "size_bytes" },
+            { header: "Upload Time", dataKey: "upload_time" }
             ];
-
-            if (selectedStatusTab === "failed") {
-            columns.push({ header: "Failure Reason", dataKey: "failure_reason" });
-            }
-
-
-            if (selectedStatusTab === "suspended") {
-            columns.push({ header: "Suspension Reason", dataKey: "reason" });
-            }
 
             if (selectedStatusTab === "distributed") {
             columns.push({ header: "Distributed Time", dataKey: "egress_start" });
             }
 
-            if (selectedStatusTab === "clean") {
-            columns.push({ header: "Scan Start", dataKey: "scan_start" });
-            columns.push({ header: "Scan End", dataKey: "scan_end" });
-            }
-
-            if (selectedStatusTab === "unscanned" || selectedStatusTab === "distributed") {
-            columns.push({ header: "Upload Time", dataKey: "upload_time" });
-            }
-
             if (selectedStatusTab === "infected" || selectedStatusTab === "scan_failed" || selectedStatusTab === "distributed") {
             columns.push({ header: "Scan Result", dataKey: "scan_results" });
             }
+            
 
             const dateFields = [
             "upload_time",
