@@ -174,7 +174,13 @@ function Metrics() {
         start: activeFilters?.start_date || sevenDaysAgo.toISOString().split('T')[0],
         end: activeFilters?.end_date || now.toISOString().split('T')[0]
     };
-    generateMetricsReport(summaryData,statusCountsData,dailyVolumeData,dailyCountData, info);
+    
+    const dailyVolumeForPdf = (dailyVolumeData || []).map(item => ({
+      ...item,
+      value: formatBytes(item.value),
+    }));
+
+    generateMetricsReport(summaryData,statusCountsData,dailyVolumeForPdf,dailyCountData, info);
   };
 
   const volumeTooltipFormatter = (value) => [formatBytes(value), 'Volume'];

@@ -216,10 +216,10 @@ export function generateMetricsReport(summary, statusCounts, dailyVolume, dailyC
     }
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("Daily Volume (GB)", 14, y);
+    doc.text("Daily Volume", 14, y);
     autoTable(doc, {
       startY: y + 5,
-      head: [["Day", "Volume (GB)"]],
+      head: [["Day", "Volume"]],
       body: dailyVolume.map((d) => [d.day, d.value]),
     });
     y = doc.lastAutoTable.finalY + 10;

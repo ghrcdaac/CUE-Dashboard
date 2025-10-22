@@ -294,32 +294,17 @@ function FilesByStatus() {
             { header: "File Name", dataKey: "name" },
             { header: "Collection", dataKey: "collection_name" },
             { header: "Size", dataKey: "size_bytes" },
+            { header: "Upload Time", dataKey: "upload_time" }
             ];
-
-            if (selectedStatusTab === "failed") {
-            columns.push({ header: "Failure Reason", dataKey: "failure_reason" });
-            }
-
-            if (selectedStatusTab === "infected" || selectedStatusTab === "scan_failed") {
-            columns.push({ header: "Scan Result", dataKey: "scan_results" });
-            }
-
-            if (selectedStatusTab === "suspended") {
-            columns.push({ header: "Suspension Reason", dataKey: "reason" });
-            }
 
             if (selectedStatusTab === "distributed") {
             columns.push({ header: "Distributed Time", dataKey: "egress_start" });
             }
 
-            if (selectedStatusTab === "clean") {
-            columns.push({ header: "Scan Start", dataKey: "scan_start" });
-            columns.push({ header: "Scan End", dataKey: "scan_end" });
+            if (selectedStatusTab === "infected" || selectedStatusTab === "scan_failed" || selectedStatusTab === "distributed") {
+            columns.push({ header: "Scan Result", dataKey: "scan_results" });
             }
-
-            if (selectedStatusTab === "unscanned") {
-            columns.push({ header: "Upload Time", dataKey: "upload_time" });
-            }
+            
 
             const dateFields = [
             "upload_time",
@@ -331,16 +316,57 @@ function FilesByStatus() {
 
             const sizeFields = ["size_bytes"];
 
+            const formatScanResults = (scanResults) => {
+                if (!scanResults) return "";
+
+                const items = Array.isArray(scanResults) ? scanResults : [scanResults];
+
+                let ipAddress = "";
+                let engine = "";
+                let result = "";
+                let scannedDate = "";
+                let virusNames = [];
+
+                items.forEach((item) => {
+                    if (item.ip_address) {
+                    ipAddress = item.ip_address;
+                    }
+
+                    if (item.engine || item.result || item.dateScanned) {
+                    engine = item.engine || "";
+                    result = item.result || "";
+                    scannedDate = item.dateScanned ? formatDisplayDate(item.dateScanned) : "";
+                    if (item.virusName && Array.isArray(item.virusName)) {
+                        virusNames = item.virusName;
+                    }
+                    }
+                });
+
+                // Build printable multi-line string
+                let lines = [];
+                if (ipAddress) lines.push(`IP Address: ${ipAddress}`);
+                if (engine) lines.push(`Engine: ${engine}`);
+                if (result) lines.push(`Result: ${result}`);
+                if (virusNames.length > 0) lines.push(`Viruses: ${virusNames.join(', ')}`);
+                if (scannedDate) lines.push(`Scanned: ${scannedDate}`);
+
+                return lines.join('\n');
+            };
+
             const rows = filesWithCollections.map((f) => {
             const row = {};
             columns.forEach((c) => {
                 let value = f[c.dataKey] ?? "";
                 if (dateFields.includes(c.dataKey) && value) {
-                value = formatDisplayDate(value);
+                    value = formatDisplayDate(value);
                 }
 
                 if (sizeFields.includes(c.dataKey) && value !== "") {
-                value = formatBytes(value);
+                    value = formatBytes(value);
+                }
+
+                if (c.dataKey === 'scan_results' && value) {
+                    value = formatScanResults(f.scan_results || value);
                 }
 
                 row[c.dataKey] = value;
