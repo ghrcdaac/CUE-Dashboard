@@ -1,13 +1,12 @@
 // src/pages/Profile.js
 
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Outlet, useOutletContext } from 'react-router-dom';
 import Box from '@mui/material/Box';
 
 // Import desired icons from Material-UI
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
-import MarkEmailUnreadIcon from '@mui/icons-material/MarkEmailUnread';
 
 const profileMenuItems = [
     { text: 'Profile Info', path: '/profile', icon: <AccountCircleIcon /> },

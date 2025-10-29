@@ -18,7 +18,6 @@ import { createUserApplication } from '../api/userApplicationApi';
 import { getNgroupsForApplication } from '../api/ngroupApi';
 import { getProvidersForApplication } from '../api/providerApi';
 import { getUserClaims } from '../api/authApi';
-// --- ADDED IMPORT ---
 import useAuth from '../hooks/useAuth';
 
 const theme = createTheme({
@@ -32,7 +31,7 @@ const theme = createTheme({
 function SignupPage() {
     const navigate = useNavigate();
     const location = useLocation();
-    // --- ADDED HOOK ---
+    // --- HOOK ---
     const { logout } = useAuth();
 
     const [formData, setFormData] = useState({
@@ -254,7 +253,7 @@ function SignupPage() {
                                 )}
                             />
                         )}
-                        {/* --- ADDED: Cancel button and Grid for layout --- */}
+                        {/* --- Cancel button and Grid for layout --- */}
                         <Grid container spacing={2} sx={{ mt: 2 }}>
                             <Grid item xs={12} sm={6}>
                                 <Button 

@@ -16,13 +16,11 @@
     width: 100%;
     max-width: 600px;    /* Initial max-width */
     transition: max-width 0.5s ease, max-height 0.5s ease;
-    /* overflow-y: auto;  <-- REMOVE THIS */
     margin-top: 20px;
 }
 
 .auth-container.expanded .auth-form-container {
     max-width: 800px;
-    /* max-height: 800px; (Optional) */
 }
 
 .auth-form {
@@ -61,7 +59,7 @@
 }
 
 .auth-button {
-    background-color: #0052cc; /* Or use your theme */
+    background-color: #0052cc; 
     color: white;
     padding: 12px 20px;
     border: none;

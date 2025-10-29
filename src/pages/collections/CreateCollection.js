@@ -14,7 +14,6 @@ function CollectionFileBrowser() {
   // Collection state
   const [collections, setCollections] = useState([]);
   const [selectedCollectionId, setSelectedCollectionId] = useState('');
-  const [collectionsPage, setCollectionsPage] = useState(0);
   const collectionsPageSize = 5;
 
   // File state

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
     Box, Card, CardContent, Typography, Button, TextField,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, 
@@ -14,8 +14,6 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CollectionsIcon from '@mui/icons-material/Collections';
-import FolderIcon from '@mui/icons-material/Folder';
-import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import DoneIcon from '@mui/icons-material/Done';
 import CloseIcon from '@mui/icons-material/Close';
 
@@ -25,7 +23,7 @@ import usePrivileges from '../hooks/usePrivileges';
 import { parseApiError } from '../utils/errorUtils';
 
 import * as collectionApi from '../api/collectionApi';
-// UPDATED: Import the new Redux cache actions
+// Import the new Redux cache actions
 import { fetchCollections, fetchProviders, fetchEgresses } from '../app/reducers/dataCacheSlice';
 
 const headCells = [
@@ -64,8 +62,6 @@ function Collections() {
     useEffect(() => {
         const collectionsMenuItems = [
             { text: 'Collections List', path: '/collections', icon: <CollectionsIcon /> },
-            // { text: 'Create Collection', path: '/collections/create', icon: <FolderIcon /> },
-            // { text: 'Browse Files', path: '/collections/files', icon: <InsertDriveFileIcon /> },
         ];
         setMenuItems(collectionsMenuItems);
         return () => setMenuItems([]);
