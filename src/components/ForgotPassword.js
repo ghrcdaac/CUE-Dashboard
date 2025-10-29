@@ -5,9 +5,9 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import Paper from '@mui/material/Paper';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
-import useAuth from '../hooks/useAuth'; // Import useAuth
-import { toast, ToastContainer } from 'react-toastify'; // Import ToastContainer
+import { useNavigate } from 'react-router-dom'; 
+import useAuth from '../hooks/useAuth'; 
+import { toast, ToastContainer } from 'react-toastify'; 
 import 'react-toastify/dist/ReactToastify.css';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -53,11 +53,11 @@ function ForgotPassword() {
         const password = e.target.value;
         setNewPassword(password);
         validatePassword(password); // Validate on every change
-        // Also check if passwords match whenever newPassword changes:
+        // check if passwords match whenever newPassword changes:
         setPasswordsMatch(password === confirmPassword);
     };
 
-    // Add an onChange handler for confirmPassword:
+    // onChange handler for confirmPassword:
     const handleConfirmPasswordChange = (e) => {
         const confirmVal = e.target.value;
         setConfirmPassword(confirmVal);
@@ -73,7 +73,6 @@ function ForgotPassword() {
             const result = await forgotPassword(username);
             console.log("Forgot password request successful:", result);
             setResetRequested(true); // Show the confirmation form
-           // toast.success("Password reset code sent. Check your email."); //removed toast
            setMessage("Password reset code sent. Check your email."); // Set success message
 
         } catch (err) {
@@ -100,8 +99,6 @@ function ForgotPassword() {
         try {
             await confirmForgotPassword(username, confirmationCode, newPassword);
             setSuccessDialogOpen(true);
-            //toast.success("Password reset successfully! Please log in."); //removed toast
-            // navigate('/login'); // Redirect to login page
 
         } catch (err) {
              setError(err.message || 'An error occurred while confirming the password.');

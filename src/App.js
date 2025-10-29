@@ -31,7 +31,6 @@ import FilesByCost from './pages/metrics/FilesByCost';
 import GlobalMetrics from './pages/metrics/GlobalMetrics';
 import CollectionFileBrowser from "./pages/collections/CollectionFileBrowser";
 import CollectionOverview from "./pages/collections/CollectionOverview";
-import NotificationPreferences from "./pages/Profile/NotificationPreference";
 
 import ProfileInfo from "./pages/Profile/ProfileInfo";
 import ApiKeys from "./pages/Profile/ApiKeys";
@@ -151,7 +150,6 @@ function App() {
                         <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} >
                             <Route index element={<ProfileInfo />} />
                             <Route path="api-keys" element={<ApiKeys />} />
-                            {/* <Route path="notification" element={<NotificationPreferences />} /> */}
                         </Route>
                     </Route>
 

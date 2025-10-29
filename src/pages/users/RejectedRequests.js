@@ -9,7 +9,6 @@ import {
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import useAuth from '../../hooks/useAuth';
-import usePageTitle from '../../hooks/usePageTitle';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 // API Imports
@@ -31,7 +30,6 @@ function RejectedRequests() {
     const [orderBy, setOrderBy] = useState('name');
     const { accessToken, logout } = useAuth();
     const { navigate } = useAuth();
-    // usePageTitle("Rejected Requests");
 
     const formatDate = (dateString) => {
         if (!dateString) return '';

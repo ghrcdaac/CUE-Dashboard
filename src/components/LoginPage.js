@@ -8,7 +8,7 @@ import Grid from '@mui/material/Grid';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import useAuth from '../hooks/useAuth';
 
-// Create a theme consistent with your other pages
+// theme consistent with other pages
 const theme = createTheme({
     palette: {
         primary: {
@@ -74,7 +74,7 @@ function LoginPage() {
                     </Button>
                     <Grid container justifyContent="center">
                         <Grid item>
-                            {/* This link now also triggers the same login flow */}
+                            {/* This link now triggers the same login flow */}
                             <Link href="#" onClick={handleLogin} variant="body2" sx={{ color: 'primary.main' }}>
                                 New User? Request an Account
                             </Link>

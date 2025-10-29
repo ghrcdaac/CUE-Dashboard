@@ -180,7 +180,6 @@ export default function DAAC() {
         }
     };
 
-    // No more handleConfigChange, directly set the config string.
     const handleAddEgress = async () => {
        try {
             if (!newEgress.ngroup_id) {
