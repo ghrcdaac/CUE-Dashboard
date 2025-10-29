@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box, Typography, Paper, Button, createTheme, ThemeProvider } from '@mui/material';
 // --- ADDED IMPORT ---
 import useAuth from '../hooks/useAuth';

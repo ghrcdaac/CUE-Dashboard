@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom'; // useLocation
+import { useNavigate, useLocation } from 'react-router-dom'; 
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import Paper from '@mui/material/Paper';
-import { useDispatch, useSelector } from 'react-redux'; // For Redux
-import { loginSuccess, setChallengeName, setUser } from '../app/reducers/authSlice'; // Import Redux actions
-import { toast, ToastContainer } from 'react-toastify'; // For notifications
+import { useDispatch, useSelector } from 'react-redux'; 
+import { setChallengeName, setUser } from '../app/reducers/authSlice'; 
+import { toast, ToastContainer } from 'react-toastify'; 
 import 'react-toastify/dist/ReactToastify.css';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -148,7 +148,6 @@ function ChangePassword() {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                // justifyContent: 'center',
                 minHeight: '100vh',
                 backgroundColor: 'primary.main',
                 color: 'white',

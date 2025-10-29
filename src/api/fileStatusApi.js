@@ -305,7 +305,6 @@ export async function listFilesByStatus(params, accessToken) {
     if (!params || !params.ngroup_id || !params.status) {
         throw new Error("NGROUP ID and Status are required to list files by status.");
     }
-    // REMOVED strict client checks for optional filters
 
     const queryString = buildQueryString(params); // Use helper
     const url = `${API_BASE_URL}/v1/file_status/list_by_status${queryString}`;

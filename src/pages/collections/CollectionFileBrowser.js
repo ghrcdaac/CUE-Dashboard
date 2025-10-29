@@ -144,7 +144,7 @@ function CollectionFileBrowser() {
                 if (collections.length === 0) fetchCollections(1);
               }}
               ListboxProps={{
-                style: { maxHeight: 200, overflow: 'auto' }, // ✅ force scroll
+                style: { maxHeight: 200, overflow: 'auto' }, // force scroll
                 onScroll: (event) => {
                   const listboxNode = event.currentTarget;
                   const atBottom =

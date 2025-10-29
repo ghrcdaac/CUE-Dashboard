@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Box,
     Grid,
@@ -26,14 +26,13 @@ import StorageIcon from '@mui/icons-material/Storage';
 
 import usePageTitle from "../hooks/usePageTitle";
 import useAuth from '../hooks/useAuth';
-// MODIFICATION: Imported usePrivileges hook
 import usePrivileges from '../hooks/usePrivileges';
 import { parseApiError } from '../utils/errorUtils';
 
 import * as fileMetricsApi from '../api/fileMetricsApi';
 import { fetchCollections, fetchProviders, fetchEgresses, fetchUsers } from '../app/reducers/dataCacheSlice';
 
-// MODIFICATION: Replaced with a correct and robust formatBytes function.
+
 const formatBytes = (bytes, decimals = 2) => {
     if (!+bytes) return '0 Bytes';
   
@@ -90,7 +89,7 @@ export default function Home() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { activeNgroupId } = useAuth();
-    // MODIFICATION: Get the hasPrivilege function from the hook
+    // Get the hasPrivilege function from the hook
     const { hasPrivilege } = usePrivileges();
 
     const { collections, providers, egresses, users } = useSelector((state) => state.dataCache);
@@ -103,7 +102,7 @@ export default function Home() {
             if (collections.status === 'idle') dispatch(fetchCollections());
             if (providers.status === 'idle') dispatch(fetchProviders());
             if (egresses.status === 'idle') dispatch(fetchEgresses());
-            // MODIFICATION: Conditionally fetch users based on privilege
+            //Conditionally fetch users based on privilege
             if (users.status === 'idle' && hasPrivilege('user:page')) {
                 dispatch(fetchUsers());
             }
@@ -149,7 +148,7 @@ export default function Home() {
                 <StatCard title="Collections" value={collections.data.length} onClick={() => navigate('/collections')} icon={<CollectionsIcon color="action" />} loading={collections.status === 'loading'} />
                 <StatCard title="Providers" value={providers.data.length} onClick={() => navigate('/providers')} icon={<AccountBoxIcon color="action" />} loading={providers.status === 'loading'} />
                 <StatCard title="Egress" value={egresses.data.length} onClick={() => navigate('/daac')} icon={<OutputIcon color="action" />} loading={egresses.status === 'loading'} />
-                {/* MODIFICATION: The Users card is now only rendered if the user has the 'user:page' privilege. */}
+                {/* The Users card is now only rendered if the user has the 'user:page' privilege. */}
                 {hasPrivilege("user:page") && (
                     <StatCard title="Users" value={users.data.length} onClick={() => navigate('/users')} icon={<GroupIcon color="action" />} loading={users.status === 'loading'} />
                 )}
@@ -164,7 +163,7 @@ export default function Home() {
                     <Grid container spacing={3}>
                         <MetricCard title="Total Files" value={summary?.overall_count?.value?.toLocaleString() || 0} icon={<DescriptionIcon color="action" />} loading={loadingSummary} />
                         <MetricCard title="Infected Files" value={infectedCount.toLocaleString()} color={infectedCount > 0 ? "error.main" : "inherit"} icon={<BugReportIcon color="action" />} loading={loadingSummary} />
-                        {/* MODIFICATION: The value now uses the corrected formatBytes function with the 'overall_volume' in bytes. */}
+                        {/* The value uses the corrected formatBytes function with the 'overall_volume' in bytes. */}
                         <MetricCard title="Total Volume" value={formatBytes(summary?.overall_volume?.value) || '0 Bytes'} icon={<StorageIcon color="action" />} loading={loadingSummary} />
                     </Grid>
                 </Grid>

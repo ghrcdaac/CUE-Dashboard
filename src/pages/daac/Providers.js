@@ -1,8 +1,8 @@
 // src/pages/daac/Providers.js
-import React from 'react';
+
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import usePageTitle from '../../hooks/usePageTitle'; // Import
+import usePageTitle from '../../hooks/usePageTitle'; 
 
 function Providers() {
     usePageTitle("DAAC Providers"); // Set title

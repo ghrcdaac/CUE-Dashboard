@@ -1,7 +1,6 @@
 // src/reports/pdfReport.js
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import getSession from "../../services/sessionService"
 
 
 function getUserInfo(userInfo){
@@ -56,6 +55,7 @@ function toCamelCaseTitle(str) {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
+
 /**
  * Generate PDF report
  * @param {string} title - Title of the report
