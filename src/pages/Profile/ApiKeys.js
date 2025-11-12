@@ -41,6 +41,10 @@ function ApiKeys() {
     const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
     const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
 
+
+    const { user } = useAuth();
+    const [userRole, setUserRole] = useState(null);
+
     const fetchApiKeys = useCallback(async () => {
         // MODIFICATION: Guard against running if no group is selected.
         if (!activeNgroupId) {
@@ -50,6 +54,11 @@ function ApiKeys() {
         }
         setLoading(true);
         setSelected([]);
+        
+        if (user){
+            const roles = user?.roles || [];
+            setUserRole(roles.includes("security") ? "security" : roles[0]);
+        }
         try {
             const data = await getApiKeys();
             setApiKeys(data);
@@ -211,7 +220,15 @@ function ApiKeys() {
                 </CardContent>
             </Card>
 
-            <CreateApiKeyModal open={isCreateModalOpen} onClose={() => setCreateModalOpen(false)} onKeyCreated={fetchApiKeys} />
+            {userRole !== "security" && (
+                <CreateApiKeyModal
+                open={isCreateModalOpen}
+                onClose={() => setCreateModalOpen(false)}
+                onKeyCreated={fetchApiKeys}
+                />
+            )}
+
+            {/* <CreateApiKeyModal open={isCreateModalOpen} onClose={() => setCreateModalOpen(false)} onKeyCreated={fetchApiKeys} /> */}
             
             <Dialog open={revokeDialogOpen} onClose={() => setRevokeDialogOpen(false)}>
                 <DialogTitle>Confirm Revoke</DialogTitle>
