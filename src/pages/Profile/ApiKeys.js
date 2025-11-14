@@ -13,7 +13,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 // MODIFICATION: Added useAuth import
 import useAuth from '../../hooks/useAuth';
-import usePrivileges from '../hooks/usePrivileges';
+import usePrivileges from '../../hooks/usePrivileges';
 import { getApiKeys, revokeApiKey, updateApiKey } from '../../api/apiKeys';
 import { parseApiError } from '../../utils/errorUtils';
 import CreateApiKeyModal from './CreateApiKeyModal';
@@ -42,7 +42,6 @@ function ApiKeys() {
     const [orderBy, setOrderBy] = useState('created_at');
     const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
     const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
-    
 
     const fetchApiKeys = useCallback(async () => {
         // MODIFICATION: Guard against running if no group is selected.
@@ -53,7 +52,6 @@ function ApiKeys() {
         }
         setLoading(true);
         setSelected([]);
-        
         try {
             const data = await getApiKeys();
             setApiKeys(data);
