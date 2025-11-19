@@ -72,7 +72,7 @@ export default function Header() {
                             </Box>
                             
                             <Box sx={{ display: "flex", alignItems: "center" }}>
-                                {hasPrivilege("collection:read") && <Button color="inherit" component={RouterLink} to="/collections">Collections</Button>}
+                                {hasPrivilege("collection:page") && <Button color="inherit" component={RouterLink} to="/collections">Collections</Button>}
                                 {hasPrivilege("provider:read") && <Button color="inherit" component={RouterLink} to="/providers">Providers</Button>}
                                 {hasPrivilege("metrics:read") && <Button color="inherit" component={RouterLink} to="/metrics">Metrics</Button>}
                                 {hasPrivilege("user:page") && <Button color="inherit" component={RouterLink} to="/users">Users</Button>}
