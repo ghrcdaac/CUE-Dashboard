@@ -34,14 +34,14 @@ export const fetchUsers = createAsyncThunk(
   }
 );
 
-export const fetchCollections = createAsyncThunk( 
+export const fetchCollections = createAsyncThunk(
   'dataCache/fetchCollections', async ({ page, pageSize }, { rejectWithValue }) => {
-     try { 
-      const response = await collectionApi.listCollections(page, pageSize); 
-      return response; // response = { collections, page, page_size, total } 
-    } 
-    catch (error) { 
-      return rejectWithValue(parseApiError(error)); } 
+     try {
+      const response = await collectionApi.listCollections(page, pageSize);
+      return response; // response = { collections, page, page_size, total }
+    }
+    catch (error) {
+      return rejectWithValue(parseApiError(error)); }
   } );
 
 export const fetchRoles = createAsyncThunk(
