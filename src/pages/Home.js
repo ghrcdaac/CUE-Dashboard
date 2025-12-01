@@ -100,12 +100,12 @@ export default function Home() {
 
     useEffect(() => {
         if (activeNgroupId) {
-            if (collections.status === 'idle') dispatch(fetchCollections());
-            if (providers.status === 'idle') dispatch(fetchProviders());
-            if (egresses.status === 'idle') dispatch(fetchEgresses());
+            if (collections.status === 'idle') dispatch(fetchCollections({ page: 1, pageSize: 10 }));
+            if (providers.status === 'idle') dispatch(fetchProviders({ page: 1, pageSize: 10 }));
+            if (egresses.status === 'idle') dispatch(fetchEgresses({ page: 1, pageSize: 10 }));
             // MODIFICATION: Conditionally fetch users based on privilege
             if (users.status === 'idle' && hasPrivilege('user:page')) {
-                dispatch(fetchUsers());
+                dispatch(fetchUsers({ page: 1, pageSize: 10 }));
             }
         }
     }, [activeNgroupId, collections.status, providers.status, egresses.status, users.status, dispatch, hasPrivilege]);
@@ -146,12 +146,12 @@ export default function Home() {
         <Container maxWidth="lg" sx={{ py: 4 }}>
          <Typography variant="h5" sx={{ mb: 2, textAlign: 'center' }}>Cloud Upload Environment (CUE)</Typography>
             <Grid container spacing={3} justifyContent="center">
-                <StatCard title="Collections" value={collections.data.length} onClick={() => navigate('/collections')} icon={<CollectionsIcon color="action" />} loading={collections.status === 'loading'} />
-                <StatCard title="Providers" value={providers.data.length} onClick={() => navigate('/providers')} icon={<AccountBoxIcon color="action" />} loading={providers.status === 'loading'} />
-                <StatCard title="Egress" value={egresses.data.length} onClick={() => navigate('/daac')} icon={<OutputIcon color="action" />} loading={egresses.status === 'loading'} />
+                <StatCard title="Collections" value={collections.total} onClick={() => navigate('/collections')} icon={<CollectionsIcon color="action" />} loading={collections.status === 'loading'} />
+                <StatCard title="Providers" value={providers.total} onClick={() => navigate('/providers')} icon={<AccountBoxIcon color="action" />} loading={providers.status === 'loading'} />
+                <StatCard title="Egress" value={egresses.total} onClick={() => navigate('/daac')} icon={<OutputIcon color="action" />} loading={egresses.status === 'loading'} />
                 {/* MODIFICATION: The Users card is now only rendered if the user has the 'user:page' privilege. */}
                 {hasPrivilege("user:page") && (
-                    <StatCard title="Users" value={users.data.length} onClick={() => navigate('/users')} icon={<GroupIcon color="action" />} loading={users.status === 'loading'} />
+                    <StatCard title="Users" value={users.total} onClick={() => navigate('/users')} icon={<GroupIcon color="action" />} loading={users.status === 'loading'} />
                 )}
             </Grid>
 
