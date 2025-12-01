@@ -6,8 +6,8 @@ import apiClient from './apiClient';
  * Retrieves all egress records for the user's currently active ngroup.
  * The backend filters based on the X-Active-Ngroup-Id header sent by the apiClient.
  */
-export const listEgresses = () => {
-    return apiClient.get('/egress/');
+export const listEgresses = (page = 1, pageSize = 10) => {
+    return apiClient.get(`/egress/?page=${page}&page_size=${pageSize}`);
 };
 
 /**
