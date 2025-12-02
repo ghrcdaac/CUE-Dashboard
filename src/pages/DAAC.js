@@ -41,7 +41,11 @@ export default function DAAC() {
     // Local state for UI operations
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState([]);
-    const [pagination, setPagination] = useState({ page: 0, rowsPerPage: 10 });
+    const pagination = {
+        page: egresses.page ? egresses.page - 1 : 0,
+        pageSize: egresses.pageSize ?? 10,
+        total: egresses.total ?? 0
+    };
     const [sorting, setSorting] = useState({ orderBy: 'type', order: 'asc' });
     const [searchTerm, setSearchTerm] = useState('');
     const [dialog, setDialog] = useState({ open: null, data: null });
@@ -56,7 +60,7 @@ export default function DAAC() {
     // "Smart" data fetching that uses the cache
     useEffect(() => {
         if (activeNgroupId && egresses.status === 'idle') {
-            dispatch(fetchEgresses());
+            dispatch(fetchEgresses({ page: 1, pageSize: 10 }));
         }
     }, [activeNgroupId, egresses.status, dispatch]);
     
@@ -120,7 +124,7 @@ export default function DAAC() {
             }
             handleCloseDialog();
             setSelected([]);
-            dispatch(fetchEgresses()); // Refresh the cache
+            dispatch(fetchEgresses({ page: 1, pageSize: 10 })); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -135,7 +139,7 @@ export default function DAAC() {
             toast.success("Egress deleted successfully!");
             handleCloseDialog();
             setSelected([]);
-            dispatch(fetchEgresses()); // Refresh the cache
+            dispatch(fetchEgresses({ page: 1, pageSize: 10 })); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -156,6 +160,14 @@ export default function DAAC() {
         if (selectedIndex === -1) newSelected = [...selected, id];
         else newSelected = selected.filter(selId => selId !== id);
         setSelected(newSelected);
+    };
+
+    const handlePageChange = (event, newPage) => {
+            dispatch(fetchEgresses({ page: newPage+1, pageSize: pagination.pageSize }));
+        };
+    const handleRowsPerPageChange = (event) => {
+        const newSize = parseInt(event.target.value, 10);
+        dispatch(fetchEgresses({ page: 1, pageSize: newSize }));
     };
 
     return (
@@ -201,7 +213,7 @@ export default function DAAC() {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    processedEgresses.slice(pagination.page * pagination.rowsPerPage, pagination.page * pagination.rowsPerPage + pagination.rowsPerPage).map((row) => {
+                                    processedEgresses.map((row) => {
                                         const isItemSelected = selected.indexOf(row.id) !== -1;
                                         return (
                                             <TableRow key={row.id} hover onClick={() => handleClick(row.id)} role="checkbox" tabIndex={-1} selected={isItemSelected}>
@@ -219,11 +231,11 @@ export default function DAAC() {
                     <TablePagination
                         rowsPerPageOptions={[10, 25, 50]}
                         component="div"
-                        count={processedEgresses.length}
-                        rowsPerPage={pagination.rowsPerPage}
+                        count={pagination.total}
+                        rowsPerPage={pagination.pageSize}
                         page={pagination.page}
-                        onPageChange={(e, newPage) => setPagination(prev => ({ ...prev, page: newPage }))}
-                        onRowsPerPageChange={(e) => setPagination({ rowsPerPage: parseInt(e.target.value, 10), page: 0 })}
+                        onPageChange={handlePageChange}
+                        onRowsPerPageChange={handleRowsPerPageChange}
                     />
                 </CardContent>
             </Card>
