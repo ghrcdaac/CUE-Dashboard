@@ -71,11 +71,11 @@ export const fetchEgresses = createAsyncThunk(
 // --- Initial State ---
 
 const initialState = {
-  providers: { data: [], status: 'idle', page: 1, pageSize: 10, total: 0 }, // status: 'idle' | 'loading' | 'succeeded' | 'failed'
-  users: { data: [], status: 'idle', page: 1, pageSize: 10, total: 0},
-  collections: { data: [], page: 1, pageSize: 10, total: 0, status: 'idle' },
+  providers: { data: [], status: 'idle', page: 1, pageSize: 50, total: 0 }, // status: 'idle' | 'loading' | 'succeeded' | 'failed'
+  users: { data: [], status: 'idle', page: 1, pageSize: 50, total: 0},
+  collections: { data: [], page: 1, pageSize: 50, total: 0, status: 'idle' },
   roles: { data: [], status: 'idle' },
-  egresses: { data: [], status: 'idle', page: 1, pageSize: 10, total: 0},
+  egresses: { data: [], status: 'idle', page: 1, pageSize: 50, total: 0},
   error: null,
 };
 
@@ -87,11 +87,11 @@ const dataCacheSlice = createSlice({
   reducers: {
     // Action to reset the cache, e.g., when the activeNgroupId changes
     resetCache: (state) => {
-      state.providers = { data: [], status: 'idle', page: 1, pageSize: 10, total: 0};
-      state.users = { data: [], status: 'idle', page: 1, pageSize: 10, total: 0};
-      state.collections = { data: [], status: 'idle', page: 1, pageSize: 10, total: 0};
+      state.providers = { data: [], status: 'idle', page: 1, pageSize: 50, total: 0};
+      state.users = { data: [], status: 'idle', page: 1, pageSize: 50, total: 0};
+      state.collections = { data: [], status: 'idle', page: 1, pageSize: 50, total: 0};
       state.roles = { data: [], status: 'idle' };
-      state.egresses = { data: [], status: 'idle', page: 1, pageSize: 10, total: 0};
+      state.egresses = { data: [], status: 'idle', page: 1, pageSize: 50, total: 0};
       state.error = null;
     },
   },

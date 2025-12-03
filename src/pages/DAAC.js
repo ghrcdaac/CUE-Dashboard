@@ -61,7 +61,7 @@ export default function DAAC() {
     // "Smart" data fetching that uses the cache
     useEffect(() => {
         if (activeNgroupId && egresses.status === 'idle') {
-            dispatch(fetchEgresses({ page: 1, pageSize: 10 }));
+            dispatch(fetchEgresses({ page: 1, pageSize: 50 }));
         }
     }, [activeNgroupId, egresses.status, dispatch]);
 
@@ -198,7 +198,7 @@ export default function DAAC() {
             }
             handleCloseDialog();
             setSelected([]);
-            dispatch(fetchEgresses({ page: 1, pageSize: 10 })); // Refresh the cache
+            dispatch(fetchEgresses({ page: 1, pageSize: 50 })); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -213,7 +213,7 @@ export default function DAAC() {
             toast.success("Egress deleted successfully!");
             handleCloseDialog();
             setSelected([]);
-            dispatch(fetchEgresses({ page: 1, pageSize: 10 })); // Refresh the cache
+            dispatch(fetchEgresses({ page: 1, pageSize: 50 })); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
