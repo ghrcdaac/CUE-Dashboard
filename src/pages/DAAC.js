@@ -130,7 +130,8 @@ export default function DAAC() {
             }
             handleCloseDialog();
             setSelected([]);
-            dispatch(fetchEgresses({ page: 1, pageSize: 50 })); // Refresh the cache
+            const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
+            dispatch(fetchEgresses({ page: apiPage, pageSize: 50 })); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -145,7 +146,8 @@ export default function DAAC() {
             toast.success("Egress deleted successfully!");
             handleCloseDialog();
             setSelected([]);
-            dispatch(fetchEgresses({ page: 1, pageSize: 50 })); // Refresh the cache
+            const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
+            dispatch(fetchEgresses({ page: apiPage, pageSize: 50 })); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
