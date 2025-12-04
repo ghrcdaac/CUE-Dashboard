@@ -100,12 +100,12 @@ export default function Home() {
 
     useEffect(() => {
         if (activeNgroupId) {
-            if (collections.status === 'idle') dispatch(fetchCollections({ page: 1, pageSize: 10 }));
-            if (providers.status === 'idle') dispatch(fetchProviders({ page: 1, pageSize: 10 }));
-            if (egresses.status === 'idle') dispatch(fetchEgresses({ page: 1, pageSize: 10 }));
+            if (collections.status === 'idle') dispatch(fetchCollections({ page: 1, pageSize: 50 }));
+            if (providers.status === 'idle') dispatch(fetchProviders({ page: 1, pageSize: 50 }));
+            if (egresses.status === 'idle') dispatch(fetchEgresses({ page: 1, pageSize: 50 }));
             // MODIFICATION: Conditionally fetch users based on privilege
             if (users.status === 'idle' && hasPrivilege('user:page')) {
-                dispatch(fetchUsers({ page: 1, pageSize: 10 }));
+                dispatch(fetchUsers({ page: 1, pageSize: 50 }));
             }
         }
     }, [activeNgroupId, collections.status, providers.status, egresses.status, users.status, dispatch, hasPrivilege]);

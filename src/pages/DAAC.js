@@ -41,9 +41,11 @@ export default function DAAC() {
     // Local state for UI operations
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState([]);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [currentPage, setCurrentPage] = useState(0); // 0-based for MUI TablePagination
     const pagination = {
-        page: egresses.page ? egresses.page - 1 : 0,
-        pageSize: egresses.pageSize ?? 10,
+        page: currentPage,
+        pageSize: rowsPerPage,
         total: egresses.total ?? 0
     };
     const [sorting, setSorting] = useState({ orderBy: 'type', order: 'asc' });
@@ -79,13 +81,17 @@ export default function DAAC() {
             );
         }
 
-        return filtered.sort((a, b) => {
+        filtered.sort((a, b) => {
             const isAsc = sorting.order === 'asc' ? 1 : -1;
             const aValue = a[sorting.orderBy] || '';
             const bValue = b[sorting.orderBy] || '';
             return aValue.localeCompare(bValue) * isAsc;
         });
-    }, [egresses.data, sorting, searchTerm]);
+        const startIndex = pagination.page * rowsPerPage - (egresses.cacheStart ?? 0);
+        const endIndex = startIndex + rowsPerPage;
+
+        return filtered.slice(startIndex, endIndex);
+    }, [egresses.data, sorting, searchTerm, pagination.page, rowsPerPage]);
 
     const handleOpenDialog = (type, data = null) => {
         if (type === 'edit') {
@@ -162,12 +168,37 @@ export default function DAAC() {
         setSelected(newSelected);
     };
 
+    const isWithinCache = (newPage) => {
+        const startIndex = newPage * rowsPerPage;// use UI rowsPerPage
+        const endIndex = startIndex + rowsPerPage;
+
+        const cacheStart = egresses.cacheStart ?? 0;
+        const cacheEnd = cacheStart + (egresses.cacheSize ?? 0);  // usually 50
+
+        return startIndex >= cacheStart && endIndex <= cacheEnd;
+    };
+
     const handlePageChange = (event, newPage) => {
-            dispatch(fetchEgresses({ page: newPage+1, pageSize: pagination.pageSize }));
-        };
+        setCurrentPage(newPage); // Pagination.page gets updated
+
+        if (!isWithinCache(newPage)) {
+            const apiPageSize = 50; // chunk size
+            const startIndex = newPage * rowsPerPage;
+            const apiPage = Math.floor(startIndex / apiPageSize) + 1;
+            dispatch(fetchEgresses({ page: apiPage, pageSize: apiPageSize }));
+        }
+    };
+
     const handleRowsPerPageChange = (event) => {
         const newSize = parseInt(event.target.value, 10);
-        dispatch(fetchEgresses({ page: 1, pageSize: newSize }));
+        setCurrentPage(0);//bring back the page to 0 when the rowsperpage change
+        if (!isWithinCache(0)) {
+            const apiPageSize = 50; // chunk size
+            const startIndex = 0;
+            const apiPage = Math.floor(startIndex / apiPageSize) + 1;
+            dispatch(fetchEgresses({ page: apiPage, pageSize: apiPageSize }));
+        }
+        setRowsPerPage(newSize);  // only update UI rows per page
     };
 
     return (
