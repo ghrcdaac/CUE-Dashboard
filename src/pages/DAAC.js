@@ -171,6 +171,9 @@ export default function DAAC() {
     };
 
     const isWithinCache = (newPage) => {
+        if (egresses.total <= egresses.cacheSize) {
+            return true;
+        }
         const startIndex = newPage * rowsPerPage;// use UI rowsPerPage
         const endIndex = startIndex + rowsPerPage;
 
