@@ -31,7 +31,7 @@ const headCells = [
     { id: 'short_name', label: 'Short Name' },
     { id: 'long_name', label: 'Long Name' },
     { id: 'can_upload', label: 'Can Upload' },
-    { id: 'point_of_contact_name', label: 'Point of Contact' },
+    { id: 'point_of_contact.id', label: 'Point of Contact' },
     { id: 'reason', label: 'Reason' },
 ];
 
@@ -47,7 +47,14 @@ function Providers() {
 
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState([]);
-    const [pagination, setPagination] = useState({ page: 0, rowsPerPage: 10 });
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [currentPage, setCurrentPage] = useState(0); // 0-based for MUI TablePagination
+    const pagination = {
+        page: currentPage,
+        pageSize: rowsPerPage,
+        total: providers.total ?? 0
+    };
+    const [loadingPages, setLoadingPages] = useState(new Set());
     const [searchTerm, setSearchTerm] = useState('');
     const [filter, setFilter] = useState('all');
     const [dialog, setDialog] = useState({ open: null, data: null });
@@ -55,6 +62,8 @@ function Providers() {
     
     // UPDATED: Restored the missing state declaration for sorting
     const [sorting, setSorting] = useState({ orderBy: 'short_name', order: 'asc' });
+
+    const [mergedUsers, setMergedUsers] = useState([]);
     
     useEffect(() => {
         const providersMenuItems = [{ text: 'Providers', path: '/providers', icon: <AccountBoxIcon /> }];
@@ -64,8 +73,8 @@ function Providers() {
 
     useEffect(() => {
         if (activeNgroupId) {
-            if (providers.status === 'idle') dispatch(fetchProviders());
-            if (users.status === 'idle') dispatch(fetchUsers());
+            if (providers.status === 'idle') dispatch(fetchProviders({ page: 1, pageSize: 50 }));
+            if (users.status === 'idle') dispatch(fetchUsers({ page: 1, pageSize: 50 }));
         }
     }, [activeNgroupId, providers.status, users.status, dispatch]);
 
@@ -74,14 +83,48 @@ function Providers() {
         setLoading(isLoading);
     }, [providers.status, users.status]);
 
+    useEffect(() => {
+        if (!users || !users.data) return;
+
+        const page = users.page;
+
+        // avoids duplicate user calls when scrolling 
+        // Remove this page from loadingPages when it finishes
+        setLoadingPages(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(page);
+            return newSet;
+        });
+
+        const newPageStart = users.cacheStart;
+        const newPageSize = users.data.length;
+
+        setMergedUsers(prev => {
+            // First load → set directly
+            if (prev.length === 0) {
+                return users.data;
+            }
+
+            // SCROLL DOWN (next page)
+            if (newPageStart > prev.length - newPageSize) {
+                return [...prev, ...users.data];
+            }
+
+            // SCROLL UP (previous page)
+            if (newPageStart < 0) {
+                return [...users.data, ...prev];
+            }
+
+            return prev; // default
+        });
+    }, [users.data]);
+
+
     const processedProviders = useMemo(() => {
         if (!providers.data || !users.data) return [];
-
-        const userMap = new Map(users.data.map(user => [user.id, user.name]));
         
         const allProvidersWithDetails = providers.data.map(provider => ({
             ...provider,
-            point_of_contact_name: provider.point_of_contact ? userMap.get(provider.point_of_contact) || 'N/A' : '',
         }));
 
         let list = [...allProvidersWithDetails];
@@ -93,11 +136,11 @@ function Providers() {
             list = list.filter(p =>
                 p.short_name?.toLowerCase().includes(lowercasedTerm) ||
                 p.long_name?.toLowerCase().includes(lowercasedTerm) ||
-                p.point_of_contact_name?.toLowerCase().includes(lowercasedTerm)
+                p.point_of_contact.name?.toLowerCase().includes(lowercasedTerm)
             );
         }
         
-        return list.sort((a, b) => {
+        list.sort((a, b) => {
             const isAsc = sorting.order === 'asc' ? 1 : -1;
             const aValue = a[sorting.orderBy];
             const bValue = b[sorting.orderBy];
@@ -106,7 +149,12 @@ function Providers() {
             if (typeof aValue === 'boolean') return (aValue === bValue ? 0 : aValue ? -1 : 1) * isAsc;
             return aValue.toString().localeCompare(bValue.toString(), undefined, { numeric: true }) * isAsc;
         });
-    }, [providers.data, users.data, sorting, searchTerm, filter]);
+
+        const startIndex = pagination.page * rowsPerPage - (providers.cacheStart ?? 0);
+        const endIndex = startIndex + rowsPerPage;
+
+        return list.slice(startIndex, endIndex);
+    }, [providers.data, users.data, sorting, searchTerm, filter, pagination.page, rowsPerPage]);
 
     const handleOpenDialog = (type, data = null) => {
         if (type === 'edit') {
@@ -128,19 +176,31 @@ function Providers() {
         }
         setIsSubmitting(true);
         try {
+            const { id, short_name, long_name, can_upload, point_of_contact, reason } = data;
+            const payload = {
+                    short_name,
+                    long_name,
+                    can_upload,
+                    point_of_contact: point_of_contact?.id || null, // send only the ID
+                    reason: can_upload ? null : reason
+            };
             if (dialog.open === 'create') {
-                const payload = { ...data, ngroup_id: activeNgroupId };
-                await providerApi.createProvider(payload);
+                await providerApi.createProvider({ ...payload, ngroup_id: activeNgroupId });
                 toast.success("Provider created successfully!");
             } else if (dialog.open === 'edit') {
-                const { id, short_name, long_name, can_upload, point_of_contact, reason } = data;
-                const updateData = { short_name, long_name, can_upload, point_of_contact, reason: can_upload ? null : reason };
-                await providerApi.updateProvider(id, updateData);
+                await providerApi.updateProvider(id, payload);
                 toast.success("Provider updated successfully");
             }
             handleCloseDialog();
             setSelected([]);
-            dispatch(fetchProviders());
+
+            if (users.page !== 1) {
+                dispatch(fetchUsers({ page: 1, pageSize: 50 }));
+            }
+
+            const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
+            dispatch(fetchProviders({ page: apiPage, pageSize: 50 }));
+           
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -155,7 +215,8 @@ function Providers() {
             toast.success("Provider(s) deleted successfully!");
             setSelected([]);
             handleCloseDialog();
-            dispatch(fetchProviders());
+            const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
+            dispatch(fetchProviders({ page: apiPage, pageSize: 50 }));
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -178,8 +239,45 @@ function Providers() {
         setSelected(newSelected);
     };
 
-    const handlePageChange = (event, newPage) => setPagination(prev => ({ ...prev, page: newPage }));
-    const handleRowsPerPageChange = (event) => setPagination({ ...pagination, rowsPerPage: parseInt(event.target.value, 10), page: 0 });
+    const isWithinCache = (newPage) => {
+
+        if (providers.total <= providers.cacheSize) {
+            return true;
+        }
+
+        const startIndex = newPage * rowsPerPage;// use UI rowsPerPage
+        const endIndex = startIndex + rowsPerPage;
+
+        const cacheStart = providers.cacheStart ?? 0;
+        const cacheEnd = cacheStart + (providers.cacheSize ?? 0);  // usually 50
+
+        return startIndex >= cacheStart && endIndex <= cacheEnd;
+    };
+
+    const handlePageChange = (event, newPage) => {
+         setCurrentPage(newPage); // Pagination.page gets updated
+
+        if (!isWithinCache(newPage)) {
+            const apiPageSize = 50; // chunk size
+            const startIndex = newPage * rowsPerPage;
+            const apiPage = Math.floor(startIndex / apiPageSize) + 1;
+            dispatch(fetchProviders({ page: apiPage, pageSize: apiPageSize }));
+        }
+    };
+
+    const handleRowsPerPageChange = (event) => {
+        const newSize = parseInt(event.target.value, 10);
+        setCurrentPage(0);//bring back the page to 0 when the rowsperpage change
+        
+        if (!isWithinCache(0)) {
+            console.log('yes')
+            const apiPageSize = 50; // chunk size
+            const startIndex = 0;
+            const apiPage = Math.floor(startIndex / apiPageSize) + 1;
+            dispatch(fetchProviders({ page: apiPage, pageSize: apiPageSize }));
+        }
+        setRowsPerPage(newSize);  // only update UI rows per page
+    };
     
     const handleExportProviders = async (format) => {
         const info = {
@@ -208,6 +306,45 @@ function Providers() {
     if (location.pathname !== '/providers') {
         return <Outlet key={location.pathname} />;
     }
+
+    const handleUsersScroll = (event) => {
+        const listbox = event.currentTarget;
+
+        // Scroll Down
+        if (listbox.scrollTop + listbox.clientHeight >= listbox.scrollHeight - 20) {
+
+            const nextPage = Math.floor(mergedUsers.length / users.pageSize) + 1;
+
+            // STOP if all data is loaded
+            if (mergedUsers.length >= users.total) return;
+
+            // STOP if already loaded
+            if (users.loadedPages?.includes(nextPage)) return;
+
+            // STOP if already loading
+            if (loadingPages.has(nextPage)) return;
+
+            // Mark as loading
+            setLoadingPages(prev => new Set(prev).add(nextPage));
+
+            dispatch(fetchUsers({ page: nextPage, pageSize: users.pageSize }));
+        }
+
+        // Scroll up
+        if (listbox.scrollTop === 0) {
+
+            // Stop if already at the beginning
+            if (mergedUsers.length >= users.total) return;
+
+            const previousPage = Math.max(1, users.cacheStart / users.pageSize);
+
+            // Avoid re-fetch
+            if (users.loadedPages?.includes(previousPage)) return;
+
+            dispatch(fetchUsers({ page: previousPage, pageSize: users.pageSize }));
+        }
+    };
+
 
     return (
         <Container maxWidth={false} disableGutters>
@@ -258,7 +395,7 @@ function Providers() {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    processedProviders.slice(pagination.page * pagination.rowsPerPage, pagination.page * pagination.rowsPerPage + pagination.rowsPerPage).map(provider => {
+                                    processedProviders.map(provider => {
                                         const isItemSelected = selected.indexOf(provider.id) !== -1;
                                         return (
                                             <TableRow key={provider.id} hover onClick={() => handleRowClick(provider.id)} role="checkbox" tabIndex={-1} selected={isItemSelected}>
@@ -266,7 +403,7 @@ function Providers() {
                                                 <TableCell>{provider.short_name}</TableCell>
                                                 <TableCell>{provider.long_name}</TableCell>
                                                 <TableCell>{provider.can_upload ? 'Yes' : 'No'}</TableCell>
-                                                <TableCell>{provider.point_of_contact_name}</TableCell>
+                                                <TableCell>{provider.point_of_contact.name}</TableCell>
                                                 <TableCell>{provider.reason || ''}</TableCell>
                                             </TableRow>
                                         );
@@ -278,8 +415,8 @@ function Providers() {
                     <TablePagination
                         rowsPerPageOptions={[10, 25, 50]}
                         component="div"
-                        count={processedProviders.length}
-                        rowsPerPage={pagination.rowsPerPage}
+                        count={pagination.total}
+                        rowsPerPage={pagination.pageSize}
                         page={pagination.page}
                         onPageChange={handlePageChange}
                         onRowsPerPageChange={handleRowsPerPageChange}
@@ -295,7 +432,42 @@ function Providers() {
                             <>
                                 <TextField autoFocus margin="dense" name="short_name" label="Provider Short Name" fullWidth value={dialog.data.short_name} onChange={(e) => setDialog({...dialog, data: {...dialog.data, short_name: e.target.value}})} required />
                                 <TextField margin="dense" name="long_name" label="Provider Long Name" fullWidth value={dialog.data.long_name} onChange={(e) => setDialog({...dialog, data: {...dialog.data, long_name: e.target.value}})} />
-                                <Autocomplete fullWidth options={users.data} getOptionLabel={(option) => option.name} value={users.data.find(option => option.id === dialog.data.point_of_contact) || null} onChange={(e, newValue) => setDialog({...dialog, data: {...dialog.data, point_of_contact: newValue?.id || null}})} isOptionEqualToValue={(option, value) => option.id === value?.id} renderInput={(params) => (<TextField {...params} label="Point of Contact" margin="dense" />)} />
+                                <Autocomplete
+                                    fullWidth
+                                    options={mergedUsers}
+                                    getOptionLabel={(option) => option.name || ""}
+                                    isOptionEqualToValue={(option, value) => option?.id === value?.id}
+                                    
+                                    // Use cached user OR fallback to provider's existing point_of_contact
+                                    value={
+                                        mergedUsers.find(u => u.id === dialog.data.point_of_contact?.id) ||
+                                        (dialog.data.point_of_contact?.id ? dialog.data.point_of_contact : null)
+                                    }
+
+                                    ListboxProps={{ onScroll: handleUsersScroll }}
+                                    loading={users.status === 'loading'}
+
+                                    onChange={(e, newValue) => {
+                                        // Store both id and name
+                                        setDialog({
+                                            ...dialog,
+                                            data: { 
+                                                ...dialog.data, 
+                                                point_of_contact: newValue 
+                                                    ? { id: newValue.id, name: newValue.name } 
+                                                    : null 
+                                            }
+                                        });
+                                    }}
+
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Point of Contact"
+                                            margin="dense"
+                                        />
+                                    )}
+                                />
                                 <TextField fullWidth select label="Can Upload" name="can_upload" value={dialog.data.can_upload} onChange={(e) => setDialog({...dialog, data: {...dialog.data, can_upload: e.target.value === true }})} margin="dense">
                                     <MenuItem value={true}>Yes</MenuItem>
                                     <MenuItem value={false}>No</MenuItem>

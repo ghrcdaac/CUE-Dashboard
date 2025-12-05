@@ -15,6 +15,8 @@ export const fetchProviders = createAsyncThunk(
   async ({ page, pageSize }, { rejectWithValue }) => {
     try {
       const response = await providerApi.listProviders(page, pageSize);
+      response.cacheStart = (page - 1) * pageSize;
+      response.cacheSize = pageSize
       return response;
     } catch (error) {
       return rejectWithValue(parseApiError(error));
@@ -27,6 +29,8 @@ export const fetchUsers = createAsyncThunk(
   async ({ page, pageSize }, { rejectWithValue }) => {
     try {
       const response = await listCueusers(page, pageSize);
+      response.cacheStart = (page - 1) * pageSize;
+      response.cacheSize = pageSize
       return response;
     } catch (error) {
       return rejectWithValue(parseApiError(error));
