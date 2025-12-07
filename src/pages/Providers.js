@@ -270,7 +270,6 @@ function Providers() {
         setCurrentPage(0);//bring back the page to 0 when the rowsperpage change
         
         if (!isWithinCache(0)) {
-            console.log('yes')
             const apiPageSize = 50; // chunk size
             const startIndex = 0;
             const apiPage = Math.floor(startIndex / apiPageSize) + 1;
