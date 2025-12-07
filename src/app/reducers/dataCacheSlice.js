@@ -42,6 +42,8 @@ export const fetchCollections = createAsyncThunk(
   'dataCache/fetchCollections', async ({ page, pageSize }, { rejectWithValue }) => {
      try { 
       const response = await collectionApi.listCollections(page, pageSize); 
+      response.cacheStart = (page - 1) * pageSize;
+      response.cacheSize = pageSize
       return response; // response = { collections, page, page_size, total } 
     } 
     catch (error) { 

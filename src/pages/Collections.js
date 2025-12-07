@@ -50,7 +50,17 @@ function Collections() {
     // Local state for UI operations
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState([]);
-    const [pagination, setPagination] = useState({ page: 0, pageSize: 10 });
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [currentPage, setCurrentPage] = useState(0); // 0-based for MUI TablePagination
+    const pagination = {
+        page: currentPage,
+        pageSize: rowsPerPage,
+        total: collections.total ?? 0
+    };
+    const [providerLoadingPages, setProviderLoadingPages] = useState(new Set());
+    const [egressLoadingPages, setEgressLoadingPages] = useState(new Set());
+    const [mergedProviders, setMergedProviders] = useState([]);
+    const [mergedEgress, setMergedEgress] = useState([]);
     const [sorting, setSorting] = useState({ orderBy: 'short_name', order: 'asc' });
     const [searchTerm, setSearchTerm] = useState('');
     const [dialog, setDialog] = useState({ open: null, data: null });
@@ -74,9 +84,9 @@ function Collections() {
     // "Smart" data fetching effect that uses the cache
     useEffect(() => {
         if (activeNgroupId) {
-            if (collections.status === 'idle') dispatch(fetchCollections());
-            if (providers.status === 'idle') dispatch(fetchProviders());
-            if (egresses.status === 'idle') dispatch(fetchEgresses());
+            if (collections.status === 'idle') dispatch(fetchCollections({ page: 1, pageSize: 50 }));
+            if (providers.status === 'idle') dispatch(fetchProviders({ page: 1, pageSize: 50 }));
+            if (egresses.status === 'idle') dispatch(fetchEgresses({ page: 1, pageSize: 50 }));
         }
     }, [activeNgroupId, collections.status, providers.status, egresses.status, dispatch]);
 
@@ -86,17 +96,89 @@ function Collections() {
         setLoading(isLoading);
     }, [collections.status, providers.status, egresses.status]);
 
+    useEffect(() => {
+        if (!providers || !providers.data) return;
+
+        const page = providers.page;
+
+        // avoids duplicate provider calls when scrolling 
+        // Remove this page from loadingPages when it finishes
+        setProviderLoadingPages(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(page);
+            return newSet;
+        });
+
+        const newPageStart = providers.cacheStart;
+        const newPageSize = providers.data.length;
+
+        setMergedProviders(prev => {
+            // First load → set directly
+            if (prev.length === 0) {
+                return providers.data;
+            }
+
+            // SCROLL DOWN (next page)
+            if (newPageStart > prev.length - newPageSize) {
+                return [...prev, ...providers.data];
+            }
+
+            // SCROLL UP (previous page)
+            if (newPageStart < 0) {
+                return [...providers.data, ...prev];
+            }
+
+            return prev; // default
+        });
+    }, [providers.data]);
+
+    useEffect(() => {
+        if (!egresses || !egresses.data) return;
+
+        const page = egresses.page;
+
+        // avoids duplicate egress calls when scrolling 
+        // Remove this page from loadingPages when it finishes
+        setEgressLoadingPages(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(page);
+            return newSet;
+        });
+
+        const newPageStart = egresses.cacheStart;
+        const newPageSize = egresses.data.length;
+
+        setMergedEgress(prev => {
+            // First load → set directly
+            if (prev.length === 0) {
+                return egresses.data;
+            }
+
+            // SCROLL DOWN (next page)
+            if (newPageStart > prev.length - newPageSize) {
+                return [...prev, ...egresses.data];
+            }
+
+            // SCROLL UP (previous page)
+            if (newPageStart < 0) {
+                return [...egresses.data, ...prev];
+            }
+
+            return prev; // default
+        });
+    }, [egresses.data]);
+
+
     const processedCollections = useMemo(() => {
         if (!collections.data || !providers.data || !egresses.data) return [];
-        
-        const providerMap = new Map(providers.data.map(p => [p.id, p.short_name]));
-        const egressMap = new Map(egresses.data.map(e => [e.id, e.path]));
 
         const collectionsWithDetails = collections.data.map(collection => ({
             ...collection,
-            provider_name: providerMap.get(collection.provider_id) || 'N/A',
-            egress_path: egressMap.get(collection.egress_id) || 'N/A',
+            provider_name: collection.provider?.name || 'N/A',
+            egress_path: collection.egress?.path || 'N/A',
         }));
+
+
 
         let filtered = [...collectionsWithDetails];
         if (searchTerm) {
@@ -108,7 +190,7 @@ function Collections() {
             );
         }
 
-        return filtered.sort((a, b) => {
+        filtered.sort((a, b) => {
             const isAsc = sorting.order === 'asc' ? 1 : -1;
             const aValue = a[sorting.orderBy];
             const bValue = b[sorting.orderBy];
@@ -117,7 +199,11 @@ function Collections() {
             if (typeof aValue === 'boolean') return (aValue === bValue ? 0 : aValue ? -1 : 1) * isAsc;
             return aValue.toString().localeCompare(bValue.toString(), undefined, { numeric: true }) * isAsc;
         });
-    }, [collections.data, providers.data, egresses.data, sorting, searchTerm]);
+        const startIndex = pagination.page * rowsPerPage - (collections.cacheStart ?? 0);
+        const endIndex = startIndex + rowsPerPage;
+
+        return filtered.slice(startIndex, endIndex);
+    }, [collections.data, providers.data, egresses.data, sorting, searchTerm, pagination.page, rowsPerPage]);
     
     const handleOpenDialog = (dialogType, data = null) => {
         if (dialogType === 'edit') {
@@ -133,17 +219,32 @@ function Collections() {
         e.preventDefault();
         setIsSubmitting(true);
         try {
+            const { short_name, provider, egress, active } = dialog.data;
+            const payload = {
+                    short_name: short_name,
+                    provider_id: provider?.id || null,
+                    egress_id: egress?.id || null,
+                    active: active
+            };
             if (dialog.open === 'create') {
-                await collectionApi.createCollection(dialog.data);
+                await collectionApi.createCollection({...payload});
                 toast.success("Collection created successfully!");
             } else if (dialog.open === 'edit') {
-                const { id, short_name, provider_id, egress_id, active } = dialog.data;
-                await collectionApi.updateCollection(id, { short_name, provider_id, egress_id, active });
+                await collectionApi.updateCollection(dialog.data.id, {...payload });
                 toast.success("Collection updated successfully");
             }
             handleCloseDialog();
             setSelected([]);
-            dispatch(fetchCollections()); // Refresh the cache
+
+            if (providers.page !== 1) {
+                dispatch(fetchProviders({ page: 1, pageSize: 50 }));
+            }
+            if (egresses.page !== 1) {
+                dispatch(fetchEgresses({ page: 1, pageSize: 50 }));
+            }
+
+            const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
+            dispatch(fetchCollections({ page: apiPage, pageSize: 50 })); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -158,7 +259,8 @@ function Collections() {
             toast.success(`${selected.length} collection(s) deleted successfully!`);
             handleCloseDialog();
             setSelected([]);
-            dispatch(fetchCollections()); // Refresh the cache
+            const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
+            dispatch(fetchCollections({ page: apiPage, pageSize: 50 })); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -176,7 +278,8 @@ function Collections() {
             }));
             toast.success("Collection status updated successfully!");
             setSelected([]);
-            dispatch(fetchCollections()); // Refresh the cache
+            const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
+            dispatch(fetchCollections({ page: apiPage, pageSize: 50 })); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -205,8 +308,120 @@ function Collections() {
         setSelected(newSelected);
     };
 
-    const handlePageChange = (event, newPage) => setPagination(prev => ({...prev, page: newPage}));
-    const handleRowsPerPageChange = (event) => setPagination({ ...pagination, pageSize: parseInt(event.target.value, 10), page: 0 });
+    const isWithinCache = (newPage) => {
+
+        if (collections.total <= collections.cacheSize) {
+            return true;
+        }
+
+        const startIndex = newPage * rowsPerPage;// use UI rowsPerPage
+        const endIndex = startIndex + rowsPerPage;
+
+        const cacheStart = collections.cacheStart ?? 0;
+        const cacheEnd = cacheStart + (collections.cacheSize ?? 0);  // usually 50
+
+        return startIndex >= cacheStart && endIndex <= cacheEnd;
+    };
+
+    const handlePageChange = (event, newPage) => {
+         setCurrentPage(newPage); // Pagination.page gets updated
+
+        if (!isWithinCache(newPage)) {
+            const apiPageSize = 50; // chunk size
+            const startIndex = newPage * rowsPerPage;
+            const apiPage = Math.floor(startIndex / apiPageSize) + 1;
+            dispatch(fetchCollections({ page: apiPage, pageSize: apiPageSize }));
+        }
+    };
+
+    const handleRowsPerPageChange = (event) => {
+        const newSize = parseInt(event.target.value, 10);
+        setCurrentPage(0);//bring back the page to 0 when the rowsperpage change
+        
+        if (!isWithinCache(0)) {
+            const apiPageSize = 50; // chunk size
+            const startIndex = 0;
+            const apiPage = Math.floor(startIndex / apiPageSize) + 1;
+            dispatch(fetchCollections({ page: apiPage, pageSize: apiPageSize }));
+        }
+        setRowsPerPage(newSize);  // only update UI rows per page
+    };
+
+    const handleProvidersScroll = (event) => {
+        const listbox = event.currentTarget;
+
+        // Scroll Down
+        if (listbox.scrollTop + listbox.clientHeight >= listbox.scrollHeight - 20) {
+
+            const nextPage = Math.floor(mergedProviders.length / providers.pageSize) + 1;
+
+            // STOP if all data is loaded
+            if (mergedProviders.length >= providers.total) return;
+
+            // STOP if already loaded
+            if (providers.loadedPages?.includes(nextPage)) return;
+
+            // STOP if already loading
+            if (providerLoadingPages.has(nextPage)) return;
+
+            // Mark as loading
+            setProviderLoadingPages(prev => new Set(prev).add(nextPage));
+
+            dispatch(fetchProviders({ page: nextPage, pageSize: providers.pageSize }));
+        }
+
+        // Scroll up
+        if (listbox.scrollTop === 0) {
+
+            // Stop if already at the beginning
+            if (mergedProviders.length >= providers.total) return;
+
+            const previousPage = Math.max(1, providers.cacheStart / providers.pageSize);
+
+            // Avoid re-fetch
+            if (providers.loadedPages?.includes(previousPage)) return;
+
+            dispatch(fetchProviders({ page: previousPage, pageSize: providers.pageSize }));
+        }
+    };
+
+    const handleEgressScroll = (event) => {
+        const listbox = event.currentTarget;
+
+        // Scroll Down
+        if (listbox.scrollTop + listbox.clientHeight >= listbox.scrollHeight - 20) {
+
+            const nextPage = Math.floor(mergedEgress.length / egresses.pageSize) + 1;
+
+            // STOP if all data is loaded
+            if (mergedEgress.length >= egresses.total) return;
+
+            // STOP if already loaded
+            if (egresses.loadedPages?.includes(nextPage)) return;
+
+            // STOP if already loading
+            if (egressLoadingPages.has(nextPage)) return;
+
+            // Mark as loading
+            setEgressLoadingPages(prev => new Set(prev).add(nextPage));
+
+            dispatch(fetchEgresses({ page: nextPage, pageSize: egresses.pageSize }));
+        }
+
+        // Scroll up
+        if (listbox.scrollTop === 0) {
+
+            // Stop if already at the beginning
+            if (mergedEgress.length >= egresses.total) return;
+
+            const previousPage = Math.max(1, egresses.cacheStart / egresses.pageSize);
+
+            // Avoid re-fetch
+            if (egresses.loadedPages?.includes(previousPage)) return;
+
+            dispatch(fetchEgresses({ page: previousPage, pageSize: egresses.pageSize }));
+        }
+    };
 
     if (location.pathname !== '/collections') {
         return <Outlet key={location.pathname} />;
@@ -259,7 +474,6 @@ function Collections() {
                                     </TableRow>
                                 ) : (
                                     processedCollections
-                                        .slice(pagination.page * pagination.pageSize, pagination.page * pagination.pageSize + pagination.pageSize)
                                         .map((collection) => {
                                             const isItemSelected = selected.indexOf(collection.id) !== -1;
                                             return (
@@ -279,7 +493,7 @@ function Collections() {
                     <TablePagination
                         rowsPerPageOptions={[10, 25, 50]}
                         component="div"
-                        count={processedCollections.length}
+                        count={pagination.total}
                         rowsPerPage={pagination.pageSize}
                         page={pagination.page}
                         onPageChange={handlePageChange}
@@ -291,11 +505,85 @@ function Collections() {
             <Dialog open={dialog.open === 'create' || dialog.open === 'edit'} onClose={handleCloseDialog} fullWidth maxWidth="sm">
                 <DialogTitle>{dialog.open === 'create' ? 'Create New Collection' : 'Edit Collection'}</DialogTitle>
                 <DialogContent>
-                    {dialog.data && (
+                    {
+                    dialog.data && (
                         <Box component="form" id="collection-form" onSubmit={handleFormSubmit} noValidate sx={{ mt: 1 }}>
                             <TextField autoFocus margin="dense" name="short_name" label="Collection Short Name" fullWidth value={dialog.data.short_name} onChange={(e) => setDialog({...dialog, data: {...dialog.data, short_name: e.target.value}})} required />
-                            <Autocomplete options={providers.data} getOptionLabel={(option) => option.short_name} value={providers.data.find(o => o.id === dialog.data.provider_id) || null} onChange={(e, val) => setDialog({...dialog, data: {...dialog.data, provider_id: val?.id || null}})} renderInput={(params) => <TextField {...params} label="Provider" margin="dense" fullWidth required />} />
-                            <Autocomplete options={egresses.data} getOptionLabel={(option) => option.path} value={egresses.data.find(o => o.id === dialog.data.egress_id) || null} onChange={(e, val) => setDialog({...dialog, data: {...dialog.data, egress_id: val?.id || null}})} renderInput={(params) => <TextField {...params} label="Egress Path" margin="dense" fullWidth required />} />
+                            <Autocomplete
+                                    fullWidth
+                                    options={mergedProviders}
+                                    getOptionLabel={(option) => option.short_name || ""}
+                                    isOptionEqualToValue={(option, value) => option?.id === value?.id}
+                                    
+                                    // Use cached user OR fallback to collections's existing provider
+                                    value={
+                                        mergedProviders.find(u => u.id === dialog.data.provider?.id) ||
+                                        (dialog.data.provider?.id ? dialog.data.provider : null)
+                                    }
+
+                                    ListboxProps={{ onScroll: handleProvidersScroll }}
+                                    loading={providers.status === 'loading'}
+
+                                    onChange={(e, newValue) => {
+                                        // Store both id and name
+                                        setDialog({
+                                            ...dialog,
+                                            data: { 
+                                                ...dialog.data, 
+                                                provider: newValue 
+                                                    ? { id: newValue.id, name: newValue.name } 
+                                                    : null 
+                                            }
+                                        });
+                                    }}
+
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Provider"
+                                            margin="dense"
+                                        />
+                                    )}
+                                />
+
+
+                                <Autocomplete
+                                    fullWidth
+                                    options={mergedEgress}
+                                    getOptionLabel={(option) => option.path || ""}
+                                    isOptionEqualToValue={(option, value) => option?.id === value?.id}
+                                    
+                                    // Use cached user OR fallback to collection's existing egress path
+                                    value={
+                                        mergedEgress.find(u => u.id === dialog.data.egress?.id) ||
+                                        (dialog.data.egress?.id ? dialog.data.egress : null)
+                                    }
+
+                                    ListboxProps={{ onScroll: handleEgressScroll }}
+                                    loading={egresses.status === 'loading'}
+
+                                    onChange={(e, newValue) => {
+                                        // Store both id and name
+                                        setDialog({
+                                            ...dialog,
+                                            data: { 
+                                                ...dialog.data, 
+                                                egress: newValue 
+                                                    ? { id: newValue.id, name: newValue.path } 
+                                                    : null 
+                                            }
+                                        });
+                                    }}
+
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Egress Path"
+                                            margin="dense"
+                                        />
+                                    )}
+                                />
+                            
                             <TextField select margin="dense" label="Status" fullWidth value={dialog.data.active} onChange={(e) => setDialog({...dialog, data: {...dialog.data, active: e.target.value }})}>
                                 <MenuItem value={true}>Active</MenuItem>
                                 <MenuItem value={false}>Inactive</MenuItem>
