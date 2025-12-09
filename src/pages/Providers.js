@@ -64,7 +64,8 @@ function Providers() {
     const [sorting, setSorting] = useState({ orderBy: 'short_name', order: 'asc' });
 
     const [mergedUsers, setMergedUsers] = useState([]);
-    const [filteredCount, setFilteredCount] = useState(0); 
+    const [filteredCount, setFilteredCount] = useState(0);
+    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     
     useEffect(() => {
         const providersMenuItems = [{ text: 'Providers', path: '/providers', icon: <AccountBoxIcon /> }];
@@ -74,7 +75,10 @@ function Providers() {
 
     useEffect(() => {
         if (activeNgroupId) {
-            if (providers.status === 'idle') dispatch(fetchProviders({ page: 1, pageSize: 50 }));
+            if (providers.status === 'idle' || (!initialLoadComplete && providers.page !== 1)) {
+                dispatch(fetchProviders({ page: 1, pageSize: 50 }));
+                setInitialLoadComplete(true);
+            }
             if (users.status === 'idle') dispatch(fetchUsers({ page: 1, pageSize: 50 }));
         }
     }, [activeNgroupId, providers.status, users.status, dispatch]);
@@ -124,7 +128,14 @@ function Providers() {
         setCurrentPage(0);
     }, [searchTerm, filter]);
 
+    useEffect(() => {
+        const maxPage = Math.floor((providers.total - 1) / rowsPerPage) || 0;
 
+        // if currentPage is invalid, reset to 0
+        if (currentPage > maxPage) {
+            setCurrentPage(0);
+        }
+    }, [activeNgroupId, providers.total]);
 
     const processedProviders = useMemo(() => {
         if (!providers.data || !users.data) return [];

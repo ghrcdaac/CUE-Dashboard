@@ -66,6 +66,7 @@ function Collections() {
     const [dialog, setDialog] = useState({ open: null, data: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [filteredCount, setFilteredCount] = useState(0);
+    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
     const firstSelectedStatus = useMemo(() => {
         if (selected.length === 0) return true;
@@ -85,7 +86,9 @@ function Collections() {
     // "Smart" data fetching effect that uses the cache
     useEffect(() => {
         if (activeNgroupId) {
-            if (collections.status === 'idle') dispatch(fetchCollections({ page: 1, pageSize: 50 }));
+            if (collections.status === 'idle' || (!initialLoadComplete && collections.page !== 1)) {
+                dispatch(fetchCollections({ page: 1, pageSize: 50 }));
+                setInitialLoadComplete(true);}
             if (providers.status === 'idle') dispatch(fetchProviders({ page: 1, pageSize: 50 }));
             if (egresses.status === 'idle') dispatch(fetchEgresses({ page: 1, pageSize: 50 }));
         }
@@ -172,6 +175,17 @@ function Collections() {
     useEffect(() => {
         setCurrentPage(0);
     }, [searchTerm]);
+
+    // Reset pagination when ngroup changes or when new collections load
+    useEffect(() => {
+        const maxPage = Math.floor((collections.total - 1) / rowsPerPage) || 0;
+
+        // if currentPage is invalid, reset to 0
+        if (currentPage > maxPage) {
+            setCurrentPage(0);
+        }
+    }, [activeNgroupId, collections.total]);
+
 
     const processedCollections = useMemo(() => {
         if (!collections.data || !providers.data || !egresses.data) return [];

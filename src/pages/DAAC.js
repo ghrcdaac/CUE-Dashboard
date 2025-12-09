@@ -53,6 +53,7 @@ export default function DAAC() {
     const [dialog, setDialog] = useState({ open: null, data: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [filteredCount, setFilteredCount] = useState(0);
+    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
     useEffect(() => {
         const daacMenuItems = [{ text: 'Egress', path: '/daac', icon: <OutputIcon /> }];
@@ -62,8 +63,9 @@ export default function DAAC() {
 
     // "Smart" data fetching that uses the cache
     useEffect(() => {
-        if (activeNgroupId && egresses.status === 'idle') {
+        if (activeNgroupId && (egresses.status === 'idle' || (!initialLoadComplete && egresses.page !== 1))) {
             dispatch(fetchEgresses({ page: 1, pageSize: 50 }));
+            setInitialLoadComplete(true);
         }
     }, [activeNgroupId, egresses.status, dispatch]);
     
@@ -75,6 +77,16 @@ export default function DAAC() {
     useEffect(() => {
         setCurrentPage(0);
     }, [searchTerm]);
+
+    // Reset pagination when ngroup changes or when new collections load
+    useEffect(() => {
+        const maxPage = Math.floor((egresses.total - 1) / rowsPerPage) || 0;
+
+        // if currentPage is invalid, reset to 0
+        if (currentPage > maxPage) {
+            setCurrentPage(0);
+        }
+    }, [activeNgroupId, egresses.total]);
 
     const processedEgresses = useMemo(() => {
         let filtered = [...egresses.data];
