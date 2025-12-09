@@ -64,6 +64,7 @@ function Providers() {
     const [sorting, setSorting] = useState({ orderBy: 'short_name', order: 'asc' });
 
     const [mergedUsers, setMergedUsers] = useState([]);
+    const [filteredCount, setFilteredCount] = useState(0); 
     
     useEffect(() => {
         const providersMenuItems = [{ text: 'Providers', path: '/providers', icon: <AccountBoxIcon /> }];
@@ -119,6 +120,11 @@ function Providers() {
         });
     }, [users.data]);
 
+    useEffect(() => {
+        setCurrentPage(0);
+    }, [searchTerm, filter]);
+
+
 
     const processedProviders = useMemo(() => {
         if (!providers.data || !users.data) return [];
@@ -150,9 +156,33 @@ function Providers() {
             return aValue.toString().localeCompare(bValue.toString(), undefined, { numeric: true }) * isAsc;
         });
 
-        const startIndex = pagination.page * rowsPerPage - (providers.cacheStart ?? 0);
-        const endIndex = startIndex + rowsPerPage;
+        const newFilteredCount = list.length;
 
+        if (newFilteredCount !== filteredCount) {
+            setFilteredCount(newFilteredCount);
+        }
+        
+        let startIndex, endIndex;
+        // Prevent negative or out-of-range pages
+        const safePage = Math.max(
+            0,
+            Math.min(
+                currentPage,
+                Math.floor((list.length - 1) / rowsPerPage)  // max valid page
+            )
+        );
+
+        if (searchTerm || filter !== 'all') {
+            // SCENARIO 1: SEARCHING/FILTERING
+            // List contains the *entire* locally filtered/sorted set.
+            startIndex = safePage * rowsPerPage;
+            endIndex = startIndex + rowsPerPage;
+        } else {
+            // SCENARIO 2: NORMAL VIEW (PAGINATING THROUGH CACHE CHUNKS)
+            startIndex = Math.max(0, pagination.page * rowsPerPage - (providers.cacheStart ?? 0));
+            endIndex = Math.min(list.length, startIndex + rowsPerPage);
+        }
+        
         return list.slice(startIndex, endIndex);
     }, [providers.data, users.data, sorting, searchTerm, filter, pagination.page, rowsPerPage]);
 
@@ -414,7 +444,7 @@ function Providers() {
                     <TablePagination
                         rowsPerPageOptions={[10, 25, 50]}
                         component="div"
-                        count={pagination.total}
+                        count={searchTerm || filter !== 'all' ? filteredCount : pagination.total}
                         rowsPerPage={pagination.pageSize}
                         page={pagination.page}
                         onPageChange={handlePageChange}

@@ -68,6 +68,7 @@ function Users() {
     const [sorting, setSorting] = useState({ orderBy: 'name', order: 'asc' });
     const [dialog, setDialog] = useState({ open: null, data: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [filteredCount, setFilteredCount] = useState(0);
     
     useEffect(() => {
         const usersMenuItems = [
@@ -92,6 +93,10 @@ function Users() {
         const isLoading = users.status === 'loading' || roles.status === 'loading' || providers.status === 'loading';
         setLoading(isLoading);
     }, [users.status, roles.status, providers.status]);
+
+    useEffect(() => {
+        setCurrentPage(0);
+    }, [searchTerm]);
 
     const processedUsers = useMemo(() => {
         if (!users.data || !roles.data || !providers.data) return [];
@@ -132,8 +137,32 @@ function Users() {
             if (bValue === null || bValue === undefined) return -1 * isAsc;
             return aValue.toString().localeCompare(bValue.toString()) * isAsc;
         });
-        const startIndex = pagination.page * rowsPerPage - (users.cacheStart ?? 0);
-        const endIndex = startIndex + rowsPerPage;
+        const newFilteredCount = filtered.length;
+
+        if (newFilteredCount !== filteredCount) {
+            setFilteredCount(newFilteredCount);
+        }
+        
+        let startIndex, endIndex;
+        // Prevent negative or out-of-range pages
+        const safePage = Math.max(
+            0,
+            Math.min(
+                currentPage,
+                Math.floor((filtered.length - 1) / rowsPerPage)  // max valid page
+            )
+        );
+
+        if (searchTerm) {
+            // SCENARIO 1: SEARCHING/FILTERING
+            // List contains the *entire* locally filtered/sorted set.
+            startIndex = safePage * rowsPerPage;
+            endIndex = startIndex + rowsPerPage;
+        } else {
+            // SCENARIO 2: NORMAL VIEW (PAGINATING THROUGH CACHE CHUNKS)
+            startIndex = Math.max(0, pagination.page * rowsPerPage - (users.cacheStart ?? 0));
+            endIndex = Math.min(filtered.length, startIndex + rowsPerPage);
+        }
 
         return filtered.slice(startIndex, endIndex);
     }, [users.data, roles.data, providers.data, sorting, searchTerm, pagination.page, rowsPerPage]);
@@ -275,7 +304,6 @@ function Users() {
         setCurrentPage(0);//bring back the page to 0 when the rowsperpage change
         
         if (!isWithinCache(0)) {
-            console.log('yes')
             const apiPageSize = 50; // chunk size
             const startIndex = 0;
             const apiPage = Math.floor(startIndex / apiPageSize) + 1;
@@ -327,7 +355,7 @@ function Users() {
                     <TablePagination
                         rowsPerPageOptions={[10, 25, 50]}
                         component="div"
-                        count={pagination.total}
+                        count={searchTerm ? filteredCount : pagination.total}
                         rowsPerPage={pagination.pageSize}
                         page={pagination.page}
                         onPageChange={handlePageChange}

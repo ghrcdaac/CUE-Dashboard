@@ -52,6 +52,7 @@ export default function DAAC() {
     const [searchTerm, setSearchTerm] = useState('');
     const [dialog, setDialog] = useState({ open: null, data: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [filteredCount, setFilteredCount] = useState(0);
 
     useEffect(() => {
         const daacMenuItems = [{ text: 'Egress', path: '/daac', icon: <OutputIcon /> }];
@@ -71,6 +72,10 @@ export default function DAAC() {
         setLoading(egresses.status === 'loading');
     }, [egresses.status]);
 
+    useEffect(() => {
+        setCurrentPage(0);
+    }, [searchTerm]);
+
     const processedEgresses = useMemo(() => {
         let filtered = [...egresses.data];
         if (searchTerm) {
@@ -87,9 +92,32 @@ export default function DAAC() {
             const bValue = b[sorting.orderBy] || '';
             return aValue.localeCompare(bValue) * isAsc;
         });
-        const startIndex = pagination.page * rowsPerPage - (egresses.cacheStart ?? 0);
-        const endIndex = startIndex + rowsPerPage;
+        const newFilteredCount = filtered.length;
 
+        if (newFilteredCount !== filteredCount) {
+            setFilteredCount(newFilteredCount);
+        }
+        
+        let startIndex, endIndex;
+        // Prevent negative or out-of-range pages
+        const safePage = Math.max(
+            0,
+            Math.min(
+                currentPage,
+                Math.floor((filtered.length - 1) / rowsPerPage)  // max valid page
+            )
+        );
+
+        if (searchTerm) {
+            // SCENARIO 1: SEARCHING/FILTERING
+            // List contains the *entire* locally filtered/sorted set.
+            startIndex = safePage * rowsPerPage;
+            endIndex = startIndex + rowsPerPage;
+        } else {
+            // SCENARIO 2: NORMAL VIEW (PAGINATING THROUGH CACHE CHUNKS)
+            startIndex = Math.max(0, pagination.page * rowsPerPage - (egresses.cacheStart ?? 0));
+            endIndex = Math.min(filtered.length, startIndex + rowsPerPage);
+        }
         return filtered.slice(startIndex, endIndex);
     }, [egresses.data, sorting, searchTerm, pagination.page, rowsPerPage]);
 
@@ -267,7 +295,7 @@ export default function DAAC() {
                     <TablePagination
                         rowsPerPageOptions={[10, 25, 50]}
                         component="div"
-                        count={pagination.total}
+                        count={searchTerm ? filteredCount : pagination.total}
                         rowsPerPage={pagination.pageSize}
                         page={pagination.page}
                         onPageChange={handlePageChange}
