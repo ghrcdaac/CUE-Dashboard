@@ -69,6 +69,7 @@ function Users() {
     const [dialog, setDialog] = useState({ open: null, data: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [filteredCount, setFilteredCount] = useState(0);
+    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     
     useEffect(() => {
         const usersMenuItems = [
@@ -82,7 +83,10 @@ function Users() {
     // "Smart" data fetching that uses the cache
     useEffect(() => {
         if (activeNgroupId) {
-            if (users.status === 'idle') dispatch(fetchUsers({ page: 1, pageSize: 50 }));
+            if (users.status === 'idle' || (!initialLoadComplete && users.page !== 1)) {
+                dispatch(fetchUsers({ page: 1, pageSize: 50 }));
+                setInitialLoadComplete(true);
+            }
             if (roles.status === 'idle') dispatch(fetchRoles());
             if (providers.status === 'idle') dispatch(fetchProviders({ page: 1, pageSize: 50 }));
         }
@@ -97,6 +101,15 @@ function Users() {
     useEffect(() => {
         setCurrentPage(0);
     }, [searchTerm]);
+
+    useEffect(() => {
+        const maxPage = Math.floor((users.total - 1) / rowsPerPage) || 0;
+
+        // if currentPage is invalid, reset to 0
+        if (currentPage > maxPage) {
+            setCurrentPage(0);
+        }
+    }, [activeNgroupId, users.total]);
 
     const processedUsers = useMemo(() => {
         if (!users.data || !roles.data || !providers.data) return [];
