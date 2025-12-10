@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
     Box, Card, CardContent, Typography, Button, TextField,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, 
@@ -66,7 +66,8 @@ function Collections() {
     const [dialog, setDialog] = useState({ open: null, data: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [filteredCount, setFilteredCount] = useState(0);
-    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+    const didMount = useRef(false);
+    const [prevPage, setPrevPage] = useState(0);
 
     const firstSelectedStatus = useMemo(() => {
         if (selected.length === 0) return true;
@@ -86,9 +87,10 @@ function Collections() {
     // "Smart" data fetching effect that uses the cache
     useEffect(() => {
         if (activeNgroupId) {
-            if (collections.status === 'idle' || (!initialLoadComplete && collections.page !== 1)) {
+            if (collections.status === 'idle' || !didMount.current) {
                 dispatch(fetchCollections({ page: 1, pageSize: 50 }));
-                setInitialLoadComplete(true);}
+                didMount.current = true;
+            }
             if (providers.status === 'idle') dispatch(fetchProviders({ page: 1, pageSize: 50 }));
             if (egresses.status === 'idle') dispatch(fetchEgresses({ page: 1, pageSize: 50 }));
         }

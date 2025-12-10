@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useOutletContext } from 'react-router-dom';
 import {
     Box, Card, CardContent, Button, Table, TableBody, TableCell,
@@ -53,7 +53,7 @@ export default function DAAC() {
     const [dialog, setDialog] = useState({ open: null, data: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [filteredCount, setFilteredCount] = useState(0);
-    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+    const didMount = useRef(false);
 
     useEffect(() => {
         const daacMenuItems = [{ text: 'Egress', path: '/daac', icon: <OutputIcon /> }];
@@ -63,9 +63,9 @@ export default function DAAC() {
 
     // "Smart" data fetching that uses the cache
     useEffect(() => {
-        if (activeNgroupId && (egresses.status === 'idle' || (!initialLoadComplete && egresses.page !== 1))) {
+        if (activeNgroupId && (egresses.status === 'idle' || !didMount.current)) {
             dispatch(fetchEgresses({ page: 1, pageSize: 50 }));
-            setInitialLoadComplete(true);
+            didMount.current = true;
         }
     }, [activeNgroupId, egresses.status, dispatch]);
     

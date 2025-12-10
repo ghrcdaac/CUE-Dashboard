@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'; // UPDATED: Restored useCallback
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'; // UPDATED: Restored useCallback
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Paper, Button, Typography, Checkbox, TablePagination, Dialog, DialogTitle,
@@ -69,7 +69,7 @@ function Users() {
     const [dialog, setDialog] = useState({ open: null, data: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [filteredCount, setFilteredCount] = useState(0);
-    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+    const didMount = useRef(false);
     
     useEffect(() => {
         const usersMenuItems = [
@@ -83,9 +83,9 @@ function Users() {
     // "Smart" data fetching that uses the cache
     useEffect(() => {
         if (activeNgroupId) {
-            if (users.status === 'idle' || (!initialLoadComplete && users.page !== 1)) {
+            if (users.status === 'idle' || !didMount.current) {
                 dispatch(fetchUsers({ page: 1, pageSize: 50 }));
-                setInitialLoadComplete(true);
+                didMount.current = true;
             }
             if (roles.status === 'idle') dispatch(fetchRoles());
             if (providers.status === 'idle') dispatch(fetchProviders({ page: 1, pageSize: 50 }));
