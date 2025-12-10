@@ -7,7 +7,7 @@ import apiClient from './apiClient';
  * Lists all Cueusers for the currently active ngroup.
  * The backend filters users based on the X-Active-Ngroup-Id header.
  */
-export const listCueusers = (page = 1, pageSize = 10) => {
+export const listCueusers = (page = 1, pageSize = 50) => {
     return apiClient.get(`/cueusers/?page=${page}&page_size=${pageSize}`);
 };
 
