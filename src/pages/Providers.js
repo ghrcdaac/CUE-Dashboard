@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
     Box, Card, CardContent, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Paper, Typography, Checkbox,
@@ -65,7 +65,7 @@ function Providers() {
 
     const [mergedUsers, setMergedUsers] = useState([]);
     const [filteredCount, setFilteredCount] = useState(0);
-    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+    const didMount = useRef(false);
     
     useEffect(() => {
         const providersMenuItems = [{ text: 'Providers', path: '/providers', icon: <AccountBoxIcon /> }];
@@ -75,9 +75,9 @@ function Providers() {
 
     useEffect(() => {
         if (activeNgroupId) {
-            if (providers.status === 'idle' || (!initialLoadComplete && providers.page !== 1)) {
+            if (providers.status === 'idle' || !didMount.current) {
                 dispatch(fetchProviders({ page: 1, pageSize: 50 }));
-                setInitialLoadComplete(true);
+                didMount.current = true;
             }
             if (users.status === 'idle') dispatch(fetchUsers({ page: 1, pageSize: 50 }));
         }
