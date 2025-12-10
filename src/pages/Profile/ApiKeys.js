@@ -42,6 +42,7 @@ function ApiKeys() {
     const [orderBy, setOrderBy] = useState('created_at');
     const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
     const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
+    const [total, setTotal] = useState(0);
 
     const fetchApiKeys = useCallback(async () => {
         // MODIFICATION: Guard against running if no group is selected.
@@ -53,15 +54,20 @@ function ApiKeys() {
         setLoading(true);
         setSelected([]);
         try {
-            const data = await getApiKeys();
-            setApiKeys(data);
+            const response = await getApiKeys({
+                page: page + 1,      // state variable
+                page_size: rowsPerPage,
+            });
+            setApiKeys(response.api_keys);
+            setTotal(response.total);
+            setPage(response.page - 1);
         } catch (err) {
             toast.error(parseApiError(err));
         } finally {
             setLoading(false);
         }
     // MODIFICATION: Added activeNgroupId to the dependency array.
-    }, [activeNgroupId]);
+    }, [activeNgroupId, page, rowsPerPage]);
 
     useEffect(() => {
         fetchApiKeys();
@@ -85,9 +91,6 @@ function ApiKeys() {
         return filtered.sort(comparator);
     }, [apiKeys, order, orderBy, searchTerm]);
 
-    const visibleRows = useMemo(() => {
-        return filteredAndSortedKeys.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-    }, [filteredAndSortedKeys, page, rowsPerPage]);
 
     const handleRequestSort = (property) => {
         const isAsc = orderBy === property && order === 'asc';
@@ -180,7 +183,7 @@ function ApiKeys() {
                             </TableHead>
                             <TableBody>
                                 {loading ? <TableRow><TableCell colSpan={9} align="center"><CircularProgress /></TableCell></TableRow>
-                                    : visibleRows.length > 0 ? visibleRows.map((row) => {
+                                    : filteredAndSortedKeys.length > 0 ? filteredAndSortedKeys.map((row) => {
                                         const isItemSelected = isSelected(row.id);
                                         return (
                                             <TableRow hover onClick={(event) => handleClick(event, row.id)} role="checkbox" tabIndex={-1} key={row.id} selected={isItemSelected}>
@@ -204,7 +207,7 @@ function ApiKeys() {
                     <TablePagination
                         rowsPerPageOptions={[10, 25, 50]}
                         component="div"
-                        count={filteredAndSortedKeys.length}
+                        count={searchTerm ? filteredAndSortedKeys.length: total}
                         rowsPerPage={rowsPerPage}
                         page={page}
                         onPageChange={handleChangePage}

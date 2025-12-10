@@ -27,6 +27,12 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   const [users, setUsers] = React.useState([]);
   const [isUsersLoading, setIsUsersLoading] = React.useState(false);
   const [newKey, setNewKey] = React.useState(null);
+  const [usersPage, setUsersPage] = React.useState(1);
+  const [usersPageSize] = React.useState(50);
+  const [usersTotal, setUsersTotal] = React.useState(0);
+  const [fetchedPages, setFetchedPages] = React.useState(new Set());
+  const [keyNameError, setKeyNameError] = React.useState('');
+
   
   // --- NEW: State to manage scope checkboxes. Both are enabled by default. ---
   const [scopes, setScopes] = React.useState({
@@ -43,12 +49,34 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   React.useEffect(() => {
     if (open && hasPrivilege('api-key:create')) {
       setIsUsersLoading(true);
-      listCueusers()
-        .then(data => setUsers(data))
-        .catch(err => toast.error("Could not load user list."))
-        .finally(() => setIsUsersLoading(false));
+      fetchUsersPage(usersPage);
     }
   }, [open, hasPrivilege]);
+
+  const fetchUsersPage = async (pageNumber) => {
+    if (fetchedPages.has(pageNumber) || isUsersLoading) return; // guard against duplicates
+    setIsUsersLoading(true);
+    
+    try {
+      const response = await listCueusers(pageNumber, usersPageSize);
+      const data = response; // assuming axios
+      
+      setUsers(prev => [
+        ...prev,
+        ...data.users.filter(u => !prev.some(pu => pu.id === u.id))
+      ]);
+      setUsersTotal(data.total);
+      setUsersPage(pageNumber);
+      
+      setFetchedPages(prev => new Set(prev).add(pageNumber)); // mark page as fetched
+    } catch (err) {
+      toast.error("Could not load user list.");
+    } finally {
+      setIsUsersLoading(false);
+    }
+  };
+
+
 
   const handleClose = () => {
     if (isSubmitting) return;
@@ -145,6 +173,7 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   const atLeastOneScopeSelected = Object.values(scopes).some(v => v);
   const isFormInvalid =
     !keyName.trim() ||
+    keyName.trim().length < 3 ||
     !activeNgroupId ||
     (ownerType === 'user' && !selectedUser) ||
     (ownerType === 'proxy' && !proxyUserName.trim()) ||
@@ -155,7 +184,25 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
       <>
         <DialogTitle>Create New API Key</DialogTitle>
         <DialogContent dividers>
-          <TextField autoFocus label="Key Name" fullWidth value={keyName} onChange={(e) => setKeyName(e.target.value)} sx={{ mb: 3 }} />
+          <TextField
+            autoFocus
+            label="Key Name"
+            fullWidth
+            value={keyName}
+            onChange={(e) => {
+              setKeyName(e.target.value);
+              if (keyNameError) setKeyNameError(''); // clear error while typing
+            }}
+            onBlur={() => {
+              if (keyName.trim().length > 0 && keyName.trim().length < 3) {
+                setKeyNameError('The minimum characters required is 3');
+              }
+            }}
+            error={!!keyNameError}
+            helperText={keyNameError}
+            sx={{ mb: 3 }}
+          />
+
           <FormControl component="fieldset" sx={{ mb: 3 }}>
             <FormLabel component="legend">Key Owner</FormLabel>
             <RadioGroup row value={ownerType} onChange={(e) => setOwnerType(e.target.value)}>
@@ -169,11 +216,29 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
             <Autocomplete
               options={users}
               getOptionLabel={(option) => `${option.name} (@${option.cueusername})`}
+              isOptionEqualToValue={(option, value) => option?.id === value?.id}
               loading={isUsersLoading}
-              value={selectedUser}
-              onChange={(event, newValue) => setSelectedUser(newValue)}
+              value={users.find(u => u.id === selectedUser?.id) || null}
+              onChange={(event, newValue) => setSelectedUser(newValue ? { id: newValue.id } : null)}
               renderInput={(params) => <TextField {...params} label="Search for a user..." variant="outlined" />}
-              sx={{ mb: 3 }}
+              ListboxProps={{
+                onScroll: (event) => {
+                  const listboxNode = event.currentTarget;
+                  const scrollTop = listboxNode.scrollTop;
+                  const scrollHeight = listboxNode.scrollHeight;
+                  const clientHeight = listboxNode.clientHeight;
+
+                  // scroll down
+                  if (scrollTop + clientHeight >= scrollHeight - 20 && users.length < usersTotal) {
+                    fetchUsersPage(usersPage + 1);
+                  }
+
+                  // scroll up
+                  if (scrollTop <= 20 && usersPage > 1) {
+                    fetchUsersPage(usersPage - 1);
+                  }
+                }
+              }}
             />
           )}
           
