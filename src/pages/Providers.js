@@ -66,6 +66,8 @@ function Providers() {
     const [mergedUsers, setMergedUsers] = useState([]);
     const [filteredCount, setFilteredCount] = useState(0);
     const didMount = useRef(false);
+    const [prevPage, setPrevPage] = useState(0);
+    const wasSearching = useRef(false);
     
     useEffect(() => {
         const providersMenuItems = [{ text: 'Providers', path: '/providers', icon: <AccountBoxIcon /> }];
@@ -137,6 +139,23 @@ function Providers() {
         }
     }, [activeNgroupId, providers.total]);
 
+    useEffect(() => {
+        const isSearching = searchTerm.trim() !== "";
+
+        if (isSearching && !wasSearching.current) {
+            // Search just started — store page ONCE
+            setPrevPage(currentPage);
+            setCurrentPage(0);
+        }
+
+        if (!isSearching && wasSearching.current) {
+            // Search just ended — restore ONCE
+            setCurrentPage(prevPage);
+        }
+
+        wasSearching.current = isSearching;
+    }, [searchTerm, currentPage, prevPage]);
+
     const processedProviders = useMemo(() => {
         if (!providers.data || !users.data) return [];
         
@@ -174,19 +193,18 @@ function Providers() {
         }
         
         let startIndex, endIndex;
-        // Prevent negative or out-of-range pages
-        const safePage = Math.max(
-            0,
-            Math.min(
-                currentPage,
-                Math.floor((list.length - 1) / rowsPerPage)  // max valid page
-            )
-        );
 
         if (searchTerm || filter !== 'all') {
             // SCENARIO 1: SEARCHING/FILTERING
             // List contains the *entire* locally filtered/sorted set.
-            startIndex = safePage * rowsPerPage;
+           const maxFilteredPage = Math.max(
+                0,
+                Math.floor((list.length - 1) / rowsPerPage)
+            );
+
+            const safeSearchPage = Math.min(currentPage, maxFilteredPage);
+
+            startIndex = safeSearchPage * rowsPerPage;
             endIndex = startIndex + rowsPerPage;
         } else {
             // SCENARIO 2: NORMAL VIEW (PAGINATING THROUGH CACHE CHUNKS)
@@ -301,8 +319,10 @@ function Providers() {
         if (!isWithinCache(newPage)) {
             const apiPageSize = 50; // chunk size
             const startIndex = newPage * rowsPerPage;
-            const apiPage = Math.floor(startIndex / apiPageSize) + 1;
-            dispatch(fetchProviders({ page: apiPage, pageSize: apiPageSize }));
+            if (!searchTerm){
+                const apiPage = Math.floor(startIndex / apiPageSize) + 1;
+                dispatch(fetchProviders({ page: apiPage, pageSize: apiPageSize }));
+            }
         }
     };
 
@@ -313,8 +333,10 @@ function Providers() {
         if (!isWithinCache(0)) {
             const apiPageSize = 50; // chunk size
             const startIndex = 0;
-            const apiPage = Math.floor(startIndex / apiPageSize) + 1;
-            dispatch(fetchProviders({ page: apiPage, pageSize: apiPageSize }));
+            if (!searchTerm){
+                const apiPage = Math.floor(startIndex / apiPageSize) + 1;
+                dispatch(fetchProviders({ page: apiPage, pageSize: apiPageSize }));
+            }
         }
         setRowsPerPage(newSize);  // only update UI rows per page
     };
