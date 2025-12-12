@@ -134,8 +134,8 @@ const dataCacheSlice = createSlice({
         state[entity].page = page;
         state[entity].pageSize = pageSize;
         state[entity].total = action.payload.total;
-        state[entity].cacheStart = (page - 1) * pageSize;  
-        state[entity].cacheSize = items.length;           
+        state[entity].cacheStart = action.payload.cacheStart;  
+        state[entity].cacheSize = action.payload.cacheSize;           
     };
 
 
