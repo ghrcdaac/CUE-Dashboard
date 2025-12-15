@@ -88,8 +88,10 @@ function Collections() {
     // "Smart" data fetching effect that uses the cache
     useEffect(() => {
         if (activeNgroupId) {
-            if (collections.status === 'idle' || !didMount.current) {
-                dispatch(fetchCollections({ page: 1, pageSize: 50 }));
+            if (!didMount.current) {
+                if(collections.status === 'idle' || collections.page !== 1){
+                    dispatch(fetchCollections({ page: 1, pageSize: 50 }));
+                }
                 didMount.current = true;
             }
             if (providers.status === 'idle') dispatch(fetchProviders({ page: 1, pageSize: 50 }));

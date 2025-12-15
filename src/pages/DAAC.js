@@ -65,8 +65,10 @@ export default function DAAC() {
 
     // "Smart" data fetching that uses the cache
     useEffect(() => {
-        if (activeNgroupId && (egresses.status === 'idle' || !didMount.current)) {
-            dispatch(fetchEgresses({ page: 1, pageSize: 50 }));
+        if (activeNgroupId && !didMount.current) {
+            if (egresses.status === 'idle' ||  egresses.page !== 1){
+                dispatch(fetchEgresses({ page: 1, pageSize: 50 }));
+            }
             didMount.current = true;
         }
     }, [activeNgroupId, egresses.status, dispatch]);

@@ -77,8 +77,10 @@ function Providers() {
 
     useEffect(() => {
         if (activeNgroupId) {
-            if (providers.status === 'idle' || !didMount.current) {
-                dispatch(fetchProviders({ page: 1, pageSize: 50 }));
+            if (!didMount.current) {
+                if (providers.status === 'idle' || providers.page !== 1){
+                    dispatch(fetchProviders({ page: 1, pageSize: 50 }));
+                }
                 didMount.current = true;
             }
             if (users.status === 'idle') dispatch(fetchUsers({ page: 1, pageSize: 50 }));

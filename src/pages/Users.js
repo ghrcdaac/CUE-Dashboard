@@ -85,8 +85,10 @@ function Users() {
     // "Smart" data fetching that uses the cache
     useEffect(() => {
         if (activeNgroupId) {
-            if (users.status === 'idle' || !didMount.current) {
-                dispatch(fetchUsers({ page: 1, pageSize: 50 }));
+            if (!didMount.current) {
+                if (users.status === 'idle' || users.page !== 1){
+                    dispatch(fetchUsers({ page: 1, pageSize: 50 }));
+                }
                 didMount.current = true;
             }
             if (roles.status === 'idle') dispatch(fetchRoles());
