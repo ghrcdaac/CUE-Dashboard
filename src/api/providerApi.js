@@ -21,6 +21,10 @@ export const listProviders = (page = 1, pageSize = 50) => {
     return apiClient.get(`/providers/?page=${page}&page_size=${pageSize}`);
 };
 
+export const filterProviders = (page = 1, pageSize = 50, can_upload ) => {
+    return apiClient.get(`/providers/?page=${page}&page_size=${pageSize}&can_upload=${can_upload}`);
+};
+
 /**
  * Retrieves a single provider by its ID. Requires 'view_provider' privilege.
  * @param {string} providerId - The UUID of the provider.
