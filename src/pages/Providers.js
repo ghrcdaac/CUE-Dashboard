@@ -68,6 +68,13 @@ function Providers() {
     const didMount = useRef(false);
     const [prevPage, setPrevPage] = useState(0);
     const wasSearching = useRef(false);
+    const [filteredProviders, setFilteredProviders] = useState({
+        data: [],
+        total: 0,
+        page: 1,
+        pageSize: 50,
+        loading: false,
+    });
     
     useEffect(() => {
         const providersMenuItems = [{ text: 'Providers', path: '/providers', icon: <AccountBoxIcon /> }];
@@ -159,16 +166,18 @@ function Providers() {
     }, [searchTerm, currentPage, prevPage]);
 
     const processedProviders = useMemo(() => {
-        if (!providers.data || !users.data) return [];
+        const sourceProviders =
+            filter === 'all'
+                ? providers.data
+                : filteredProviders.data;
+
+        if (!sourceProviders || !users.data) return [];
         
-        const allProvidersWithDetails = providers.data.map(provider => ({
-            ...provider,
+        const allProvidersWithDetails = sourceProviders.map(provider => ({
+        ...provider,
         }));
 
         let list = [...allProvidersWithDetails];
-        if (filter === 'active') list = list.filter(p => p.can_upload);
-        else if (filter === 'suspended') list = list.filter(p => !p.can_upload);
-
         if (searchTerm) {
             const lowercasedTerm = searchTerm.toLowerCase();
             list = list.filter(p =>
@@ -215,7 +224,49 @@ function Providers() {
         }
         
         return list.slice(startIndex, endIndex);
-    }, [providers.data, users.data, sorting, searchTerm, filter, pagination.page, rowsPerPage]);
+    }, [providers.data, filteredProviders.data, users.data, sorting, searchTerm, filter, pagination.page, rowsPerPage]);
+
+    useEffect(() => {
+        setCurrentPage(0);
+
+        if (filter === 'active' || filter === 'suspended') {
+            loadFilteredProviders(1);
+        }
+    }, [filter]);
+
+    const loadFilteredProviders = async (page = 1) => {
+        try {
+        setLoading(true);
+
+        const res = await providerApi.filterProviders(
+            page,
+            rowsPerPage,
+            filter === 'active',
+        );
+
+        setFilteredProviders({
+            data: res.providers,
+            total: res.total,
+            page: res.page,
+            pageSize: res.page_size,
+            loading: false,
+        });
+        } catch (err) {
+        toast.error(parseApiError(err));
+        } finally {
+        setLoading(false);
+        }
+    };
+
+    const refreshCurrentProviders = () => {
+        if (filter === 'all') {
+            const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
+            dispatch(fetchProviders({ page: apiPage, pageSize: 50 }));
+        } else {
+            loadFilteredProviders(currentPage + 1);
+            dispatch(fetchProviders({ page: 1, pageSize: 50 }));
+        }
+    };
 
     const handleOpenDialog = (type, data = null) => {
         if (type === 'edit') {
@@ -259,9 +310,7 @@ function Providers() {
                 dispatch(fetchUsers({ page: 1, pageSize: 50 }));
             }
 
-            const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
-            dispatch(fetchProviders({ page: apiPage, pageSize: 50 }));
-           
+            refreshCurrentProviders();
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -276,8 +325,8 @@ function Providers() {
             toast.success("Provider(s) deleted successfully!");
             setSelected([]);
             handleCloseDialog();
-            const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
-            dispatch(fetchProviders({ page: apiPage, pageSize: 50 }));
+
+            refreshCurrentProviders();
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -316,7 +365,13 @@ function Providers() {
     };
 
     const handlePageChange = (event, newPage) => {
-         setCurrentPage(newPage); // Pagination.page gets updated
+        setCurrentPage(newPage); // Pagination.page gets updated
+
+        if (filter === 'active' || filter === 'suspended') {
+            loadFilteredProviders(newPage + 1); // API is 1-based
+            return;
+        }
+
 
         if (!isWithinCache(newPage)) {
             const apiPageSize = 50; // chunk size
@@ -342,28 +397,63 @@ function Providers() {
         }
         setRowsPerPage(newSize);  // only update UI rows per page
     };
-    
+
     const handleExportProviders = async (format) => {
-        const info = {
-                start: new Date().toLocaleString(),
-                end: new Date().toLocaleString()
-        };
         if (format !== 'pdf') return;
+
         try {
-            const suspended = processedProviders.filter(p => !p.can_upload);
-            if (suspended.length === 0) {
-                toast.info("There are no suspended providers to export based on current filters.");
+            const pageSize = 50;
+            let page = 1;
+            let total = 0;
+            let allSuspended = [];
+
+            do {
+                const res = await providerApi.filterProviders(
+                    page,
+                    pageSize,
+                    false
+                );
+
+                const providers = res.providers || [];
+                total = res.total ?? 0;
+
+                allSuspended = allSuspended.concat(providers);
+                page += 1;
+
+            } while (allSuspended.length < total);
+
+            if (allSuspended.length === 0) {
+                toast.info("There are no suspended providers to export.");
                 return;
             }
+
+            const info = {
+                start: new Date().toLocaleString(),
+                end: new Date().toLocaleString(),
+            };
+
             const columns = [
                 { header: "Short Name", dataKey: "short_name" },
                 { header: "Long Name", dataKey: "long_name" },
                 { header: "Point of Contact", dataKey: "point_of_contact_name" },
                 { header: "Reason", dataKey: "reason" },
             ];
-            generatePDFReport("Suspended Providers Report", columns, suspended, null, info);
+
+            generatePDFReport(
+                "Suspended Providers Report",
+                columns,
+                allSuspended.map(p => ({
+                    ...p,
+                    point_of_contact_name: p.point_of_contact?.name || "",
+                })),
+                null,
+                info
+            );
+
         } catch (err) {
-            toast.error("Failed to export suspended providers: " + parseApiError(err));
+            toast.error(
+                "Failed to export suspended providers: " + parseApiError(err)
+            );
         }
     };
 
@@ -479,7 +569,7 @@ function Providers() {
                     <TablePagination
                         rowsPerPageOptions={[10, 25, 50]}
                         component="div"
-                        count={searchTerm || filter !== 'all' ? filteredCount : pagination.total}
+                        count={filter === 'all'? (searchTerm ? filteredCount : pagination.total): filteredProviders.total}
                         rowsPerPage={pagination.pageSize}
                         page={pagination.page}
                         onPageChange={handlePageChange}
