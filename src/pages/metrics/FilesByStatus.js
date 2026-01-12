@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo  } from 'react';
 import {
     Box, Card, CardContent, Typography, CircularProgress, Alert, Table,
     TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-    TablePagination, Tabs, Tab, Container, TextField, TableSortLabel
+    TablePagination, Tabs, Tab, Container, TextField, TableSortLabel,
+    Button
 } from '@mui/material';
 import { useOutletContext } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
@@ -21,7 +22,7 @@ import ExportMenu from '../reports/ExportMenu';
 import { generatePDFReport } from '../reports/PdfReport';
 
 // API
-import { listFiles } from '../../api/fileApi';
+import { listFiles, triggerFileTransfer  } from '../../api/fileApi';
 // MODIFICATION: Switched to use the shared dataCacheSlice action
 import { fetchCollections } from '../../app/reducers/dataCacheSlice';
 
@@ -380,6 +381,68 @@ function FilesByStatus() {
             toast.error("Failed to download files report: " + err.message);
         }
     };
+
+    function handleFileTransfer(){
+        // Get only the files shown on the current page
+        const startIndex = pagination.page * pagination.pageSize;
+        const endIndex = startIndex + pagination.pageSize;
+
+        const currentPageFiles = processedFiles.slice(startIndex, endIndex);
+
+        const fileIds = currentPageFiles
+            .map(file => file.id)
+            .filter(Boolean);
+
+        if (fileIds.length === 0) {
+            toast.warn("No files available to distribute on this page.");
+            return;
+        }
+
+        triggerFileTransfer(fileIds)
+            .then((res) => {
+                const status_code = res? res.status_code : ''
+                const body = res? res.body:''
+               
+
+            if (status_code === 200) {
+                toast.success(body?.message || "All file transfers initiated.");
+                return;
+            }
+
+            // Partial success or validation failure with details
+            if (status_code === 207 && body?.file_ids) {
+                let failedFiles = [];
+
+                try {
+                    failedFiles = JSON.parse(body.file_ids);
+                } catch {
+                    toast.error("File transfer failed due to invalid response format.");
+                    return;
+                }
+
+                const failedCount = failedFiles.length;
+                const successCount = fileIds.length - failedCount;
+
+                if (successCount > 0) {
+                    toast.warn(
+                        `${successCount} file(s) queued successfully. ${failedCount} file(s) failed.`
+                    );
+                } else {
+                    toast.error(
+                        "File transfer failed. None of the selected files were eligible."
+                    );
+                }
+                return;
+            }
+
+            // Generic failure
+            toast.error(body?.message || "Failed to initiate file transfer.");
+            })
+            .catch((err) => {
+                const errorMessage = parseApiError(err);
+                toast.error(`Failed to initiate file transfer: ${errorMessage}`);
+        });
+    }
             
     return (
         <Container maxWidth={false} disableGutters>
@@ -396,6 +459,7 @@ function FilesByStatus() {
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, flexWrap: 'wrap', gap: 2 }}>
                             <Typography variant="h5">Files by Status</Typography>
                             <Box sx={{ display: 'flex', gap: 1 }}>
+                                {(selectedStatusTab === 'clean') && <Button variant="contained" color='secondary' onClick={handleFileTransfer}>Distribute</Button>}
                                 <TextField 
                                     label="Search by File Name"
                                     variant="outlined"

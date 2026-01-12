@@ -52,3 +52,9 @@ export const getFileById = (fileId) => {
 export const deleteFile = (fileId) => {
     return apiClient.delete(`/files/${fileId}`);
 };
+
+export const triggerFileTransfer = (fileIds) => {
+    return apiClient.post('/events/file_transfer', {
+        file_ids: fileIds,
+    });
+};
