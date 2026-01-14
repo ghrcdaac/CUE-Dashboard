@@ -459,7 +459,7 @@ function FilesByStatus() {
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, flexWrap: 'wrap', gap: 2 }}>
                             <Typography variant="h5">Files by Status</Typography>
                             <Box sx={{ display: 'flex', gap: 1 }}>
-                                {(selectedStatusTab === 'clean') && <Button variant="contained" color='secondary' onClick={handleFileTransfer}>Distribute</Button>}
+                                {(selectedStatusTab === 'clean') && <Button variant="contained" onClick={handleFileTransfer}>Distribute</Button>}
                                 <TextField 
                                     label="Search by File Name"
                                     variant="outlined"
