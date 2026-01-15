@@ -22,7 +22,7 @@ import { generatePDFReport } from '../reports/PdfReport';
 
 // API
 import { listFiles } from '../../api/fileApi';
-// MODIFICATION: Switched to use the shared dataCacheSlice action
+// Switched to use the shared dataCacheSlice action
 import { fetchCollections } from '../../app/reducers/dataCacheSlice';
 
 // Icons
@@ -120,7 +120,7 @@ function FilesByStatus() {
     usePageTitle("Files by Status");
     const { setMenuItems } = useOutletContext();
     const { activeNgroupId } = useAuth();
-    // MODIFICATION: Switched to use the shared dataCacheSlice for collections
+    // use the shared dataCacheSlice for collections
     const { collections } = useSelector((state) => state.dataCache);
     const dispatch = useDispatch();
 
@@ -134,14 +134,14 @@ function FilesByStatus() {
     const [searchTerm, setSearchTerm] = useState('');
     const [sorting, setSorting] = useState({ orderBy: 'upload_time', order: 'desc' });
 
-    // MODIFICATION: This now correctly fetches collections from the shared cache when needed.
+    // fetches collections from the shared cache when needed.
     useEffect(() => {
         if (collections.status === 'idle' && activeNgroupId) {
             dispatch(fetchCollections());
         }
     }, [collections.status, dispatch, activeNgroupId]);
 
-    // MODIFICATION: Now reads from collections.data to build the map.
+    // reads from collections.data to build the map.
     const collectionMap = useMemo(() => {
         if (!collections.data || collections.data.length === 0) return new Map();
         return new Map(collections.data.map(c => [c.id, c.short_name]));

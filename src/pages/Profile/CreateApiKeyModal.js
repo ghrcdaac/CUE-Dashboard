@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, RadioGroup,
   FormControlLabel, Radio, FormControl, FormLabel, Checkbox, Box, Typography,
-  CircularProgress, Autocomplete, FormGroup // --- NEW: Import FormGroup for better layout
+  CircularProgress, Autocomplete, FormGroup // --- FormGroup for better layout
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -28,13 +28,13 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   const [isUsersLoading, setIsUsersLoading] = React.useState(false);
   const [newKey, setNewKey] = React.useState(null);
   
-  // --- NEW: State to manage scope checkboxes. Both are enabled by default. ---
+  // ---  State to manage scope checkboxes. Both are enabled by default. ---
   const [scopes, setScopes] = React.useState({
     'file:upload': true,
     'file:read': true,
   });
 
-  const { user, hasPrivilege } = usePrivileges();
+  const { hasPrivilege } = usePrivileges();
   const { activeNgroupId } = useAuth(); 
 
   const maxDate = new Date();
@@ -64,7 +64,7 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
     onClose();
   };
   
-  // --- NEW: Handler for changing scope checkboxes ---
+  // --- Handler for changing scope checkboxes ---
   const handleScopeChange = (event) => {
     setScopes({
       ...scopes,
@@ -83,12 +83,12 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
       return;
     }
 
-    // --- MODIFIED: Build scopes array from state ---
+    // --- Build scopes array from state ---
     const selectedScopes = Object.entries(scopes)
       .filter(([key, value]) => value)
       .map(([key]) => key);
 
-    // --- MODIFIED: Add validation for at least one scope ---
+    // --- validation for at least one scope ---
     if (selectedScopes.length === 0) {
       toast.error("At least one permission must be selected.");
       return;
@@ -141,7 +141,7 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
 
   const isManager = hasPrivilege('api-key:create');
 
-  // --- MODIFIED: Add scope validation to the disabled check ---
+  // --- scope validation to the disabled check ---
   const atLeastOneScopeSelected = Object.values(scopes).some(v => v);
   const isFormInvalid =
     !keyName.trim() ||
@@ -202,7 +202,7 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
             </Box>
           )}
 
-          {/* --- MODIFIED: Permissions section is now interactive --- */}
+          {/* ---  Permissions section is  interactive --- */}
           <FormControl component="fieldset" sx={{ mt: 2 }}>
             <FormLabel component="legend">Permissions</FormLabel>
             <FormGroup>

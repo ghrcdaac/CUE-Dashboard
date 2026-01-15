@@ -48,7 +48,7 @@ function PendingRequests() {
     const [order, setOrder] = useState('asc');
     const [orderBy, setOrderBy] = useState('name');
 
-    // --- ADDED: Check if the user is an admin or security user ---
+    // --- Check if the user is an admin or security user ---
     const isPrivilegedViewer = useMemo(() =>
         currentUser?.roles?.includes('admin') || currentUser?.roles?.includes('security'),
         [currentUser?.roles]
@@ -61,7 +61,7 @@ function PendingRequests() {
     }, [roles.status, providers.status, dispatch]);
 
     const fetchPageData = useCallback(async () => {
-        // --- MODIFIED: The check for activeNgroupId is now conditional ---
+        // --- The check for activeNgroupId is now conditional ---
         if (!isPrivilegedViewer && !activeNgroupId) {
             setLoading(false);
             setApplications([]); // Clear applications if no DAAC is selected for a non-privileged user
@@ -70,7 +70,7 @@ function PendingRequests() {
         setLoading(true);
         setError(null);
         try {
-            // --- MODIFIED: Pass the new option to the API call ---
+            // --- Pass the new option to the API call ---
             const appsData = await listUserApplications('pending', { forceGlobal: isPrivilegedViewer });
             setApplications(appsData || []);
         } catch (err) {

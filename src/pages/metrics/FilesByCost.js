@@ -14,7 +14,6 @@ import 'react-toastify/dist/ReactToastify.css';
 
 // Hooks, Components & Utils
 import usePageTitle from "../../hooks/usePageTitle";
-// MODIFICATION: Added useAuth import
 import useAuth from '../../hooks/useAuth';
 import MetricsFilter from './MetricsFilter';
 import { parseApiError } from '../../utils/errorUtils';
@@ -48,7 +47,7 @@ const getDefaultEndDate = () => dayjs();
 function FilesByCost() {
     usePageTitle("Files by Cost");
     const { setMenuItems } = useOutletContext();
-    // MODIFICATION: Get the reactive activeNgroupId from useAuth.
+    // Get the reactive activeNgroupId from useAuth.
     const { activeNgroupId } = useAuth();
 
     // State

@@ -16,7 +16,6 @@ import useAuth from '../../hooks/useAuth';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ClearIcon from '@mui/icons-material/Clear';
 
-// Import fetch actions from the new central data cache
 import { 
     fetchProviders, 
     fetchUsers, 
