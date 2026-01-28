@@ -235,7 +235,7 @@ export default function DAAC() {
                         {dialog.data && (
                             <>
                                 <TextField autoFocus margin="dense" name="type" label="Type" fullWidth value={dialog.data.type} onChange={(e) => setDialog({...dialog, data: {...dialog.data, type: e.target.value}})} required/>
-                                <TextField margin="dense" name="path" label="Path" fullWidth value={dialog.data.path} onChange={(e) => setDialog({...dialog, data: {...dialog.data, path: e.target.value}})} required/>
+                                <TextField margin="dense" name="path" label="Path ID" fullWidth value={dialog.data.path} onChange={(e) => setDialog({...dialog, data: {...dialog.data, path: e.target.value}})} required/>
                                 <TextField margin="dense" name="config" label="Config (JSON format)" fullWidth multiline rows={6} value={dialog.data.config} onChange={(e) => setDialog({...dialog, data: {...dialog.data, config: e.target.value}})} required/>
                             </>
                         )}
