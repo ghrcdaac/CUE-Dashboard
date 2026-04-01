@@ -38,7 +38,7 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   const { activeNgroupId } = useAuth(); 
 
   const maxDate = new Date();
-  maxDate.setDate(maxDate.getDate() + 30);
+  maxDate.setDate(maxDate.getDate() + 90);
 
   React.useEffect(() => {
     if (open && hasPrivilege('api-key:create')) {
