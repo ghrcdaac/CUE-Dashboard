@@ -180,6 +180,7 @@ function ApiKeys() {
                                 {loading ? <TableRow><TableCell colSpan={9} align="center"><CircularProgress /></TableCell></TableRow>
                                     : visibleRows.length > 0 ? visibleRows.map((row) => {
                                         const isItemSelected = isSelected(row.id);
+                                        const isExpired = row.expires_at && new Date(row.expires_at) < new Date();
                                         return (
                                             <TableRow hover onClick={(event) => handleClick(event, row.id)} role="checkbox" tabIndex={-1} key={row.id} selected={isItemSelected}>
                                                 <TableCell padding="checkbox"><Checkbox color="primary" checked={isItemSelected} /></TableCell>
@@ -188,7 +189,11 @@ function ApiKeys() {
                                                 <TableCell><code>...{row.key_display_suffix}</code></TableCell>
                                                 <TableCell>{row.proxy_user_name || row.user_name || 'N/A'}</TableCell>
                                                 <TableCell>{row.created_by_user_name || 'N/A'}</TableCell>
-                                                <TableCell><Chip label={row.is_active ? 'Active' : 'Suspended'} color={row.is_active ? 'success' : 'default'} size="small"/></TableCell>
+                                                <TableCell><Chip 
+                                                                label={isExpired ? 'Expired' : (row.is_active ? 'Active' : 'Suspended')} 
+                                                                color={isExpired ? 'error' : (row.is_active ? 'success' : 'default')} 
+                                                                size="small"
+                                                            /></TableCell>
                                                 <TableCell>{formatDate(row.expires_at)}</TableCell>
                                                 <TableCell>{formatDate(row.last_used_at, 'Never')}</TableCell>
                                             </TableRow>
