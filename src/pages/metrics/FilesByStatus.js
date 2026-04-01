@@ -157,29 +157,25 @@ function FilesByStatus() {
         return () => setMenuItems([]);
     }, [setMenuItems]);
 
+    const [totalCount, setTotalCount] = useState(0);
+
     const fetchFiles = useCallback(async () => {
         if (!activeNgroupId) { setLoading(false); return; }
         setLoading(true);
         setError(null);
 
         try {
-            const initialParams = { ...activeFilters, status: selectedStatusTab, page: 1, page_size: API_MAX_PAGE_SIZE };
-            const initialResponse = await listFiles(initialParams);
-            let allItems = initialResponse.items || [];
-            const totalItems = initialResponse.total || 0;
+            const params = {
+                ...activeFilters,
+                status: selectedStatusTab,
+                page: pagination.page + 1, // API is 1-based
+                page_size: pagination.pageSize
+            };
 
-            if (totalItems > API_MAX_PAGE_SIZE) {
-                const totalPages = Math.ceil(totalItems / API_MAX_PAGE_SIZE);
-                const pagePromises = [];
-                for (let page = 2; page <= totalPages; page++) {
-                    pagePromises.push(listFiles({ ...initialParams, page }));
-                }
-                const additionalResponses = await Promise.all(pagePromises);
-                additionalResponses.forEach(res => { allItems = allItems.concat(res.items || []); });
-            }
-            
-            setRawFiles(allItems);
-            setPagination(prev => ({ ...prev, page: 0 }));
+            const response = await listFiles(params);
+
+            setRawFiles(response.items || []);
+            setTotalCount(response.total || 0);
         } catch (err) {
             const errorMessage = parseApiError(err);
             setError(errorMessage);
@@ -187,7 +183,7 @@ function FilesByStatus() {
         } finally {
             setLoading(false);
         }
-    }, [activeNgroupId, activeFilters, selectedStatusTab]);
+    }, [activeNgroupId, activeFilters, selectedStatusTab, pagination.page, pagination.pageSize]);
     
     useEffect(() => {
         fetchFiles();
@@ -432,7 +428,7 @@ function FilesByStatus() {
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
-                                            {processedFiles.length > 0 ? processedFiles.slice(pagination.page * pagination.pageSize, pagination.page * pagination.pageSize + pagination.pageSize).map((file) => (
+                                            {processedFiles.length > 0 ? processedFiles.map((file) => (
                                                 <TableRow hover key={file.id}>
                                                     <TableCell>{file.name}</TableCell>
                                                     <TableCell>{file.collection_name}</TableCell>
@@ -462,7 +458,7 @@ function FilesByStatus() {
                                 <TablePagination
                                     rowsPerPageOptions={[10, 25, 50, 100]}
                                     component="div"
-                                    count={processedFiles.length}
+                                    count={totalCount}
                                     rowsPerPage={pagination.pageSize}
                                     page={pagination.page}
                                     onPageChange={(e, newPage) => setPagination(prev => ({...prev, page: newPage}))}
