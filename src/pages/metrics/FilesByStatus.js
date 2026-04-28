@@ -192,9 +192,9 @@ function FilesByStatus() {
     const mappedFiles = useMemo(() => {
         return rawFiles.map(file => ({
             ...file,
-            collection_name: collectionMap.get(file.collection_id) || file.collection_id,
+            collection_name: file.collection.name || file.collection_id,
         }));
-    }, [rawFiles, collectionMap]);
+    }, [rawFiles]);
 
     const processedFiles = useMemo(() => {
         let filtered = [...mappedFiles];
@@ -429,6 +429,7 @@ function FilesByStatus() {
                                         </TableHead>
                                         <TableBody>
                                             {processedFiles.length > 0 ? processedFiles.map((file) => (
+                                                
                                                 <TableRow hover key={file.id}>
                                                     <TableCell>{file.name}</TableCell>
                                                     <TableCell>{file.collection_name}</TableCell>
@@ -436,7 +437,8 @@ function FilesByStatus() {
                                                     <TableCell>{formatDisplayDate(file.upload_time)}</TableCell>
                                                     {selectedStatusTab === 'distributed' && (
                                                         <TableCell>{formatDisplayDate(file.egress_start)}</TableCell>
-                                                    )}
+                                                    )
+                                                    }
                                                     {(selectedStatusTab === 'infected' || selectedStatusTab === 'scan_failed' || selectedStatusTab === 'distributed') && 
                                                         <TableCell>
                                                             <ScanResultsDisplay results={file.scan_results} />
