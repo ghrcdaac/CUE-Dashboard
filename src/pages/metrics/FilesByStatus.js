@@ -243,9 +243,9 @@ function FilesByStatus() {
     const mappedFiles = useMemo(() => {
         return rawFiles.map(file => ({
             ...file,
-            collection_name: file.collection.name || file.collection_id,
+            collection_name: collectionMap.get(file.collection_id) || file.collection_id,
         }));
-    }, [rawFiles]);
+    }, [rawFiles, collectionMap]);
 
     const processedFiles = useMemo(() => {
         let filtered = [...mappedFiles];
