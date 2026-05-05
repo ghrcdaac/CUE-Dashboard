@@ -482,7 +482,6 @@ function FilesByStatus() {
                                         </TableHead>
                                         <TableBody>
                                             {processedFiles.length > 0 ? processedFiles.map((file) => (
-                                                
                                                 <TableRow hover key={file.id}>
                                                     <TableCell>{file.name}</TableCell>
                                                     <TableCell>{file.collection_name}</TableCell>
