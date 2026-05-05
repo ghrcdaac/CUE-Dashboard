@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo  } from 'react';
 import {
     Box, Card, CardContent, Typography, CircularProgress, Alert, Table,
     TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-    TablePagination, Tabs, Tab, Container, TextField, TableSortLabel
+    TablePagination, Tabs, Tab, Container, TextField, TableSortLabel, Link
 } from '@mui/material';
 import { useOutletContext } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
@@ -62,6 +62,8 @@ const baseHeadCells = [
 
 
 const ScanResultsDisplay = ({ results }) => {
+    const [expandedMessages, setExpandedMessages] = useState({});
+
     if (!results || !Array.isArray(results) || results.length === 0) {
         return <Typography variant="body2" color="text.secondary">No detailed results.</Typography>;
     }
@@ -76,6 +78,13 @@ const ScanResultsDisplay = ({ results }) => {
         }
     });
 
+    const toggleMessageExpansion = (messageKey) => {
+        setExpandedMessages((prev) => ({
+            ...prev,
+            [messageKey]: !prev[messageKey],
+        }));
+    };
+
     return (
         <Box>
             {displayableResults.map((item, index) => {
@@ -87,6 +96,48 @@ const ScanResultsDisplay = ({ results }) => {
                             <Typography variant="body2" component="div"><strong>Result:</strong> {item.result || 'N/A'}</Typography>
                             {item.virusName && item.virusName.length > 0 && (
                                 <Typography variant="body2" component="div"><strong>Viruses:</strong> {item.virusName.join(', ')}</Typography>
+                            )}
+                            {item.message && item.message.length > 0 && (
+                                <Box sx={{ mt: 0.5 }}>
+                                    <Typography variant="body2" component="div"><strong>Message:</strong></Typography>
+                                    <Box component="ul" sx={{ my: 0.5, pl: 3 }}>
+                                        {item.message.map((message, messageIndex) => {
+                                            const messageKey = `${index}-message-${messageIndex}`;
+                                            const isExpanded = expandedMessages[messageKey];
+                                            const isLongMessage = message.length > 100;
+                                            const displayedMessage = isLongMessage && !isExpanded
+                                                ? message.slice(0, 50)
+                                                : message;
+
+                                            return (
+                                                <Typography
+                                                    key={messageKey}
+                                                    component="li"
+                                                    variant="body2"
+                                                >
+                                                    {displayedMessage}
+                                                    {isLongMessage && (
+                                                        <Link
+                                                            component="button"
+                                                            type="button"
+                                                            underline="hover"
+                                                            onClick={() => toggleMessageExpansion(messageKey)}
+                                                            sx={{
+                                                                ml: 0.75,
+                                                                verticalAlign: 'baseline',
+                                                                fontWeight: 600,
+                                                                color: 'primary.main',
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            {isExpanded ? ' Show less' : '... Show more'}
+                                                        </Link>
+                                                    )}
+                                                </Typography>
+                                            );
+                                        })}
+                                    </Box>
+                                </Box>
                             )}
                             <Typography variant="body2" component="div"><strong>Scanned:</strong> {formatDisplayDate(item.dateScanned)}</Typography>
                         </Box>
@@ -414,7 +465,7 @@ function FilesByStatus() {
                          error ? ( <Alert severity="error" sx={{ my: 2 }}>{error}</Alert> ) : (
                             <>
                                 <TableContainer component={Paper}>
-                                    <Table stickyHeader>
+                                    <Table stickyHeader sx={{ tableLayout: 'fixed', width: '100%' }}>
                                         <TableHead>
                                             <TableRow>
                                                 {visibleHeadCells.map(headCell => (
@@ -424,7 +475,9 @@ function FilesByStatus() {
                                                         </TableSortLabel>
                                                     </TableCell>
                                                 ))}
-                                                {(selectedStatusTab === 'infected' || selectedStatusTab === 'scan_failed' || selectedStatusTab === 'distributed') && <TableCell>Scan Results</TableCell>}
+                                                {(selectedStatusTab === 'infected' || selectedStatusTab === 'scan_failed' || selectedStatusTab === 'distributed') && (
+                                                    <TableCell sx={{ width: '32%' }}>Scan Results</TableCell>
+                                                )}
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
@@ -436,9 +489,18 @@ function FilesByStatus() {
                                                     <TableCell>{formatDisplayDate(file.upload_time)}</TableCell>
                                                     {selectedStatusTab === 'distributed' && (
                                                         <TableCell>{formatDisplayDate(file.egress_start)}</TableCell>
-                                                    )}
+                                                    )
+                                                    }
                                                     {(selectedStatusTab === 'infected' || selectedStatusTab === 'scan_failed' || selectedStatusTab === 'distributed') && 
-                                                        <TableCell>
+                                                        <TableCell
+                                                            sx={{
+                                                                width: '32%',
+                                                                verticalAlign: 'top',
+                                                                overflowWrap: 'anywhere',
+                                                                wordBreak: 'break-word',
+                                                                whiteSpace: 'normal',
+                                                            }}
+                                                        >
                                                             <ScanResultsDisplay results={file.scan_results} />
                                                         </TableCell>
                                                     }
