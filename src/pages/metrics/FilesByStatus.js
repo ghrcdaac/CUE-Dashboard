@@ -32,7 +32,6 @@ import MoneyIcon from '@mui/icons-material/Money';
 import SearchIcon from '@mui/icons-material/Search';
 
 const FILE_STATUSES = ["unscanned", "clean", "infected", "scan_failed", "distributed"];
-const API_MAX_PAGE_SIZE = 100;
 
 const formatBytes = (bytes) => {
     if (bytes == null || isNaN(bytes)) return 'N/A';
@@ -182,6 +181,7 @@ function FilesByStatus() {
     const [activeFilters, setActiveFilters] = useState({});
     const [selectedStatusTab, setSelectedStatusTab] = useState(FILE_STATUSES[0]);
     const [pagination, setPagination] = useState({ page: 0, pageSize: 10 });
+    const [pageCursors, setPageCursors] = useState({ 0: null });
     const [searchTerm, setSearchTerm] = useState('');
     const [sorting, setSorting] = useState({ orderBy: 'upload_time', order: 'desc' });
 
@@ -209,6 +209,7 @@ function FilesByStatus() {
     }, [setMenuItems]);
 
     const [totalCount, setTotalCount] = useState(0);
+    const currentPageCursor = pageCursors[pagination.page];
 
     const fetchFiles = useCallback(async () => {
         if (!activeNgroupId) { setLoading(false); return; }
@@ -222,11 +223,29 @@ function FilesByStatus() {
                 page: pagination.page + 1, // API is 1-based
                 page_size: pagination.pageSize
             };
+            const cursor = currentPageCursor;
+            if (cursor?.last_time && cursor?.last_id) {
+                params.last_time = cursor.last_time;
+                params.last_id = cursor.last_id;
+            }
 
             const response = await listFiles(params);
 
             setRawFiles(response.items || []);
             setTotalCount(response.total || 0);
+            setPageCursors(prev => {
+                const nextCursor = response.next_last_time && response.next_last_id
+                    ? { last_time: response.next_last_time, last_id: response.next_last_id }
+                    : null;
+                const existingCursor = prev[pagination.page + 1];
+                if (
+                    existingCursor?.last_time === nextCursor?.last_time &&
+                    existingCursor?.last_id === nextCursor?.last_id
+                ) {
+                    return prev;
+                }
+                return { ...prev, [pagination.page + 1]: nextCursor };
+            });
         } catch (err) {
             const errorMessage = parseApiError(err);
             setError(errorMessage);
@@ -234,7 +253,7 @@ function FilesByStatus() {
         } finally {
             setLoading(false);
         }
-    }, [activeNgroupId, activeFilters, selectedStatusTab, pagination.page, pagination.pageSize]);
+    }, [activeNgroupId, activeFilters, selectedStatusTab, pagination.page, pagination.pageSize, currentPageCursor]);
     
     useEffect(() => {
         fetchFiles();
@@ -272,18 +291,32 @@ function FilesByStatus() {
 
     const handleApplyFilters = (filters) => {
         setPagination(prev => ({ ...prev, page: 0 }));
+        setPageCursors({ 0: null });
         setActiveFilters(filters);
     };
 
     const handleClearFilters = () => {
         setPagination(prev => ({ ...prev, page: 0 }));
+        setPageCursors({ 0: null });
         setActiveFilters({});
         setSearchTerm('');
     };
 
     const handleTabChange = (event, newValue) => {
         setPagination(prev => ({ ...prev, page: 0 }));
+        setPageCursors({ 0: null });
         setSelectedStatusTab(newValue);
+    };
+
+    const handlePageChange = (event, newPage) => {
+        if (newPage === 0 || pageCursors[newPage]) {
+            setPagination(prev => ({ ...prev, page: newPage }));
+        }
+    };
+
+    const handleRowsPerPageChange = (event) => {
+        setPageCursors({ 0: null });
+        setPagination({ pageSize: parseInt(event.target.value, 10), page: 0 });
     };
 
     const handleRequestSort = (property) => {
@@ -313,24 +346,30 @@ function FilesByStatus() {
             };
 
             let allFiles = [];
-            let page = 1;
             const pageSize = 100;
-            let total = 0;
+            let cursor = null;
+            let hasNextPage = true;
 
-            do {
-            const params = {
-                ngroup_id: activeNgroupId,
-                status: selectedStatusTab,
-                ...activeFilters,
-                page,
-                page_size: pageSize,
-            };
+            while (hasNextPage) {
+                const params = {
+                    ngroup_id: activeNgroupId,
+                    status: selectedStatusTab,
+                    ...activeFilters,
+                    page_size: pageSize,
+                };
 
-            const res = await listFiles(params);
-            allFiles = allFiles.concat(res?.items || []);
-            total = res?.total || 0;
-            page++;
-            } while (allFiles.length < total);
+                if (cursor?.last_time && cursor?.last_id) {
+                    params.last_time = cursor.last_time;
+                    params.last_id = cursor.last_id;
+                }
+
+                const res = await listFiles(params);
+                allFiles = allFiles.concat(res?.items || []);
+                cursor = res?.next_last_time && res?.next_last_id
+                    ? { last_time: res.next_last_time, last_id: res.next_last_id }
+                    : null;
+                hasNextPage = Boolean(cursor);
+            }
 
             const filesWithCollections = allFiles.map((file) => ({
             ...file,
@@ -523,8 +562,8 @@ function FilesByStatus() {
                                     count={totalCount}
                                     rowsPerPage={pagination.pageSize}
                                     page={pagination.page}
-                                    onPageChange={(e, newPage) => setPagination(prev => ({...prev, page: newPage}))}
-                                    onRowsPerPageChange={(e) => setPagination({ ...pagination, pageSize: parseInt(e.target.value, 10), page: 0 })}
+                                    onPageChange={handlePageChange}
+                                    onRowsPerPageChange={handleRowsPerPageChange}
                                 />
                             </>
                         )}
