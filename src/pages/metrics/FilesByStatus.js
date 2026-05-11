@@ -273,7 +273,7 @@ function FilesByStatus() {
     const mappedFiles = useMemo(() => {
         return rawFiles.map(file => ({
             ...file,
-            collection_name: collectionMap.get(file.collection_id) || file.collection_id,
+            collection_name: file.collection?.name || collectionMap.get(file.collection_id) || file.collection_id,
         }));
     }, [rawFiles, collectionMap]);
 
@@ -370,7 +370,7 @@ function FilesByStatus() {
 
             const filesWithCollections = allFiles.map((file) => ({
             ...file,
-            collection_name: collectionMap.get(file.collection_id) || file.collection_id,
+            collection_name: file.collection?.name || collectionMap.get(file.collection_id) || file.collection_id,
             }));
 
             let columns = [
