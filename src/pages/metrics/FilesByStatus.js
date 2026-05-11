@@ -21,7 +21,7 @@ import ExportMenu from '../reports/ExportMenu';
 import { generatePDFReport } from '../reports/PdfReport';
 
 // API
-import { listFiles } from '../../api/fileApi';
+import { listFiles, searchFilesByName } from '../../api/fileApi';
 // MODIFICATION: Switched to use the shared dataCacheSlice action
 import { fetchCollections } from '../../app/reducers/dataCacheSlice';
 
@@ -33,7 +33,6 @@ import SearchIcon from '@mui/icons-material/Search';
 import PublicIcon from '@mui/icons-material/Public';
 
 const FILE_STATUSES = ["unscanned", "clean", "infected", "scan_failed", "distributed"];
-const API_MAX_PAGE_SIZE = 100;
 
 const formatBytes = (bytes) => {
     if (bytes == null || isNaN(bytes)) return 'N/A';
@@ -184,6 +183,8 @@ function FilesByStatus() {
     const [selectedStatusTab, setSelectedStatusTab] = useState(FILE_STATUSES[0]);
     const [pagination, setPagination] = useState({ page: 0, pageSize: 10 });
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+    const [searchHasMore, setSearchHasMore] = useState(false);
     const [sorting, setSorting] = useState({ orderBy: 'upload_time', order: 'desc' });
 
     // MODIFICATION: This now correctly fetches collections from the shared cache when needed.
@@ -220,23 +221,42 @@ function FilesByStatus() {
 
     const [totalCount, setTotalCount] = useState(0);
 
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm.trim());
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
     const fetchFiles = useCallback(async () => {
         if (!activeNgroupId) { setLoading(false); return; }
         setLoading(true);
         setError(null);
 
         try {
-            const params = {
-                ...activeFilters,
-                status: selectedStatusTab,
-                page: pagination.page + 1, // API is 1-based
-                page_size: pagination.pageSize
-            };
+            const isSearching = debouncedSearchTerm.length > 0;
+            const params = isSearching
+                ? {
+                    q: debouncedSearchTerm,
+                    status: selectedStatusTab,
+                    page: pagination.page + 1,
+                    page_size: pagination.pageSize
+                }
+                : {
+                    ...activeFilters,
+                    status: selectedStatusTab,
+                    page: pagination.page + 1, // API is 1-based
+                    page_size: pagination.pageSize
+                };
 
-            const response = await listFiles(params);
+            const response = isSearching
+                ? await searchFilesByName(params)
+                : await listFiles(params);
 
             setRawFiles(response.items || []);
-            setTotalCount(response.total || 0);
+            setSearchHasMore(Boolean(response.has_more));
+            setTotalCount(isSearching ? 0 : response.total || 0);
         } catch (err) {
             const errorMessage = parseApiError(err);
             setError(errorMessage);
@@ -244,7 +264,7 @@ function FilesByStatus() {
         } finally {
             setLoading(false);
         }
-    }, [activeNgroupId, activeFilters, selectedStatusTab, pagination.page, pagination.pageSize]);
+    }, [activeNgroupId, activeFilters, selectedStatusTab, pagination.page, pagination.pageSize, debouncedSearchTerm]);
     
     useEffect(() => {
         fetchFiles();
@@ -258,13 +278,7 @@ function FilesByStatus() {
     }, [rawFiles, collectionMap]);
 
     const processedFiles = useMemo(() => {
-        let filtered = [...mappedFiles];
-        if (searchTerm) {
-            const lowercasedTerm = searchTerm.toLowerCase();
-            filtered = filtered.filter(file => file.name?.toLowerCase().includes(lowercasedTerm));
-        }
-
-        return filtered.sort((a, b) => {
+        return [...mappedFiles].sort((a, b) => {
             const isAsc = sorting.order === 'asc' ? 1 : -1;
             const aValue = a[sorting.orderBy] || '';
             const bValue = b[sorting.orderBy] || '';
@@ -278,7 +292,13 @@ function FilesByStatus() {
 
             return aValue.toString().localeCompare(bValue.toString(), undefined, { numeric: true }) * isAsc;
         });
-    }, [mappedFiles, sorting, searchTerm]);
+    }, [mappedFiles, sorting]);
+
+    const paginationCount = useMemo(() => {
+        if (!debouncedSearchTerm) return totalCount;
+        if (searchHasMore) return (pagination.page + 2) * pagination.pageSize;
+        return (pagination.page * pagination.pageSize) + processedFiles.length;
+    }, [debouncedSearchTerm, totalCount, searchHasMore, pagination.page, pagination.pageSize, processedFiles.length]);
 
     const handleApplyFilters = (filters) => {
         setPagination(prev => ({ ...prev, page: 0 }));
@@ -289,11 +309,17 @@ function FilesByStatus() {
         setPagination(prev => ({ ...prev, page: 0 }));
         setActiveFilters({});
         setSearchTerm('');
+        setDebouncedSearchTerm('');
     };
 
     const handleTabChange = (event, newValue) => {
         setPagination(prev => ({ ...prev, page: 0 }));
         setSelectedStatusTab(newValue);
+    };
+
+    const handleSearchChange = (event) => {
+        setPagination(prev => ({ ...prev, page: 0 }));
+        setSearchTerm(event.target.value);
     };
 
     const handleRequestSort = (property) => {
@@ -458,7 +484,7 @@ function FilesByStatus() {
                                     variant="outlined"
                                     size="small"
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={handleSearchChange}
                                     InputProps={{ startAdornment: ( <SearchIcon fontSize="small" sx={{ mr: 1 }} /> ) }}
                                 />
                                 <ExportMenu onExport={handleExport} />
@@ -530,7 +556,7 @@ function FilesByStatus() {
                                 <TablePagination
                                     rowsPerPageOptions={[10, 25, 50, 100]}
                                     component="div"
-                                    count={totalCount}
+                                    count={paginationCount}
                                     rowsPerPage={pagination.pageSize}
                                     page={pagination.page}
                                     onPageChange={(e, newPage) => setPagination(prev => ({...prev, page: newPage}))}
