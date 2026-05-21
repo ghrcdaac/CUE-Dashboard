@@ -61,9 +61,13 @@ export const approveUserApplication = (applicationId, roleId) => {
 /**
  * Rejects a user application. Requires 'approve_user' privilege.
  * @param {string} applicationId - The UUID of the application.
+ * @param {object} [options] - Additional rejection options.
+ * @param {boolean} [options.markAsSpam] - Marks the applicant email as spam.
  */
-export const rejectUserApplication = (applicationId) => {
-    return apiClient.post(`/user_application/${applicationId}/reject`);
+export const rejectUserApplication = (applicationId, options = {}) => {
+    const { markAsSpam = false } = options;
+    const query = markAsSpam ? '?mark_as_spam=true' : '';
+    return apiClient.post(`/user_application/${applicationId}/reject${query}`);
 };
 
 /**
