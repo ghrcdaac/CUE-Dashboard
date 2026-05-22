@@ -104,3 +104,25 @@ export const getCostByFile = (params) => {
     const paginationQuery = buildQueryString(pagination);
     return apiClient.get(`/file-metrics/cost-by-file?${filtersQuery}&${paginationQuery}`);
 };
+
+/**
+ * Retrieves the global summary of volume, count, and breakdown by DAAC (ngroup).
+ * @param {object} filters - Optional filters { start_date, end_date, ngroup_id }
+ */
+export const getGlobalMetricsSummary = (filters) => {
+    const queryString = buildQueryString(filters);
+    return apiClient.get(`/file-metrics/global-summary?${queryString}`, {
+        headers: { 'X-Skip-Ngroup-Filter': 'true' }
+    });
+};
+
+/**
+ * Retrieves global historical monthly metrics by DAAC.
+ * @param {object} filters - Optional filters { start_date, end_date, ngroup_id }
+ */
+export const getGlobalHistorical = (filters) => {
+    const queryString = buildQueryString(filters);
+    return apiClient.get(`/file-metrics/global-historical?${queryString}`, {
+        headers: { 'X-Skip-Ngroup-Filter': 'true' }
+    });
+};

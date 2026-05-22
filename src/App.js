@@ -28,6 +28,7 @@ import AuthCallback from './pages/AuthCallback';
 import PendingApproval from './pages/PendingApproval';
 
 import FilesByCost from './pages/metrics/FilesByCost';
+import GlobalMetrics from './pages/metrics/GlobalMetrics';
 import CollectionFileBrowser from "./pages/collections/CollectionFileBrowser";
 import CollectionOverview from "./pages/collections/CollectionOverview";
 import NotificationPreferences from "./pages/Profile/NotificationPreference";
@@ -138,6 +139,7 @@ function App() {
                         <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />
                         <Route path="files-by-status" element={<FilesByStatus />} />
                         <Route path="files-by-cost" element={<FilesByCost/>} />
+                        <Route path="global-metrics" element={<ProtectedRoute><GlobalMetrics /></ProtectedRoute>} />
                         <Route path="users" element={<ProtectedRoute><Users /></ProtectedRoute>}>
                            <Route index element={<Users />} />
                             <Route path="pending-requests" element={<PendingRequests />} />
