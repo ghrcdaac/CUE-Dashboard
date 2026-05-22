@@ -30,6 +30,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import FilePresentIcon from '@mui/icons-material/FilePresent';
 import MoneyIcon from '@mui/icons-material/Money';
 import SearchIcon from '@mui/icons-material/Search';
+import PublicIcon from '@mui/icons-material/Public';
 
 const FILE_STATUSES = ["unscanned", "clean", "infected", "scan_failed", "distributed"];
 const API_MAX_PAGE_SIZE = 100;
@@ -170,7 +171,7 @@ const ScanResultsDisplay = ({ results }) => {
 function FilesByStatus() {
     usePageTitle("Files by Status");
     const { setMenuItems } = useOutletContext();
-    const { activeNgroupId } = useAuth();
+    const { user, activeNgroupId } = useAuth();
     // MODIFICATION: Switched to use the shared dataCacheSlice for collections
     const { collections } = useSelector((state) => state.dataCache);
     const dispatch = useDispatch();
@@ -198,15 +199,24 @@ function FilesByStatus() {
         return new Map(collections.data.map(c => [c.id, c.short_name]));
     }, [collections.data]);
 
+    const showGlobalMetrics = useMemo(() => {
+        return user?.ngroups?.some(
+            (g) => g.id === '1675f412-7468-4cd4-adb0-20b08236079b' || g.id === '0259fb55-1146-4461-ade2-57504e0c3ace'
+        );
+    }, [user]);
+
     useEffect(() => {
         const metricsMenuItems = [
             { text: 'Overview', path: '/metrics', icon: <AssessmentIcon /> },
             { text: 'Files by Status', path: '/files-by-status', icon: <FilePresentIcon /> },
             { text: 'Cost', path: '/files-by-cost', icon: <MoneyIcon /> }
         ];
+        if (showGlobalMetrics) {
+            metricsMenuItems.push({ text: 'Global', path: '/global-metrics', icon: <PublicIcon /> });
+        }
         setMenuItems(metricsMenuItems);
         return () => setMenuItems([]);
-    }, [setMenuItems]);
+    }, [setMenuItems, showGlobalMetrics]);
 
     const [totalCount, setTotalCount] = useState(0);
 
