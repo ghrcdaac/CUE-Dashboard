@@ -18,6 +18,7 @@ import { createUserApplication } from '../api/userApplicationApi';
 import { getNgroupsForApplication } from '../api/ngroupApi';
 import { getProvidersForApplication } from '../api/providerApi';
 import { getUserClaims } from '../api/authApi';
+import { parseApiError } from '../utils/errorUtils';
 // --- ADDED IMPORT ---
 import useAuth from '../hooks/useAuth';
 
@@ -159,7 +160,7 @@ function SignupPage() {
             await createUserApplication(formData);
             setOpenSuccessDialog(true);
         } catch (error) {
-            setSubmissionError(error.message);
+            setSubmissionError(parseApiError(error));
         } finally {
             setIsLoading(false);
         }
