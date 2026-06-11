@@ -6,6 +6,7 @@ const initialState = {
     isAuthenticated: false,
     isLoading: true,
     activeNgroupId: null, 
+    authProvider: null,
     // --- ADDED: To track the user's registration status ---
     status: null, 
 };
@@ -23,6 +24,7 @@ const authSlice = createSlice({
             state.user = action.payload.user;
             state.accessToken = action.payload.accessToken;
             state.activeNgroupId = action.payload.active_ngroup_id;
+            state.authProvider = action.payload.authProvider || null;
             state.status = action.payload.status;
             state.isAuthenticated = true; // The user has a valid token
             state.isLoading = false;
@@ -34,6 +36,7 @@ const authSlice = createSlice({
             state.user = null;
             state.accessToken = null;
             state.activeNgroupId = null;
+            state.authProvider = null;
             state.status = null;
             state.isAuthenticated = false;
             state.isLoading = false;

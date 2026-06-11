@@ -33,7 +33,7 @@ function SignupPage() {
     const navigate = useNavigate();
     const location = useLocation();
     // --- ADDED HOOK ---
-    const { logout } = useAuth();
+    const { logout, authProvider } = useAuth();
 
     const [formData, setFormData] = useState({
         name: location.state?.name || '',
@@ -54,6 +54,15 @@ function SignupPage() {
     const [loadingNgroups, setLoadingNgroups] = useState(false);
     const [loadingProviders, setLoadingProviders] = useState(false);
     const [isUserDataLocked, setIsUserDataLocked] = useState(!!location.state?.name);
+
+    const isGoogleAuth = authProvider === 'google';
+
+    console.log(isGoogleAuth, authProvider);
+
+    const isDaacGroup = (group) => {
+        // Safety check to ensure group and short_name exist before comparing
+        return group && group.short_name !== "ESDIS Security";
+    };
 
     useEffect(() => {
         const fetchUserClaims = async () => {
@@ -81,7 +90,11 @@ function SignupPage() {
             setLoadingNgroups(true);
             try {
                 const groups = await getNgroupsForApplication();
-                setNgroupOptions(groups);
+                console.log("Fetched groups:", groups);
+                const filteredGroups = Array.isArray(groups)
+                    ? (isGoogleAuth ? groups.filter((group) => isDaacGroup(group)) : groups)
+                    : [];
+                setNgroupOptions(filteredGroups);
             } catch (error) {
                 console.error("Error fetching ngroup options:", error);
                 setSubmissionError(`Error fetching groups: ${error.message}`);
@@ -141,6 +154,12 @@ function SignupPage() {
         if (!isNotEmpty(formData.username)) newErrors.username = 'Username is required';
         if (!isNotEmpty(formData.justification)) newErrors.justification = 'Justification is required';
         if (!isNotEmpty(formData.ngroup_id)) newErrors.ngroup_id = 'Group is required';
+        if (isGoogleAuth) {
+            const selectedGroup = ngroupOptions.find((opt) => opt.id === formData.ngroup_id);
+            if (!selectedGroup || !isDaacGroup(selectedGroup)) {
+                newErrors.ngroup_id = 'Google sign-in users may only apply to DAAC groups.';
+            }
+        }
         if (formData.account_type === 'provider' && !formData.provider_id) {
             newErrors.provider_id = 'Provider is required';
         }
