@@ -28,6 +28,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import FilePresentIcon from '@mui/icons-material/FilePresent';
 import MoneyIcon from '@mui/icons-material/Money';
 import SearchIcon from '@mui/icons-material/Search';
+import PublicIcon from '@mui/icons-material/Public';
 
 const formatBytes = (bytes, decimals = 2) => {
     if (!+bytes) return '0 Bytes';
@@ -49,7 +50,7 @@ function FilesByCost() {
     usePageTitle("Files by Cost");
     const { setMenuItems } = useOutletContext();
     // MODIFICATION: Get the reactive activeNgroupId from useAuth.
-    const { activeNgroupId } = useAuth();
+    const { user, activeNgroupId } = useAuth();
 
     // State
     const [activeFilters, setActiveFilters] = useState({
@@ -77,6 +78,12 @@ function FilesByCost() {
     const [fileSearchTerm, setFileSearchTerm] = useState('');
     const [fileSort, setFileSort] = useState({ field: 'cost', direction: 'desc' });
 
+    const showGlobalMetrics = useMemo(() => {
+        return user?.ngroups?.some(
+            (g) => g.id === '1675f412-7468-4cd4-adb0-20b08236079b' || g.id === '0259fb55-1146-4461-ade2-57504e0c3ace'
+        );
+    }, [user]);
+
     // Side Nav Menu
     useEffect(() => {
         const metricsMenuItems = [
@@ -84,9 +91,12 @@ function FilesByCost() {
             { text: 'Files by Status', path: '/files-by-status', icon: <FilePresentIcon /> },
             { text: 'Cost', path: '/files-by-cost', icon: <MoneyIcon /> }
         ];
+        if (showGlobalMetrics) {
+            metricsMenuItems.push({ text: 'Global', path: '/global-metrics', icon: <PublicIcon /> });
+        }
         setMenuItems(metricsMenuItems);
         return () => setMenuItems([]);
-    }, [setMenuItems]);
+    }, [setMenuItems, showGlobalMetrics]);
 
     // --- Data Fetching Callbacks ---
     const fetchAllData = useCallback((filters) => {

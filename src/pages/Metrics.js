@@ -44,6 +44,7 @@ import { parseApiError } from '../utils/errorUtils';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import FilePresentIcon from '@mui/icons-material/FilePresent';
 import MoneyIcon from '@mui/icons-material/Money';
+import PublicIcon from '@mui/icons-material/Public';
 
 const DATE_FORMAT_API_DAYJS = 'YYYY-MM-DD';
 const getDefaultStartDate = () => dayjs().subtract(7, 'day');
@@ -98,6 +99,12 @@ function Metrics() {
   const [loadingMetrics, setLoadingMetrics] = useState(true);
   const [errorMetrics, setErrorMetrics] = useState(null);
 
+  const showGlobalMetrics = useMemo(() => {
+    return currentUser?.ngroups?.some(
+      (g) => g.id === '1675f412-7468-4cd4-adb0-20b08236079b' || g.id === '0259fb55-1146-4461-ade2-57504e0c3ace'
+    );
+  }, [currentUser]);
+
   const { setMenuItems } = useOutletContext();
   useEffect(() => {
     const metricsMenuItems = [
@@ -105,9 +112,12 @@ function Metrics() {
       { text: 'Files by Status', path: '/files-by-status', icon: <FilePresentIcon /> },
       { text: 'Cost', path: '/files-by-cost', icon: <MoneyIcon /> },
     ];
+    if (showGlobalMetrics) {
+      metricsMenuItems.push({ text: 'Global', path: '/global-metrics', icon: <PublicIcon /> });
+    }
     setMenuItems(metricsMenuItems);
     return () => setMenuItems([]);
-  }, [setMenuItems]);
+  }, [setMenuItems, showGlobalMetrics]);
 
   // MODIFICATION START: The data fetching logic has been updated.
   // It now depends on both activeNgroupId and activeFilters, ensuring it re-runs

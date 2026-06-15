@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo  } from 'react';
 import {
     Box, Card, CardContent, Typography, CircularProgress, Alert, Table,
     TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-    TablePagination, Tabs, Tab, Container, TextField, TableSortLabel
+    TablePagination, Tabs, Tab, Container, TextField, TableSortLabel, Link
 } from '@mui/material';
 import { useOutletContext } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
@@ -30,6 +30,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import FilePresentIcon from '@mui/icons-material/FilePresent';
 import MoneyIcon from '@mui/icons-material/Money';
 import SearchIcon from '@mui/icons-material/Search';
+import PublicIcon from '@mui/icons-material/Public';
 
 const FILE_STATUSES = ["unscanned", "clean", "infected", "scan_failed", "distributed"];
 const API_MAX_PAGE_SIZE = 100;
@@ -62,6 +63,8 @@ const baseHeadCells = [
 
 
 const ScanResultsDisplay = ({ results }) => {
+    const [expandedMessages, setExpandedMessages] = useState({});
+
     if (!results || !Array.isArray(results) || results.length === 0) {
         return <Typography variant="body2" color="text.secondary">No detailed results.</Typography>;
     }
@@ -76,6 +79,13 @@ const ScanResultsDisplay = ({ results }) => {
         }
     });
 
+    const toggleMessageExpansion = (messageKey) => {
+        setExpandedMessages((prev) => ({
+            ...prev,
+            [messageKey]: !prev[messageKey],
+        }));
+    };
+
     return (
         <Box>
             {displayableResults.map((item, index) => {
@@ -87,6 +97,48 @@ const ScanResultsDisplay = ({ results }) => {
                             <Typography variant="body2" component="div"><strong>Result:</strong> {item.result || 'N/A'}</Typography>
                             {item.virusName && item.virusName.length > 0 && (
                                 <Typography variant="body2" component="div"><strong>Viruses:</strong> {item.virusName.join(', ')}</Typography>
+                            )}
+                            {item.message && item.message.length > 0 && (
+                                <Box sx={{ mt: 0.5 }}>
+                                    <Typography variant="body2" component="div"><strong>Message:</strong></Typography>
+                                    <Box component="ul" sx={{ my: 0.5, pl: 3 }}>
+                                        {item.message.map((message, messageIndex) => {
+                                            const messageKey = `${index}-message-${messageIndex}`;
+                                            const isExpanded = expandedMessages[messageKey];
+                                            const isLongMessage = message.length > 100;
+                                            const displayedMessage = isLongMessage && !isExpanded
+                                                ? message.slice(0, 50)
+                                                : message;
+
+                                            return (
+                                                <Typography
+                                                    key={messageKey}
+                                                    component="li"
+                                                    variant="body2"
+                                                >
+                                                    {displayedMessage}
+                                                    {isLongMessage && (
+                                                        <Link
+                                                            component="button"
+                                                            type="button"
+                                                            underline="hover"
+                                                            onClick={() => toggleMessageExpansion(messageKey)}
+                                                            sx={{
+                                                                ml: 0.75,
+                                                                verticalAlign: 'baseline',
+                                                                fontWeight: 600,
+                                                                color: 'primary.main',
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            {isExpanded ? ' Show less' : '... Show more'}
+                                                        </Link>
+                                                    )}
+                                                </Typography>
+                                            );
+                                        })}
+                                    </Box>
+                                </Box>
                             )}
                             <Typography variant="body2" component="div"><strong>Scanned:</strong> {formatDisplayDate(item.dateScanned)}</Typography>
                         </Box>
@@ -119,7 +171,7 @@ const ScanResultsDisplay = ({ results }) => {
 function FilesByStatus() {
     usePageTitle("Files by Status");
     const { setMenuItems } = useOutletContext();
-    const { activeNgroupId } = useAuth();
+    const { user, activeNgroupId } = useAuth();
     // MODIFICATION: Switched to use the shared dataCacheSlice for collections
     const { collections } = useSelector((state) => state.dataCache);
     const dispatch = useDispatch();
@@ -147,15 +199,26 @@ function FilesByStatus() {
         return new Map(collections.data.map(c => [c.id, c.short_name]));
     }, [collections.data]);
 
+    const showGlobalMetrics = useMemo(() => {
+        return user?.ngroups?.some(
+            (g) => g.id === '1675f412-7468-4cd4-adb0-20b08236079b' || g.id === '0259fb55-1146-4461-ade2-57504e0c3ace'
+        );
+    }, [user]);
+
     useEffect(() => {
         const metricsMenuItems = [
             { text: 'Overview', path: '/metrics', icon: <AssessmentIcon /> },
             { text: 'Files by Status', path: '/files-by-status', icon: <FilePresentIcon /> },
             { text: 'Cost', path: '/files-by-cost', icon: <MoneyIcon /> }
         ];
+        if (showGlobalMetrics) {
+            metricsMenuItems.push({ text: 'Global', path: '/global-metrics', icon: <PublicIcon /> });
+        }
         setMenuItems(metricsMenuItems);
         return () => setMenuItems([]);
-    }, [setMenuItems]);
+    }, [setMenuItems, showGlobalMetrics]);
+
+    const [totalCount, setTotalCount] = useState(0);
 
     const fetchFiles = useCallback(async () => {
         if (!activeNgroupId) { setLoading(false); return; }
@@ -163,23 +226,17 @@ function FilesByStatus() {
         setError(null);
 
         try {
-            const initialParams = { ...activeFilters, status: selectedStatusTab, page: 1, page_size: API_MAX_PAGE_SIZE };
-            const initialResponse = await listFiles(initialParams);
-            let allItems = initialResponse.items || [];
-            const totalItems = initialResponse.total || 0;
+            const params = {
+                ...activeFilters,
+                status: selectedStatusTab,
+                page: pagination.page + 1, // API is 1-based
+                page_size: pagination.pageSize
+            };
 
-            if (totalItems > API_MAX_PAGE_SIZE) {
-                const totalPages = Math.ceil(totalItems / API_MAX_PAGE_SIZE);
-                const pagePromises = [];
-                for (let page = 2; page <= totalPages; page++) {
-                    pagePromises.push(listFiles({ ...initialParams, page }));
-                }
-                const additionalResponses = await Promise.all(pagePromises);
-                additionalResponses.forEach(res => { allItems = allItems.concat(res.items || []); });
-            }
-            
-            setRawFiles(allItems);
-            setPagination(prev => ({ ...prev, page: 0 }));
+            const response = await listFiles(params);
+
+            setRawFiles(response.items || []);
+            setTotalCount(response.total || 0);
         } catch (err) {
             const errorMessage = parseApiError(err);
             setError(errorMessage);
@@ -187,7 +244,7 @@ function FilesByStatus() {
         } finally {
             setLoading(false);
         }
-    }, [activeNgroupId, activeFilters, selectedStatusTab]);
+    }, [activeNgroupId, activeFilters, selectedStatusTab, pagination.page, pagination.pageSize]);
     
     useEffect(() => {
         fetchFiles();
@@ -418,7 +475,7 @@ function FilesByStatus() {
                          error ? ( <Alert severity="error" sx={{ my: 2 }}>{error}</Alert> ) : (
                             <>
                                 <TableContainer component={Paper}>
-                                    <Table stickyHeader>
+                                    <Table stickyHeader sx={{ tableLayout: 'fixed', width: '100%' }}>
                                         <TableHead>
                                             <TableRow>
                                                 {visibleHeadCells.map(headCell => (
@@ -428,11 +485,13 @@ function FilesByStatus() {
                                                         </TableSortLabel>
                                                     </TableCell>
                                                 ))}
-                                                {(selectedStatusTab === 'infected' || selectedStatusTab === 'scan_failed' || selectedStatusTab === 'distributed') && <TableCell>Scan Results</TableCell>}
+                                                {(selectedStatusTab === 'infected' || selectedStatusTab === 'scan_failed' || selectedStatusTab === 'distributed') && (
+                                                    <TableCell sx={{ width: '32%' }}>Scan Results</TableCell>
+                                                )}
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
-                                            {processedFiles.length > 0 ? processedFiles.slice(pagination.page * pagination.pageSize, pagination.page * pagination.pageSize + pagination.pageSize).map((file) => (
+                                            {processedFiles.length > 0 ? processedFiles.map((file) => (
                                                 <TableRow hover key={file.id}>
                                                     <TableCell>{file.name}</TableCell>
                                                     <TableCell>{file.collection_name}</TableCell>
@@ -440,9 +499,18 @@ function FilesByStatus() {
                                                     <TableCell>{formatDisplayDate(file.upload_time)}</TableCell>
                                                     {selectedStatusTab === 'distributed' && (
                                                         <TableCell>{formatDisplayDate(file.egress_start)}</TableCell>
-                                                    )}
+                                                    )
+                                                    }
                                                     {(selectedStatusTab === 'infected' || selectedStatusTab === 'scan_failed' || selectedStatusTab === 'distributed') && 
-                                                        <TableCell>
+                                                        <TableCell
+                                                            sx={{
+                                                                width: '32%',
+                                                                verticalAlign: 'top',
+                                                                overflowWrap: 'anywhere',
+                                                                wordBreak: 'break-word',
+                                                                whiteSpace: 'normal',
+                                                            }}
+                                                        >
                                                             <ScanResultsDisplay results={file.scan_results} />
                                                         </TableCell>
                                                     }
@@ -462,7 +530,7 @@ function FilesByStatus() {
                                 <TablePagination
                                     rowsPerPageOptions={[10, 25, 50, 100]}
                                     component="div"
-                                    count={processedFiles.length}
+                                    count={totalCount}
                                     rowsPerPage={pagination.pageSize}
                                     page={pagination.page}
                                     onPageChange={(e, newPage) => setPagination(prev => ({...prev, page: newPage}))}

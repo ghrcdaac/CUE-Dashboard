@@ -40,17 +40,17 @@ export const config = {
     ...envConfig,
 
     // Static settings that are the same across all environments
-    version: "0.0.39",
+    version: "0.0.43",
     keycloakRealm: "cue",
 };
 
 
 // SIT
-// cognitoUserPoolId: "us-west-2_P9iA4SzlA", 
+// cognitoUserPoolId: "us-west-2_P9iA4SzlA",
 // cognitoClientId: "79gtmmmfqupli6li25aar2p4u9"
-// 
+//
 
 
 // UAT
-// cognitoUserPoolId: "us-west-2_x9nYiAMKS", 
+// cognitoUserPoolId: "us-west-2_x9nYiAMKS",
 // cognitoClientId: "44cr4134perjrvkgm437363fko"
