@@ -236,9 +236,9 @@ function Providers() {
                         <Table stickyHeader>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedProviders.length} checked={processedProviders.length > 0 && selected.length === processedProviders.length} onChange={handleSelectAllClick} /></TableCell>
+                                    <TableCell sx={{ bgcolor: "#E5E8EB" }} padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedProviders.length} checked={processedProviders.length > 0 && selected.length === processedProviders.length} onChange={handleSelectAllClick} /></TableCell>
                                     {headCells.map(headCell => (
-                                        <TableCell key={headCell.id} sortDirection={sorting.orderBy === headCell.id ? sorting.order : false}>
+                                        <TableCell  sx={{ bgcolor: "#E5E8EB" }} key={headCell.id} sortDirection={sorting.orderBy === headCell.id ? sorting.order : false}>
                                             <TableSortLabel active={sorting.orderBy === headCell.id} direction={sorting.orderBy === headCell.id ? sorting.order : 'asc'} onClick={() => handleRequestSort(headCell.id)}>
                                                 {headCell.label}
                                             </TableSortLabel>

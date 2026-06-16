@@ -179,9 +179,9 @@ export default function DAAC() {
                         <Table stickyHeader>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedEgresses.length} checked={processedEgresses.length > 0 && selected.length === processedEgresses.length} onChange={handleSelectAllClick} /></TableCell>
+                                    <TableCell sx={{ bgcolor: "#E5E8EB" }} padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedEgresses.length} checked={processedEgresses.length > 0 && selected.length === processedEgresses.length} onChange={handleSelectAllClick} /></TableCell>
                                     {headCells.map(headCell => (
-                                        <TableCell key={headCell.id} sortDirection={sorting.orderBy === headCell.id ? sorting.order : false}>
+                                        <TableCell sx={{ bgcolor: "#E5E8EB" }} key={headCell.id} sortDirection={sorting.orderBy === headCell.id ? sorting.order : false}>
                                             <TableSortLabel active={sorting.orderBy === headCell.id} direction={sorting.orderBy === headCell.id ? sorting.order : 'asc'} onClick={() => handleRequestSort(headCell.id)}>
                                                 {headCell.label}
                                             </TableSortLabel>
@@ -235,7 +235,7 @@ export default function DAAC() {
                         {dialog.data && (
                             <>
                                 <TextField autoFocus margin="dense" name="type" label="Type" fullWidth value={dialog.data.type} onChange={(e) => setDialog({...dialog, data: {...dialog.data, type: e.target.value}})} required/>
-                                <TextField margin="dense" name="path" label="Path" fullWidth value={dialog.data.path} onChange={(e) => setDialog({...dialog, data: {...dialog.data, path: e.target.value}})} required/>
+                                <TextField margin="dense" name="path" label="Path ID" fullWidth value={dialog.data.path} onChange={(e) => setDialog({...dialog, data: {...dialog.data, path: e.target.value}})} required/>
                                 <TextField margin="dense" name="config" label="Config (JSON format)" fullWidth multiline rows={6} value={dialog.data.config} onChange={(e) => setDialog({...dialog, data: {...dialog.data, config: e.target.value}})} required/>
                             </>
                         )}
