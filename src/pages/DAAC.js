@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useOutletContext } from 'react-router-dom';
 import {
     Box, Card, CardContent, Button, Table, TableBody, TableCell,
@@ -41,11 +41,21 @@ export default function DAAC() {
     // Local state for UI operations
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState([]);
-    const [pagination, setPagination] = useState({ page: 0, rowsPerPage: 10 });
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [currentPage, setCurrentPage] = useState(0); // 0-based for MUI TablePagination
+    const pagination = {
+        page: currentPage,
+        pageSize: rowsPerPage,
+        total: egresses.total ?? 0
+    };
     const [sorting, setSorting] = useState({ orderBy: 'type', order: 'asc' });
     const [searchTerm, setSearchTerm] = useState('');
     const [dialog, setDialog] = useState({ open: null, data: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [filteredCount, setFilteredCount] = useState(0);
+    const didMount = useRef(false);
+    const [prevPage, setPrevPage] = useState(0);
+    const wasSearching = useRef(false);
 
     useEffect(() => {
         const daacMenuItems = [{ text: 'Egress', path: '/daac', icon: <OutputIcon /> }];
@@ -55,8 +65,11 @@ export default function DAAC() {
 
     // "Smart" data fetching that uses the cache
     useEffect(() => {
-        if (activeNgroupId && egresses.status === 'idle') {
-            dispatch(fetchEgresses());
+        if (activeNgroupId && !didMount.current) {
+            if (egresses.status === 'idle' ||  egresses.page !== 1){
+                dispatch(fetchEgresses({ page: 1, pageSize: 50 }));
+            }
+            didMount.current = true;
         }
     }, [activeNgroupId, egresses.status, dispatch]);
     
@@ -64,6 +77,37 @@ export default function DAAC() {
     useEffect(() => {
         setLoading(egresses.status === 'loading');
     }, [egresses.status]);
+
+    useEffect(() => {
+        setCurrentPage(0);
+    }, [searchTerm]);
+
+    // Reset pagination when ngroup changes or when new collections load
+    useEffect(() => {
+        const maxPage = Math.floor((egresses.total - 1) / rowsPerPage) || 0;
+
+        // if currentPage is invalid, reset to 0
+        if (currentPage > maxPage) {
+            setCurrentPage(0);
+        }
+    }, [activeNgroupId, egresses.total]);
+
+    useEffect(() => {
+            const isSearching = searchTerm.trim() !== "";
+    
+            if (isSearching && !wasSearching.current) {
+                // Search just started — store page ONCE
+                setPrevPage(currentPage);
+                setCurrentPage(0);
+            }
+    
+            if (!isSearching && wasSearching.current) {
+                // Search just ended — restore ONCE
+                setCurrentPage(prevPage);
+            }
+    
+            wasSearching.current = isSearching;
+        }, [searchTerm, currentPage, prevPage]);
 
     const processedEgresses = useMemo(() => {
         let filtered = [...egresses.data];
@@ -75,13 +119,39 @@ export default function DAAC() {
             );
         }
 
-        return filtered.sort((a, b) => {
+        filtered.sort((a, b) => {
             const isAsc = sorting.order === 'asc' ? 1 : -1;
             const aValue = a[sorting.orderBy] || '';
             const bValue = b[sorting.orderBy] || '';
             return aValue.localeCompare(bValue) * isAsc;
         });
-    }, [egresses.data, sorting, searchTerm]);
+        const newFilteredCount = filtered.length;
+
+        if (newFilteredCount !== filteredCount) {
+            setFilteredCount(newFilteredCount);
+        }
+        
+        let startIndex, endIndex;
+
+        if (searchTerm) {
+            // SCENARIO 1: SEARCHING/FILTERING
+            // List contains the *entire* locally filtered/sorted set.
+            const maxFilteredPage = Math.max(
+                0,
+                Math.floor((filtered.length - 1) / rowsPerPage)
+            );
+
+            const safeSearchPage = Math.min(currentPage, maxFilteredPage);
+
+            startIndex = safeSearchPage * rowsPerPage;
+            endIndex = startIndex + rowsPerPage;
+        } else {
+            // SCENARIO 2: NORMAL VIEW (PAGINATING THROUGH CACHE CHUNKS)
+            startIndex = Math.max(0, pagination.page * rowsPerPage - (egresses.cacheStart ?? 0));
+            endIndex = Math.min(filtered.length, startIndex + rowsPerPage);
+        }
+        return filtered.slice(startIndex, endIndex);
+    }, [egresses.data, sorting, searchTerm, pagination.page, rowsPerPage]);
 
     const handleOpenDialog = (type, data = null) => {
         if (type === 'edit') {
@@ -120,7 +190,8 @@ export default function DAAC() {
             }
             handleCloseDialog();
             setSelected([]);
-            dispatch(fetchEgresses()); // Refresh the cache
+            const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
+            dispatch(fetchEgresses({ page: apiPage, pageSize: 50 })); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -135,7 +206,8 @@ export default function DAAC() {
             toast.success("Egress deleted successfully!");
             handleCloseDialog();
             setSelected([]);
-            dispatch(fetchEgresses()); // Refresh the cache
+            const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
+            dispatch(fetchEgresses({ page: apiPage, pageSize: 50 })); // Refresh the cache
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -156,6 +228,46 @@ export default function DAAC() {
         if (selectedIndex === -1) newSelected = [...selected, id];
         else newSelected = selected.filter(selId => selId !== id);
         setSelected(newSelected);
+    };
+
+    const isWithinCache = (newPage) => {
+        if (egresses.total <= egresses.cacheSize) {
+            return true;
+        }
+        const startIndex = newPage * rowsPerPage;// use UI rowsPerPage
+        const endIndex = startIndex + rowsPerPage;
+
+        const cacheStart = egresses.cacheStart ?? 0;
+        const cacheEnd = cacheStart + (egresses.cacheSize ?? 0);  // usually 50
+
+        return startIndex >= cacheStart && endIndex <= cacheEnd;
+    };
+
+    const handlePageChange = (event, newPage) => {
+        setCurrentPage(newPage); // Pagination.page gets updated
+
+        if (!isWithinCache(newPage)) {
+            const apiPageSize = 50; // chunk size
+            const startIndex = newPage * rowsPerPage;
+            if (!searchTerm){
+                const apiPage = Math.floor(startIndex / apiPageSize) + 1;
+                dispatch(fetchEgresses({ page: apiPage, pageSize: apiPageSize }));
+            }
+        }
+    };
+
+    const handleRowsPerPageChange = (event) => {
+        const newSize = parseInt(event.target.value, 10);
+        setCurrentPage(0);//bring back the page to 0 when the rowsperpage change
+        if (!isWithinCache(0)) {
+            const apiPageSize = 50; // chunk size
+            const startIndex = 0;
+            if (!searchTerm){
+                const apiPage = Math.floor(startIndex / apiPageSize) + 1;
+                dispatch(fetchEgresses({ page: apiPage, pageSize: apiPageSize }));
+            }
+        }
+        setRowsPerPage(newSize);  // only update UI rows per page
     };
 
     return (
@@ -201,7 +313,7 @@ export default function DAAC() {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    processedEgresses.slice(pagination.page * pagination.rowsPerPage, pagination.page * pagination.rowsPerPage + pagination.rowsPerPage).map((row) => {
+                                    processedEgresses.map((row) => {
                                         const isItemSelected = selected.indexOf(row.id) !== -1;
                                         return (
                                             <TableRow key={row.id} hover onClick={() => handleClick(row.id)} role="checkbox" tabIndex={-1} selected={isItemSelected}>
@@ -219,11 +331,11 @@ export default function DAAC() {
                     <TablePagination
                         rowsPerPageOptions={[10, 25, 50]}
                         component="div"
-                        count={processedEgresses.length}
-                        rowsPerPage={pagination.rowsPerPage}
+                        count={searchTerm ? filteredCount : pagination.total}
+                        rowsPerPage={pagination.pageSize}
                         page={pagination.page}
-                        onPageChange={(e, newPage) => setPagination(prev => ({ ...prev, page: newPage }))}
-                        onRowsPerPageChange={(e) => setPagination({ rowsPerPage: parseInt(e.target.value, 10), page: 0 })}
+                        onPageChange={handlePageChange}
+                        onRowsPerPageChange={handleRowsPerPageChange}
                     />
                 </CardContent>
             </Card>

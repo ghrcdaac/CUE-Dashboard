@@ -10,9 +10,10 @@ import { config } from '../config'; // Needed for legacy functions
 /**
  * Retrieves all collections for the user's currently active ngroup.
  */
-export const listCollections = () => {
-    return apiClient.get('/collections/');
+export const listCollections = (page = 1, pageSize = 50) => {
+    return apiClient.get(`/collections/?page=${page}&page_size=${pageSize}`);
 };
+
 
 /**
  * Creates a new collection. The backend associates it with the active ngroup.

@@ -4,8 +4,8 @@ import apiClient from './apiClient';
  * Lists all API keys visible to the current user.
  * The backend filters keys based on the user's role and active ngroup.
  */
-export const getApiKeys = () => {
-  return apiClient.get('/api-keys/');
+export const getApiKeys = ({page = 1, pageSize = 10}) => {
+  return apiClient.get(`/api-keys/?page=${page}&page_size=${pageSize}`);
 };
 
 /**

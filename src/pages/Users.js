@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'; // UPDATED: Restored useCallback
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'; // UPDATED: Restored useCallback
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Paper, Button, Typography, Checkbox, TablePagination, Dialog, DialogTitle,
@@ -57,11 +57,21 @@ function Users() {
     // Local state for UI operations
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState([]);
-    const [pagination, setPagination] = useState({ page: 0, rowsPerPage: 10 });
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [currentPage, setCurrentPage] = useState(0); // 0-based for MUI TablePagination
+    const pagination = {
+        page: currentPage,
+        pageSize: rowsPerPage,
+        total: users.total ?? 0
+    };
     const [searchTerm, setSearchTerm] = useState('');
     const [sorting, setSorting] = useState({ orderBy: 'name', order: 'asc' });
     const [dialog, setDialog] = useState({ open: null, data: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [filteredCount, setFilteredCount] = useState(0);
+    const didMount = useRef(false);
+    const [prevPage, setPrevPage] = useState(0);
+    const wasSearching = useRef(false);
     
     useEffect(() => {
         const usersMenuItems = [
@@ -75,9 +85,14 @@ function Users() {
     // "Smart" data fetching that uses the cache
     useEffect(() => {
         if (activeNgroupId) {
-            if (users.status === 'idle') dispatch(fetchUsers());
+            if (!didMount.current) {
+                if (users.status === 'idle' || users.page !== 1){
+                    dispatch(fetchUsers({ page: 1, pageSize: 50 }));
+                }
+                didMount.current = true;
+            }
             if (roles.status === 'idle') dispatch(fetchRoles());
-            if (providers.status === 'idle') dispatch(fetchProviders());
+            if (providers.status === 'idle') dispatch(fetchProviders({ page: 1, pageSize: 50 }));
         }
     }, [activeNgroupId, users.status, roles.status, providers.status, dispatch]);
 
@@ -86,6 +101,36 @@ function Users() {
         const isLoading = users.status === 'loading' || roles.status === 'loading' || providers.status === 'loading';
         setLoading(isLoading);
     }, [users.status, roles.status, providers.status]);
+
+    useEffect(() => {
+        setCurrentPage(0);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        const maxPage = Math.floor((users.total - 1) / rowsPerPage) || 0;
+
+        // if currentPage is invalid, reset to 0
+        if (currentPage > maxPage) {
+            setCurrentPage(0);
+        }
+    }, [activeNgroupId, users.total]);
+
+    useEffect(() => {
+        const isSearching = searchTerm.trim() !== "";
+
+        if (isSearching && !wasSearching.current) {
+            // Search just started — store page ONCE
+            setPrevPage(currentPage);
+            setCurrentPage(0);
+        }
+
+        if (!isSearching && wasSearching.current) {
+            // Search just ended — restore ONCE
+            setCurrentPage(prevPage);
+        }
+
+        wasSearching.current = isSearching;
+    }, [searchTerm, currentPage, prevPage]);
 
     const processedUsers = useMemo(() => {
         if (!users.data || !roles.data || !providers.data) return [];
@@ -114,7 +159,7 @@ function Users() {
             );
         }
 
-        return filtered.sort((a, b) => {
+        filtered.sort((a, b) => {
             const isAsc = sorting.order === 'asc' ? 1 : -1;
             let aValue = a[sorting.orderBy];
             let bValue = b[sorting.orderBy];
@@ -126,7 +171,34 @@ function Users() {
             if (bValue === null || bValue === undefined) return -1 * isAsc;
             return aValue.toString().localeCompare(bValue.toString()) * isAsc;
         });
-    }, [users.data, roles.data, providers.data, sorting, searchTerm]);
+        const newFilteredCount = filtered.length;
+
+        if (newFilteredCount !== filteredCount) {
+            setFilteredCount(newFilteredCount);
+        }
+        
+        let startIndex, endIndex;
+
+        if (searchTerm) {
+            // SCENARIO 1: SEARCHING/FILTERING
+            // List contains the *entire* locally filtered/sorted set.
+            const maxFilteredPage = Math.max(
+                0,
+                Math.floor((filtered.length - 1) / rowsPerPage)
+            );
+
+            const safeSearchPage = Math.min(currentPage, maxFilteredPage);
+
+            startIndex = safeSearchPage * rowsPerPage;
+            endIndex = startIndex + rowsPerPage;
+        } else {
+            // SCENARIO 2: NORMAL VIEW (PAGINATING THROUGH CACHE CHUNKS)
+            startIndex = Math.max(0, pagination.page * rowsPerPage - (users.cacheStart ?? 0));
+            endIndex = Math.min(filtered.length, startIndex + rowsPerPage);
+        }
+
+        return filtered.slice(startIndex, endIndex);
+    }, [users.data, roles.data, providers.data, sorting, searchTerm, pagination.page, rowsPerPage]);
 
     const handleClick = useCallback((id) => {
         const selectedIndex = selected.indexOf(id);
@@ -155,7 +227,6 @@ function Users() {
             );
         }
         return processedUsers
-            .slice(pagination.page * pagination.rowsPerPage, pagination.page * pagination.rowsPerPage + pagination.rowsPerPage)
             .map((user) => {
                 const isItemSelected = selected.indexOf(user.id) !== -1;
                 const isManageable = canModifyUser(currentUser, user);
@@ -193,7 +264,8 @@ function Users() {
             await assignUserRole(dialog.data.id, dialog.data.role.id);
             toast.success("User role updated successfully!");
             handleCloseDialog();
-            dispatch(fetchUsers());
+            const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
+            dispatch(fetchUsers({ page: apiPage, pageSize: 50 }));
             setSelected([]);
         } catch (error) {
             toast.error(parseApiError(error));
@@ -209,7 +281,8 @@ function Users() {
             toast.success("User(s) deleted successfully!");
             setSelected([]);
             handleCloseDialog();
-            dispatch(fetchUsers());
+            const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
+            dispatch(fetchUsers({ page: apiPage, pageSize: 50 }));
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -232,6 +305,50 @@ function Users() {
         }
         setSelected([]);
     };
+
+     const isWithinCache = (newPage) => {
+
+        if (users.total <= users.cacheSize) {
+            return true;
+        }
+
+        const startIndex = newPage * rowsPerPage;// use UI rowsPerPage
+        const endIndex = startIndex + rowsPerPage;
+
+        const cacheStart = users.cacheStart ?? 0;
+        const cacheEnd = cacheStart + (users.cacheSize ?? 0);  // usually 50
+
+        return startIndex >= cacheStart && endIndex <= cacheEnd;
+    };
+
+    const handlePageChange = (event, newPage) => {
+         setCurrentPage(newPage); // Pagination.page gets updated
+
+        if (!isWithinCache(newPage)) {
+            const apiPageSize = 50; // chunk size
+            const startIndex = newPage * rowsPerPage;
+            if (!searchTerm){
+                const apiPage = Math.floor(startIndex / apiPageSize) + 1;
+                dispatch(fetchUsers({ page: apiPage, pageSize: apiPageSize }));
+            }
+        }
+    };
+
+    const handleRowsPerPageChange = (event) => {
+        const newSize = parseInt(event.target.value, 10);
+        setCurrentPage(0);//bring back the page to 0 when the rowsperpage change
+        
+        if (!isWithinCache(0)) {
+            const apiPageSize = 50; // chunk size
+            const startIndex = 0;
+            if (!searchTerm){
+                const apiPage = Math.floor(startIndex / apiPageSize) + 1;
+                dispatch(fetchUsers({ page: apiPage, pageSize: apiPageSize }));
+            }
+        }
+        setRowsPerPage(newSize);  // only update UI rows per page
+    };
+
     
     if (location.pathname !== '/users') {
         return <Outlet key={location.pathname} />;
@@ -275,11 +392,11 @@ function Users() {
                     <TablePagination
                         rowsPerPageOptions={[10, 25, 50]}
                         component="div"
-                        count={processedUsers.length}
-                        rowsPerPage={pagination.rowsPerPage}
+                        count={searchTerm ? filteredCount : pagination.total}
+                        rowsPerPage={pagination.pageSize}
                         page={pagination.page}
-                        onPageChange={(e, newPage) => setPagination(prev => ({ ...prev, page: newPage }))}
-                        onRowsPerPageChange={(e) => setPagination({ rowsPerPage: parseInt(e.target.value, 10), page: 0 })}
+                        onPageChange={handlePageChange}
+                        onRowsPerPageChange={handleRowsPerPageChange}
                     />
                 </CardContent>
             </Card>

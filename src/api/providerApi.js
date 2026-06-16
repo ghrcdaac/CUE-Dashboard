@@ -17,8 +17,12 @@ export const getProvidersForApplication = (ngroupId) => {
  * This function now relies on the apiClient to automatically add the 
  * X-Active-Ngroup-Id header instead of using a query parameter.
  */
-export const listProviders = () => {
-    return apiClient.get('/providers/');
+export const listProviders = (page = 1, pageSize = 50) => {
+    return apiClient.get(`/providers/?page=${page}&page_size=${pageSize}`);
+};
+
+export const filterProviders = (page = 1, pageSize = 50, can_upload ) => {
+    return apiClient.get(`/providers/?page=${page}&page_size=${pageSize}&can_upload=${can_upload}`);
 };
 
 /**
