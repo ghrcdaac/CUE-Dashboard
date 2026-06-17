@@ -57,8 +57,6 @@ function SignupPage() {
 
     const isGoogleAuth = authProvider === 'google';
 
-    console.log(isGoogleAuth, authProvider);
-
     const isDaacGroup = (group) => {
         // Safety check to ensure group and short_name exist before comparing
         return group && group.short_name !== "ESDIS Security";
@@ -90,7 +88,6 @@ function SignupPage() {
             setLoadingNgroups(true);
             try {
                 const groups = await getNgroupsForApplication();
-                console.log("Fetched groups:", groups);
                 const filteredGroups = Array.isArray(groups)
                     ? (isGoogleAuth ? groups.filter((group) => isDaacGroup(group)) : groups)
                     : [];
