@@ -9,6 +9,7 @@ import {
 import { config } from '../config';
 import sessionService from '../services/sessionService';
 import { getMyProfile } from '../api/cueUser';
+import { jwtDecode } from 'jwt-decode';
 
 // Helper function for the apiClient to get the temp token during login
 export const getTempToken = () => localStorage.getItem('CUE_TEMP_TOKEN');
@@ -54,6 +55,21 @@ function useAuth() {
         if (!statusResponse.ok) throw new Error('Could not verify user status.');
         const { status } = await statusResponse.json();
 
+        // Derive the auth provider from the token claims so the UI can apply provider-specific restrictions.
+        let authProvider = 'launchpad';
+        try {
+            const decodedToken = jwtDecode(tokenData.id_token);
+            const issuer = String(decodedToken.iss || '').toLowerCase();
+            const identityProvider = String(decodedToken.idp || decodedToken.identity_provider || decodedToken.auth_provider || '').toLowerCase();
+            const subject = String(decodedToken.sub || '').toLowerCase();
+
+            if (issuer.includes('google') || issuer.includes('accounts.google.com') || identityProvider.includes('google') || subject.includes('google')) {
+                authProvider = 'google';
+            }
+        } catch (decodeError) {
+            console.warn('Unable to determine auth provider from ID token:', decodeError);
+        }
+
         // 2. Then, build and save the session based on the status
         let session = {
             accessToken: tokenData.access_token,
@@ -61,6 +77,7 @@ function useAuth() {
             idToken: tokenData.id_token,
             expiresAt: Date.now() + (tokenData.expires_in * 1000),
             status: status, // Always save the status
+            authProvider,
         };
 
         if (status === 'registered') {
@@ -85,7 +102,7 @@ function useAuth() {
         sessionService.setSession(session);
         dispatch(sessionRestored(session));
 
-        return { status, id_token: tokenData.id_token };
+        return { status, id_token: tokenData.id_token, authProvider: session.authProvider };
 
     }, [dispatch]);
 
