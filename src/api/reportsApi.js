@@ -7,7 +7,7 @@ import apiClient from './apiClient';
  * The API emails or otherwise notifies the user when a downloadable link is ready.
  */
 export const triggerFileStatusReport = ({ status, filters = {}, format = 'pdf' }) => {
-    return apiClient.post('/reports/file-status', {
+    return apiClient.post('/reports/status-pdf', {
         report_type: 'file_status',
         format,
         status,
