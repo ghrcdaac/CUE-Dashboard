@@ -18,10 +18,10 @@ import useAuth from '../../hooks/useAuth';
 import { parseApiError } from '../../utils/errorUtils';
 import MetricsFilter from './MetricsFilter';
 import ExportMenu from '../reports/ExportMenu';
-import { generatePDFReport } from '../reports/PdfReport';
 
 // API
 import { listFiles } from '../../api/fileApi';
+import { triggerFileStatusReport } from '../../api/reportsApi';
 // MODIFICATION: Switched to use the shared dataCacheSlice action
 import { fetchCollections } from '../../app/reducers/dataCacheSlice';
 
@@ -310,131 +310,20 @@ function FilesByStatus() {
     }, [selectedStatusTab]);
 
     const handleExport = async (format) => {
-        if (format !== "pdf") return; 
+        if (format !== "pdf") return;
         
         try {
-            const now = new Date();
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(now.getDate() - 7);
-
-            const info = {
-            start: activeFilters?.start_date || sevenDaysAgo.toISOString().split('T')[0],
-            end: activeFilters?.end_date || now.toISOString().split('T')[0],
-            };
-
-            let allFiles = [];
-            let page = 1;
-            const pageSize = 100;
-            let total = 0;
-
-            do {
-            const params = {
-                ngroup_id: activeNgroupId,
+            toast.info("Requesting file status report. You will receive a downloadable link when it is ready.");
+            const response = await triggerFileStatusReport({
                 status: selectedStatusTab,
-                ...activeFilters,
-                page,
-                page_size: pageSize,
-            };
-
-            const res = await listFiles(params);
-            allFiles = allFiles.concat(res?.items || []);
-            total = res?.total || 0;
-            page++;
-            } while (allFiles.length < total);
-
-            const filesWithCollections = allFiles.map((file) => ({
-            ...file,
-            collection_name: collectionMap.get(file.collection_id) || file.collection_id,
-            }));
-
-            let columns = [
-            { header: "File Name", dataKey: "name" },
-            { header: "Collection", dataKey: "collection_name" },
-            { header: "Size", dataKey: "size_bytes" },
-            { header: "Upload Time", dataKey: "upload_time" }
-            ];
-
-            if (selectedStatusTab === "distributed") {
-            columns.push({ header: "Distributed Time", dataKey: "egress_start" });
-            }
-
-            if (selectedStatusTab === "infected" || selectedStatusTab === "scan_failed" || selectedStatusTab === "distributed") {
-            columns.push({ header: "Scan Result", dataKey: "scan_results" });
-            }
-            
-
-            const dateFields = [
-            "upload_time",
-            "egress_start",
-            "scan_start",
-            "scan_end",
-            "dateScanned",
-            ];
-
-            const sizeFields = ["size_bytes"];
-
-            const formatScanResults = (scanResults) => {
-                if (!scanResults) return "";
-
-                const items = Array.isArray(scanResults) ? scanResults : [scanResults];
-
-                let ipAddress = "";
-                let engine = "";
-                let result = "";
-                let scannedDate = "";
-                let virusNames = [];
-
-                items.forEach((item) => {
-                    if (item.ip_address) {
-                    ipAddress = item.ip_address;
-                    }
-
-                    if (item.engine || item.result || item.dateScanned) {
-                    engine = item.engine || "";
-                    result = item.result || "";
-                    scannedDate = item.dateScanned ? formatDisplayDate(item.dateScanned) : "";
-                    if (item.virusName && Array.isArray(item.virusName)) {
-                        virusNames = item.virusName;
-                    }
-                    }
-                });
-
-                // Build printable multi-line string
-                let lines = [];
-                if (ipAddress) lines.push(`IP Address: ${ipAddress}`);
-                if (engine) lines.push(`Engine: ${engine}`);
-                if (result) lines.push(`Result: ${result}`);
-                if (virusNames.length > 0) lines.push(`Viruses: ${virusNames.join(', ')}`);
-                if (scannedDate) lines.push(`Scanned: ${scannedDate}`);
-
-                return lines.join('\n');
-            };
-
-            const rows = filesWithCollections.map((f) => {
-            const row = {};
-            columns.forEach((c) => {
-                let value = f[c.dataKey] ?? "";
-                if (dateFields.includes(c.dataKey) && value) {
-                    value = formatDisplayDate(value);
-                }
-
-                if (sizeFields.includes(c.dataKey) && value !== "") {
-                    value = formatBytes(value);
-                }
-
-                if (c.dataKey === 'scan_results' && value) {
-                    value = formatScanResults(f.scan_results || value);
-                }
-
-                row[c.dataKey] = value;
+                filters: activeFilters,
+                format,
             });
-            return row;
-            });
-            await generatePDFReport(`${selectedStatusTab} Files`, columns, rows, null, info);
-            toast.success("PDF report generated successfully!");
+            const successMessage = response?.message || response?.detail || "Report request submitted. You will receive a downloadable link when it is ready.";
+            toast.success(successMessage);
         } catch (err) {
             console.error(err);
-            toast.error("Failed to download files report: " + err.message);
+            toast.error("Failed to request files report: " + parseApiError(err));
         }
     };
             
