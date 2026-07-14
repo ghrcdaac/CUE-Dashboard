@@ -30,12 +30,19 @@ export const createUserApplication = (applicationData) => {
  * @param {boolean} [options.forceGlobal] - If true, bypasses the ngroup filter.
  */
 export const listUserApplications = (status, options = {}) => {
-    const { forceGlobal = false } = options;
-    let url = `/user_application/`;
+    const { forceGlobal = false, isSpam } = options;
+    const params = new URLSearchParams();
+
     if (status) {
-        url += `?status=${status}`;
+        params.set('status', status);
     }
-    
+    if (isSpam !== undefined) {
+        params.set('is-spam', isSpam ? 'true' : 'false');
+    }
+
+    const query = params.toString();
+    const url = `/user_application/${query ? `?${query}` : ''}`;
+
     const config = {
         headers: {}
     };
@@ -85,4 +92,12 @@ export const updateUserApplication = (userApplicationId, updatedData) => {
  */
 export const deleteUserApplication = (userApplicationId) => {
     return apiClient.delete(`/user_application/${userApplicationId}`);
+};
+
+/**
+ * Restores a user application (removes it from spam/rejected status).
+ * @param {string} userApplicationId - The UUID of the application.
+ */
+export const restoreUserApplication = (userApplicationId) => {
+    return apiClient.post(`/user_application/${userApplicationId}/unmark-spam`);
 };
