@@ -12,6 +12,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import PersonIcon from '@mui/icons-material/Person';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
+import BlockIcon from '@mui/icons-material/Block';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
@@ -77,6 +78,7 @@ function Users() {
         const usersMenuItems = [
             { text: 'Users', path: '/users', icon: <PersonIcon /> },
             { text: 'Pending Requests', path: '/users/pending-requests', icon: <PendingActionsIcon /> },
+            { text: 'Rejected Requests', path: '/users/rejected-requests', icon: <BlockIcon /> },
         ];
         setMenuItems(usersMenuItems);
         return () => setMenuItems([]);
