@@ -3,7 +3,8 @@ import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Paper, Button, Typography, Checkbox, TablePagination, Dialog, DialogTitle,
     DialogContent, DialogActions, TextField, Box, Card, CardContent,
-    TableSortLabel, CircularProgress, Autocomplete, Container, Alert
+    TableSortLabel, CircularProgress, Autocomplete, Container, Alert,
+    FormControlLabel
 } from '@mui/material';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -41,6 +42,7 @@ function PendingRequests() {
     const [actionLoading, setActionLoading] = useState(false);
     const [selected, setSelected] = useState([]);
     const [dialog, setDialog] = useState({ open: null, data: null });
+    const [rejectMarkAsSpam, setRejectMarkAsSpam] = useState(false);
     
     const [searchTerm, setSearchTerm] = useState('');
     const [page, setPage] = useState(0);
@@ -140,10 +142,14 @@ function PendingRequests() {
             const app = processedApps.find(a => a.id === selected[0]);
             setDialog({ open: 'accept', data: { ...app, role: null } });
         } else {
+            setRejectMarkAsSpam(false);
             setDialog({ open: 'reject', data: null });
         }
     };
-    const handleCloseDialog = () => setDialog({ open: null, data: null });
+    const handleCloseDialog = () => {
+        setDialog({ open: null, data: null });
+        setRejectMarkAsSpam(false);
+    };
 
     const handleConfirmApprove = async () => {
         if (!dialog.data?.role?.id) {
@@ -167,11 +173,14 @@ function PendingRequests() {
     const handleConfirmReject = async () => {
         setActionLoading(true);
         try {
-            await Promise.all(selected.map(appId => rejectUserApplication(appId)));
+            await Promise.all(selected.map(appId => rejectUserApplication(appId, { markAsSpam: rejectMarkAsSpam })));
             handleCloseDialog();
             setSelected([]);
             await fetchPageData();
-            toast.success(`${selected.length} application(s) rejected successfully!`);
+            const message = rejectMarkAsSpam
+                ? `${selected.length} application(s) rejected and marked as spam.`
+                : `${selected.length} application(s) rejected successfully!`;
+            toast.success(message);
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -272,7 +281,23 @@ function PendingRequests() {
 
             <Dialog open={dialog.open === 'reject'} onClose={handleCloseDialog}>
                 <DialogTitle>Confirm Reject</DialogTitle>
-                <DialogContent>Are you sure you want to reject the {selected.length} selected application(s)?</DialogContent>
+                <DialogContent>
+                    <Typography gutterBottom>
+                        Are you sure you want to reject the {selected.length} selected application(s)?
+                    </Typography>
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={rejectMarkAsSpam}
+                                onChange={(event) => setRejectMarkAsSpam(event.target.checked)}
+                            />
+                        }
+                        label="Mark as spam"
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                        If marked as spam, requests from the same user email will no longer show up in this list.
+                    </Typography>
+                </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseDialog}>Cancel</Button>
                     <Button onClick={handleConfirmReject} color="error" variant="contained" disabled={actionLoading}>

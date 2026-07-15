@@ -13,6 +13,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 // MODIFICATION: Added useAuth import
 import useAuth from '../../hooks/useAuth';
+import usePrivileges from '../../hooks/usePrivileges';
 import { getApiKeys, revokeApiKey, updateApiKey } from '../../api/apiKeys';
 import { parseApiError } from '../../utils/errorUtils';
 import CreateApiKeyModal from './CreateApiKeyModal';
@@ -28,6 +29,7 @@ const formatDate = (isoString, emptyText = 'N/A') => {
 function ApiKeys() {
     // MODIFICATION: Get the reactive activeNgroupId from useAuth.
     const { activeNgroupId } = useAuth();
+    const { hasPrivilege } = usePrivileges();
     const [apiKeys, setApiKeys] = useState([]);
     const [selected, setSelected] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -156,7 +158,7 @@ function ApiKeys() {
                         <Typography variant="h5">API Key Management</Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <TextField label="Search Keys" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                            <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick}>Create API Key</Button>
+                            <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick} disabled={!hasPrivilege('api-key:create')}>Create API Key</Button>
                             <Button variant="outlined" startIcon={<SyncLockIcon />} onClick={handleSuspendReactivateClick} disabled={selected.length === 0}>Suspend/Reactivate</Button>
                             <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={handleRevokeClick} disabled={selected.length === 0}>Revoke</Button>
                         </Box>
