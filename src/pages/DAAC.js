@@ -4,7 +4,8 @@ import {
     Box, Card, CardContent, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Paper, Typography, Checkbox,
     TablePagination, Dialog, DialogTitle, DialogContent, DialogActions,
-    TextField, TableSortLabel, CircularProgress, Container, Alert
+    TextField, TableSortLabel, CircularProgress, Container, Alert,
+    FormControlLabel
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -29,7 +30,7 @@ const headCells = [
 
 export default function DAAC() {
     usePageTitle("DAAC Egress");
-    
+
     const dispatch = useDispatch();
     const { activeNgroupId } = useAuth();
     const { hasPrivilege } = usePrivileges();
@@ -37,7 +38,7 @@ export default function DAAC() {
 
     // Get data from the central Redux cache
     const { egresses } = useSelector((state) => state.dataCache);
-    
+
     // Local state for UI operations
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState([]);
@@ -59,7 +60,7 @@ export default function DAAC() {
             dispatch(fetchEgresses());
         }
     }, [activeNgroupId, egresses.status, dispatch]);
-    
+
     // Derives the page's loading state from the cache status
     useEffect(() => {
         setLoading(egresses.status === 'loading');
@@ -86,16 +87,81 @@ export default function DAAC() {
     const handleOpenDialog = (type, data = null) => {
         if (type === 'edit') {
             const egressToEdit = egresses.data.find(e => e.id === selected[0]);
-            const prettyConfig = JSON.stringify(egressToEdit.config, null, 2);
-            setDialog({ open: 'edit', data: { ...egressToEdit, config: prettyConfig } });
+
+            // Extract prefix_username and create_collection_subfolder from the egress config
+            const configObj = { ...egressToEdit.config };
+            const prefixUsername = configObj.prefix_username === "true" || configObj.prefix_username === true;
+            const createCollectionSubfolder = configObj.create_collection_subfolder === "true" || configObj.create_collection_subfolder === true;
+
+            // Delete these keys so they are not shown in the JSON config text area
+            delete configObj.prefix_username;
+            delete configObj.create_collection_subfolder;
+
+            const prettyConfig = JSON.stringify(configObj, null, 2);
+            setDialog({
+                open: 'edit',
+                data: {
+                    ...egressToEdit,
+                    prefix_username: prefixUsername,
+                    create_collection_subfolder: createCollectionSubfolder,
+                    config: prettyConfig
+                }
+            });
         } else if (type === 'add') {
-            setDialog({ open: 'add', data: { type: "", path: "", config: "{\n  \n}" } });
+            setDialog({
+                open: 'add',
+                data: {
+                    type: "",
+                    path: "",
+                    prefix_username: false,
+                    create_collection_subfolder: false,
+                    config: "{\n  \n}"
+                }
+            });
         } else {
             setDialog({ open: type, data });
         }
     };
 
     const handleCloseDialog = () => setDialog({ open: null, data: null });
+
+    const folderStructurePreview = useMemo(() => {
+        let bucket = "<bucket-name>";
+        let destination = "<destination-path>";
+        try {
+            const parsed = JSON.parse(dialog.data?.config || "{}");
+            if (parsed.bucket) bucket = parsed.bucket;
+            if (parsed['destination-path']) destination = parsed['destination-path'];
+        } catch (e) {
+            // fallback
+        }
+
+        const prefixUsernameValue = dialog.data?.prefix_username || false;
+        const createCollectionSubfolderValue = dialog.data?.create_collection_subfolder || false;
+
+        const parts = [bucket];
+        if (destination && destination !== "<destination-path>") {
+            parts.push(destination);
+        }
+        if (createCollectionSubfolderValue) {
+            parts.push("<collection>");
+        }
+        if (prefixUsernameValue) {
+            parts.push("<username>");
+        }
+        parts.push("<filename>");
+        return parts.join("\\");
+    }, [dialog.data?.config, dialog.data?.prefix_username, dialog.data?.create_collection_subfolder]);
+
+    const handleCheckboxChange = (name, checked) => {
+        setDialog(prev => ({
+            ...prev,
+            data: {
+                ...prev.data,
+                [name]: checked
+            }
+        }));
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -110,12 +176,20 @@ export default function DAAC() {
         }
 
         try {
+            const payload = {
+                type: dialog.data.type,
+                path: dialog.data.path,
+                config: {
+                    ...parsedConfig,
+                    prefix_username: dialog.data.prefix_username ? "true" : "false",
+                    create_collection_subfolder: dialog.data.create_collection_subfolder ? "true" : "false"
+                }
+            };
             if (dialog.open === 'add') {
-                await egressApi.createEgress({ ...dialog.data, config: parsedConfig });
+                await egressApi.createEgress(payload);
                 toast.success("Egress added successfully!");
             } else if (dialog.open === 'edit') {
-                const { id, ...updateData } = { ...dialog.data, config: parsedConfig };
-                await egressApi.updateEgress(id, updateData);
+                await egressApi.updateEgress(dialog.data.id, payload);
                 toast.success("Egress updated successfully!");
             }
             handleCloseDialog();
@@ -234,9 +308,44 @@ export default function DAAC() {
                     <DialogContent>
                         {dialog.data && (
                             <>
-                                <TextField autoFocus margin="dense" name="type" label="Type" fullWidth value={dialog.data.type} onChange={(e) => setDialog({...dialog, data: {...dialog.data, type: e.target.value}})} required/>
-                                <TextField margin="dense" name="path" label="Path" fullWidth value={dialog.data.path} onChange={(e) => setDialog({...dialog, data: {...dialog.data, path: e.target.value}})} required/>
-                                <TextField margin="dense" name="config" label="Config (JSON format)" fullWidth multiline rows={6} value={dialog.data.config} onChange={(e) => setDialog({...dialog, data: {...dialog.data, config: e.target.value}})} required/>
+                                <TextField autoFocus margin="dense" name="type" label="Type" fullWidth value={dialog.data.type} onChange={(e) => setDialog({ ...dialog, data: { ...dialog.data, type: e.target.value } })} required />
+                                <TextField margin="dense" name="path" label="Path" fullWidth value={dialog.data.path} onChange={(e) => setDialog({ ...dialog, data: { ...dialog.data, path: e.target.value } })} required />
+                                <TextField margin="dense" name="config" label="Config (JSON format)" fullWidth multiline rows={5} value={dialog.data.config} onChange={(e) => setDialog({ ...dialog, data: { ...dialog.data, config: e.target.value } })} required />
+
+                                <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column' }}>
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                checked={!!dialog.data.create_collection_subfolder}
+                                                onChange={(e) => handleCheckboxChange("create_collection_subfolder", e.target.checked)}
+                                            />
+                                        }
+                                        label="Upload files to a collection-name subfolder"
+                                    />
+
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                checked={!!dialog.data.prefix_username}
+                                                onChange={(e) => handleCheckboxChange("prefix_username", e.target.checked)}
+                                            />
+                                        }
+                                        label="Upload files to a provider-username subfolder"
+                                    />
+                                </Box>
+
+                                {(dialog.data.prefix_username || dialog.data.create_collection_subfolder) && (
+                                    <Box sx={{ mt: 2 }}>
+                                        <Alert severity="info">
+                                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                                                Folder Structure Preview:
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all', mt: 0.5 }}>
+                                                {folderStructurePreview}
+                                            </Typography>
+                                        </Alert>
+                                    </Box>
+                                )}
                             </>
                         )}
                     </DialogContent>
