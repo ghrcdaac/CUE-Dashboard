@@ -30,6 +30,15 @@ export const listFiles = (params) => {
 };
 
 /**
+ * Searches file records by partial name within the active ngroup.
+ * @param {object} params - { q, status, page, page_size }
+ */
+export const searchFilesByName = (params) => {
+    const queryString = buildQueryString(params);
+    return apiClient.get(`/files/search?${queryString}`);
+};
+
+/**
  * Finds file records by exact name match within the active ngroup.
  * @param {string} name - The exact file name to search for.
  */
