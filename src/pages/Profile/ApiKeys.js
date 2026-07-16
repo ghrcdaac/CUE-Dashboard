@@ -157,8 +157,8 @@ function ApiKeys() {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <TextField label="Search Keys" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                             <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick} disabled={!hasPrivilege('api-key:create')}>Create API Key</Button>
-                            <Button variant="outlined" startIcon={<SyncLockIcon />} onClick={handleSuspendReactivateClick} disabled={selected.length === 0}>Suspend/Reactivate</Button>
-                            <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={handleRevokeClick} disabled={selected.length === 0}>Revoke</Button>
+                            <Button variant="outlined" startIcon={<SyncLockIcon />} onClick={handleSuspendReactivateClick} disabled={selected.length === 0 || !hasPrivilege('api-key:update')}>Suspend/Reactivate</Button>
+                            <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={handleRevokeClick} disabled={selected.length === 0 || !hasPrivilege('api-key:delete')}>Revoke</Button>
                         </Box>
                     </Box>
                     <TableContainer component={Paper}>
@@ -189,9 +189,9 @@ function ApiKeys() {
                                                 <TableCell><code>...{row.key_display_suffix}</code></TableCell>
                                                 <TableCell>{row.proxy_user_name || row.user_name || 'N/A'}</TableCell>
                                                 <TableCell>{row.created_by_user_name || 'N/A'}</TableCell>
-                                                <TableCell><Chip 
-                                                                label={isExpired ? 'Expired' : (row.is_active ? 'Active' : 'Suspended')} 
-                                                                color={isExpired ? 'error' : (row.is_active ? 'success' : 'default')} 
+                                                <TableCell><Chip
+                                                                label={isExpired ? 'Expired' : (row.is_active ? 'Active' : 'Suspended')}
+                                                                color={isExpired ? 'error' : (row.is_active ? 'success' : 'default')}
                                                                 size="small"
                                                             /></TableCell>
                                                 <TableCell>{formatDate(row.expires_at)}</TableCell>
