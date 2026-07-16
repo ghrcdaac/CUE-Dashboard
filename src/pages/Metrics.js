@@ -1,12 +1,10 @@
-import React from 'react';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
   CardContent,
   Typography,
   Grid,
-  CircularProgress,
   Alert,
   Chip,
   Skeleton,
@@ -119,8 +117,6 @@ function Metrics() {
     return () => setMenuItems([]);
   }, [setMenuItems, showGlobalMetrics]);
 
-  // MODIFICATION START: The data fetching logic has been updated.
-  // It now depends on both activeNgroupId and activeFilters, ensuring it re-runs
   // when either the group is changed or a new filter is applied.
   const fetchMetrics = useCallback(
     async () => {
@@ -133,7 +129,7 @@ function Metrics() {
       setErrorMetrics(null);
       
       try {
-        // Now uses the activeFilters state directly
+        // uses the activeFilters state directly
         const summaryData = await fileMetricsApi.getMetricsSummary(activeFilters);
         if (summaryData) {
           setDailyVolumeData(summaryData.daily_volume || []);
@@ -154,10 +150,9 @@ function Metrics() {
   );
 
   useEffect(() => {
-    // Call fetchMetrics directly. It will re-run when its dependencies change.
+    // It will re-run when its dependencies change.
     fetchMetrics();
   }, [fetchMetrics]);
-  // MODIFICATION END
 
   const handleApplyFilters = (filters) => {
     setActiveFilters(filters);
@@ -184,13 +179,13 @@ function Metrics() {
         start: activeFilters?.start_date || sevenDaysAgo.toISOString().split('T')[0],
         end: activeFilters?.end_date || now.toISOString().split('T')[0]
     };
-    
+
     const dailyVolumeForPdf = (dailyVolumeData || []).map(item => ({
       ...item,
       value: formatBytes(item.value),
     }));
 
-    generateMetricsReport(summaryData,statusCountsData,dailyVolumeForPdf,dailyCountData, info);
+    generateMetricsReport(summaryData, statusCountsData, dailyVolumeForPdf, dailyCountData, info);
   };
 
   const volumeTooltipFormatter = (value) => [formatBytes(value), 'Volume'];

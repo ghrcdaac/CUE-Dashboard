@@ -11,7 +11,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-// MODIFICATION: Added useAuth import
 import useAuth from '../../hooks/useAuth';
 import usePrivileges from '../../hooks/usePrivileges';
 import { getApiKeys, revokeApiKey, updateApiKey } from '../../api/apiKeys';
@@ -27,7 +26,6 @@ const formatDate = (isoString, emptyText = 'N/A') => {
 };
 
 function ApiKeys() {
-    // MODIFICATION: Get the reactive activeNgroupId from useAuth.
     const { activeNgroupId } = useAuth();
     const { hasPrivilege } = usePrivileges();
     const [apiKeys, setApiKeys] = useState([]);
@@ -44,7 +42,7 @@ function ApiKeys() {
     const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
 
     const fetchApiKeys = useCallback(async () => {
-        // MODIFICATION: Guard against running if no group is selected.
+        // Guard against running if no group is selected.
         if (!activeNgroupId) {
             setLoading(false);
             setApiKeys([]); // Clear keys if no group is active
@@ -60,7 +58,7 @@ function ApiKeys() {
         } finally {
             setLoading(false);
         }
-    // MODIFICATION: Added activeNgroupId to the dependency array.
+    // activeNgroupId to the dependency array.
     }, [activeNgroupId]);
 
     useEffect(() => {

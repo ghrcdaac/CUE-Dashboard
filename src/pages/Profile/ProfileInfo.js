@@ -1,6 +1,5 @@
 // src/pages/Profile/ProfileInfo.js
 
-import React from 'react';
 import {
   Box,
   Card,
@@ -72,7 +71,7 @@ function ProfileInfo() {
             </Box>
             <Box>
                 <Typography variant="subtitle2" color="text.secondary">Registered On</Typography>
-                {/* UPDATED: Use user.registered for the timestamp */}
+                {/* Use user.registered for the timestamp */}
                 <Typography>{formatLocalDate(user.registered)}</Typography>
             </Box>
         </Stack>
@@ -108,7 +107,7 @@ function ProfileInfo() {
               user.ngroups.map((ngroup) => (
                 <Chip
                   key={ngroup.id}
-                  // UPDATED: Use ngroup.short_name for the label
+                  // Use ngroup.short_name for the label
                   label={ngroup.short_name}
                   variant="outlined"
                 />
