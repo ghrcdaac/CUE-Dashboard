@@ -15,6 +15,8 @@ export const fetchProviders = createAsyncThunk(
   async ({ page, pageSize }, { rejectWithValue }) => {
     try {
       const response = await providerApi.listProviders(page, pageSize);
+      response.cacheStart = (page - 1) * pageSize;
+      response.cacheSize = pageSize
       return response;
     } catch (error) {
       return rejectWithValue(parseApiError(error));
@@ -27,18 +29,22 @@ export const fetchUsers = createAsyncThunk(
   async ({ page, pageSize }, { rejectWithValue }) => {
     try {
       const response = await listCueusers(page, pageSize);
-      return response || [];
+      response.cacheStart = (page - 1) * pageSize;
+      response.cacheSize = pageSize
+      return response;
     } catch (error) {
       return rejectWithValue(parseApiError(error));
     }
   }
 );
 
-export const fetchCollections = createAsyncThunk( 
+export const fetchCollections = createAsyncThunk(
   'dataCache/fetchCollections', async ({ page, pageSize }, { rejectWithValue }) => {
      try { 
       const response = await collectionApi.listCollections(page, pageSize); 
-      return response; // response = { collections, page, page_size, total } 
+      response.cacheStart = (page - 1) * pageSize;
+      response.cacheSize = pageSize
+      return response; // response = { collections, page, page_size, total }
     } 
     catch (error) { 
       return rejectWithValue(parseApiError(error)); } 
@@ -61,7 +67,9 @@ export const fetchEgresses = createAsyncThunk(
   async ({ page, pageSize }, { rejectWithValue }) => {
     try {
       const response = await egressApi.listEgresses(page, pageSize);
-      return response || [];
+      response.cacheStart = (page - 1) * pageSize;
+      response.cacheSize = pageSize
+      return response;
     } catch (error) {
       return rejectWithValue(parseApiError(error));
     }
@@ -71,11 +79,11 @@ export const fetchEgresses = createAsyncThunk(
 // --- Initial State ---
 
 const initialState = {
-  providers: { data: [], status: 'idle', page: 1, pageSize: 10, total: 0 }, // status: 'idle' | 'loading' | 'succeeded' | 'failed'
-  users: { data: [], status: 'idle', page: 1, pageSize: 10, total: 0},
-  collections: { data: [], page: 1, pageSize: 10, total: 0, status: 'idle' },
+  providers: { data: [], status: 'idle', page: 1, pageSize: 50, total: 0, cacheStart: 0, cacheSize: 50}, // status: 'idle' | 'loading' | 'succeeded' | 'failed'
+  users: { data: [], status: 'idle', page: 1, pageSize: 50, total: 0, cacheStart: 0, cacheSize: 50},
+  collections: { data: [], page: 1, pageSize: 50, total: 0, status: 'idle', cacheStart: 0, cacheSize: 50},
   roles: { data: [], status: 'idle' },
-  egresses: { data: [], status: 'idle', page: 1, pageSize: 10, total: 0},
+  egresses: { data: [], status: 'idle', page: 1, pageSize: 50, total: 0, cacheStart: 0, cacheSize: 50},
   error: null,
 };
 
@@ -87,11 +95,11 @@ const dataCacheSlice = createSlice({
   reducers: {
     // Action to reset the cache, e.g., when the activeNgroupId changes
     resetCache: (state) => {
-      state.providers = { data: [], status: 'idle', page: 1, pageSize: 10, total: 0};
-      state.users = { data: [], status: 'idle', page: 1, pageSize: 10, total: 0};
-      state.collections = { data: [], status: 'idle', page: 1, pageSize: 10, total: 0};
+      state.providers = { data: [], status: 'idle', page: 1, pageSize: 50, total: 0, cacheStart: 0, cacheSize: 50};
+      state.users = { data: [], status: 'idle', page: 1, pageSize: 50, total: 0, cacheStart: 0, cacheSize: 50};
+      state.collections = { data: [], status: 'idle', page: 1, pageSize: 50, total: 0, cacheStart: 0, cacheSize: 50};
       state.roles = { data: [], status: 'idle' };
-      state.egresses = { data: [], status: 'idle', page: 1, pageSize: 10, total: 0};
+      state.egresses = { data: [], status: 'idle', page: 1, pageSize: 50, total: 0, cacheStart: 0, cacheSize: 50};
       state.error = null;
     },
   },
@@ -115,13 +123,21 @@ const dataCacheSlice = createSlice({
     };
 
     const handlePaginationFulfilled = (state, action) => {
-      const entity = action.type.split('/')[1].split('fetch')[1].toLowerCase();
-      state[entity].status = 'succeeded';
-      state[entity].data = action.payload[entity];
-      state[entity].page = action.payload.page;
-      state[entity].pageSize = action.payload.page_size;
-      state[entity].total = action.payload.total;
-    }
+        const entity = action.type.split('/')[1].split('fetch')[1].toLowerCase();
+
+        const page = action.payload.page;
+        const pageSize = action.payload.page_size;
+        const items = action.payload[entity];
+
+        state[entity].status = 'succeeded';
+        state[entity].data = items;
+        state[entity].page = page;
+        state[entity].pageSize = pageSize;
+        state[entity].total = action.payload.total;
+        state[entity].cacheStart = action.payload.cacheStart;
+        state[entity].cacheSize = action.payload.cacheSize;
+    };
+
 
     builder
       .addCase(fetchProviders.pending, handlePending)
