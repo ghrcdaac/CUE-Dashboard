@@ -145,7 +145,9 @@ export default function Home() {
         <Container maxWidth="lg" sx={{ py: 4 }}>
          <Typography variant="h5" sx={{ mb: 2, textAlign: 'center' }}>Cloud Upload Environment (CUE)</Typography>
             <Grid container spacing={3} justifyContent="center">
+                {hasPrivilege("collection:page") && (
                 <StatCard title="Collections" value={collections.total} onClick={() => navigate('/collections')} icon={<CollectionsIcon color="action" />} loading={collections.status === 'loading'} />
+                )}
                 <StatCard title="Providers" value={providers.total} onClick={() => navigate('/providers')} icon={<AccountBoxIcon color="action" />} loading={providers.status === 'loading'} />
                 <StatCard title="Egress" value={egresses.total} onClick={() => navigate('/daac')} icon={<OutputIcon color="action" />} loading={egresses.status === 'loading'} />
                 {/*The Users card is now only rendered if the user has the 'user:page' privilege. */}
