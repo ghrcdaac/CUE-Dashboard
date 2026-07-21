@@ -4,7 +4,8 @@ import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Paper, Button, Typography, Checkbox, TablePagination,
     TextField, Box, Card, CardContent,
-    TableSortLabel, CircularProgress, MenuItem, Container, Alert
+    TableSortLabel, CircularProgress, Container, Alert,
+    Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast, ToastContainer } from 'react-toastify';
@@ -31,7 +32,8 @@ function RejectedRequests() {
     const [error, setError] = useState(null);
     const [selectedApplications, setSelectedApplications] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [spamFilter, setSpamFilter] = useState('all');
+    const [spamFilter] = useState('spam');
+    const [confirmUnmarkDialog, setConfirmUnmarkDialog] = useState({ open: false, idsToRestore: [] });
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [order, setOrder] = useState('asc');
@@ -172,13 +174,9 @@ function RejectedRequests() {
         setOrderBy(property);
     };
 
-    const handleSpamFilterChange = (event) => {
-        setSpamFilter(event.target.value);
-        setPage(0);
-        setSelectedApplications([]);
-    };
 
-    const handleUnmarkSpamClick = async () => {
+
+    const handleUnmarkSpamClick = () => {
         const spamIdsToUnmark = selectedApplications.filter(id => {
             const app = applications.find(a => a.id === id);
             return app ? app.is_spam : false;
@@ -191,6 +189,11 @@ function RejectedRequests() {
             return;
         }
 
+        setConfirmUnmarkDialog({ open: true, idsToRestore });
+    };
+
+    const handleConfirmUnmarkSpam = async () => {
+        const { idsToRestore } = confirmUnmarkDialog;
         setRestoreLoading(true);
         try {
             await Promise.all(idsToRestore.map(applicationId => restoreUserApplication(applicationId)));
@@ -202,6 +205,7 @@ function RejectedRequests() {
                 ));
             }
             setSelectedApplications(selectedApplications.filter(id => !idsToRestore.includes(id)));
+            setConfirmUnmarkDialog({ open: false, idsToRestore: [] });
             toast.success('Applications unmarked from spam successfully!');
         } catch (err) {
             toast.error(`Error unmarking applications: ${parseApiError(err)}`);
@@ -258,18 +262,7 @@ function RejectedRequests() {
                                     setPage(0);
                                 }}
                             />
-                            <TextField
-                                select
-                                label="Filter"
-                                size="small"
-                                value={spamFilter}
-                                onChange={handleSpamFilterChange}
-                                sx={{ minWidth: 180 }}
-                            >
-                                <MenuItem value="all">All</MenuItem>
-                                <MenuItem value="rejected">Rejected</MenuItem>
-                                <MenuItem value="spam">Spam</MenuItem>
-                            </TextField>
+
                             {((spamFilter === 'spam' && selectedApplications.length > 0) ||
                               (spamFilter === 'all' && hasSelectedSpam)) && (
                                 <Button
@@ -372,6 +365,20 @@ function RejectedRequests() {
                 </CardContent>
             </Card>
 
+            <Dialog open={confirmUnmarkDialog.open} onClose={() => setConfirmUnmarkDialog({ open: false, idsToRestore: [] })}>
+                <DialogTitle>Confirm Unmark Spam</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        After unmarking, the user will be able to submit applications again. Do you want to unmark?
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setConfirmUnmarkDialog({ open: false, idsToRestore: [] })}>Cancel</Button>
+                    <Button onClick={handleConfirmUnmarkSpam} color="primary" variant="contained" disabled={restoreLoading}>
+                        {restoreLoading ? <CircularProgress size={24} color="inherit" /> : 'Confirm'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
         </Container>
     );

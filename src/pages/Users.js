@@ -78,7 +78,7 @@ function Users() {
         const usersMenuItems = [
             { text: 'Users', path: '/users', icon: <PersonIcon /> },
             { text: 'Pending Requests', path: '/users/pending-requests', icon: <PendingActionsIcon /> },
-            { text: 'Rejected Requests', path: '/users/rejected-requests', icon: <BlockIcon /> },
+            { text: 'Spam Requests', path: '/users/spam-requests', icon: <BlockIcon /> },
         ];
         setMenuItems(usersMenuItems);
         return () => setMenuItems([]);

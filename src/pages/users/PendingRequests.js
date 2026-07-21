@@ -43,6 +43,7 @@ function PendingRequests() {
     const [selected, setSelected] = useState([]);
     const [dialog, setDialog] = useState({ open: null, data: null });
     const [rejectMarkAsSpam, setRejectMarkAsSpam] = useState(false);
+    const [successDialog, setSuccessDialog] = useState({ open: false, message: '' });
     
     const [searchTerm, setSearchTerm] = useState('');
     const [page, setPage] = useState(0);
@@ -177,10 +178,14 @@ function PendingRequests() {
             handleCloseDialog();
             setSelected([]);
             await fetchPageData();
-            const message = rejectMarkAsSpam
-                ? `${selected.length} application(s) rejected and marked as spam.`
-                : `${selected.length} application(s) rejected successfully!`;
-            toast.success(message);
+            if (rejectMarkAsSpam) {
+                toast.success(`${selected.length} application(s) rejected and marked as spam.`);
+            } else {
+                setSuccessDialog({
+                    open: true,
+                    message: `${selected.length} application(s) rejected successfully! The user(s) is allowed to submit application again.`
+                });
+            }
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -302,6 +307,18 @@ function PendingRequests() {
                     <Button onClick={handleCloseDialog}>Cancel</Button>
                     <Button onClick={handleConfirmReject} color="error" variant="contained" disabled={actionLoading}>
                         {actionLoading ? <CircularProgress size={24} /> : "Reject"}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={successDialog.open} onClose={() => setSuccessDialog({ open: false, message: '' })}>
+                <DialogTitle>Action Completed</DialogTitle>
+                <DialogContent>
+                    <Typography>{successDialog.message}</Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setSuccessDialog({ open: false, message: '' })} color="primary" variant="contained">
+                        OK
                     </Button>
                 </DialogActions>
             </Dialog>
