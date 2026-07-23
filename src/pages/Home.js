@@ -149,7 +149,9 @@ export default function Home() {
                 <StatCard title="Collections" value={collections.total} onClick={() => navigate('/collections')} icon={<CollectionsIcon color="action" />} loading={collections.status === 'loading'} />
                 )}
                 <StatCard title="Providers" value={providers.total} onClick={() => navigate('/providers')} icon={<AccountBoxIcon color="action" />} loading={providers.status === 'loading'} />
+                {hasPrivilege("egress:read") && (
                 <StatCard title="Egress" value={egresses.total} onClick={() => navigate('/daac')} icon={<OutputIcon color="action" />} loading={egresses.status === 'loading'} />
+                )}
                 {/*The Users card is now only rendered if the user has the 'user:page' privilege. */}
                 {hasPrivilege("user:page") && (
                     <StatCard title="Users" value={users.total} onClick={() => navigate('/users')} icon={<GroupIcon color="action" />} loading={users.status === 'loading'} />
