@@ -145,7 +145,7 @@ function Users() {
             return {
                 ...user,
                 role: roleName ? roleMap.get(roleName) : null,
-                providerName: user.provider_id ? providerMap.get(user.provider_id) || 'N/A' : '',
+                providerName: user.providers && user.providers.length > 0 ? user.providers.map(p => p.short_name).join(', ') : '',
             };
         });
 
