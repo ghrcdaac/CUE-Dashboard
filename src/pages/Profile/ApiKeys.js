@@ -160,7 +160,9 @@ function ApiKeys() {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <TextField label="Search Keys" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                             <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick} disabled={!hasPrivilege('api-key:create')}>Create API Key</Button>
-                            <Button variant="outlined" startIcon={<SyncLockIcon />} onClick={handleSuspendReactivateClick} disabled={selected.length === 0 || !hasPrivilege('api-key:update')}>Suspend/Reactivate</Button>
+                            {hasPrivilege('api-key:update') && (
+                                <Button variant="outlined" startIcon={<SyncLockIcon />} onClick={handleSuspendReactivateClick} disabled={selected.length === 0 || !hasPrivilege('api-key:update')}>Suspend/Reactivate</Button>
+                            )}
                             <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={handleRevokeClick} disabled={selected.length === 0 || !hasPrivilege('api-key:delete')}>Revoke</Button>
                         </Box>
                     </Box>
