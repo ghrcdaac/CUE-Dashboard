@@ -17,7 +17,7 @@ import { parseApiError } from '../../utils/errorUtils';
 import { getEditableRoles } from '../../utils/permissionUtils';
 
 import { listUserApplications, approveUserApplication, rejectUserApplication } from '../../api/userApplicationApi';
-import { fetchRoles, fetchProviders } from '../../app/reducers/dataCacheSlice';
+import { fetchRoles, fetchProviders, fetchUsers } from '../../app/reducers/dataCacheSlice';
 
 const headCells = [
     { id: 'name', label: 'Name' },
@@ -34,7 +34,7 @@ function PendingRequests() {
     const { user: currentUser, activeNgroupId } = useAuth();
     const { hasPrivilege } = usePrivileges();
 
-    const { roles, providers } = useSelector((state) => state.dataCache);
+    const { roles, providers, users } = useSelector((state) => state.dataCache);
 
     const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -162,6 +162,12 @@ function PendingRequests() {
             await approveUserApplication(dialog.data.id, dialog.data.role.id);
             handleCloseDialog();
             setSelected([]);
+            
+            // Refresh the user list cache to show the updated list
+            const usersPage = users?.page || 1;
+            const usersPageSize = users?.pageSize || 50;
+            dispatch(fetchUsers({ page: usersPage, pageSize: usersPageSize }));
+
             await fetchPageData(); 
             toast.success("Application approved successfully!");
         } catch (error) {
