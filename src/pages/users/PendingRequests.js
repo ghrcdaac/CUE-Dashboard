@@ -17,7 +17,7 @@ import { parseApiError } from '../../utils/errorUtils';
 import { getEditableRoles } from '../../utils/permissionUtils';
 
 import { listUserApplications, approveUserApplication, rejectUserApplication } from '../../api/userApplicationApi';
-import { fetchRoles, fetchProviders } from '../../app/reducers/dataCacheSlice';
+import { fetchRoles, fetchProviders, fetchUsers } from '../../app/reducers/dataCacheSlice';
 
 const headCells = [
     { id: 'name', label: 'Name' },
@@ -34,7 +34,7 @@ function PendingRequests() {
     const { user: currentUser, activeNgroupId } = useAuth();
     const { hasPrivilege } = usePrivileges();
 
-    const { roles, providers } = useSelector((state) => state.dataCache);
+    const { roles, providers, users } = useSelector((state) => state.dataCache);
 
     const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -43,6 +43,7 @@ function PendingRequests() {
     const [selected, setSelected] = useState([]);
     const [dialog, setDialog] = useState({ open: null, data: null });
     const [rejectMarkAsSpam, setRejectMarkAsSpam] = useState(false);
+    const [successDialog, setSuccessDialog] = useState({ open: false, message: '' });
     
     const [searchTerm, setSearchTerm] = useState('');
     const [page, setPage] = useState(0);
@@ -161,6 +162,12 @@ function PendingRequests() {
             await approveUserApplication(dialog.data.id, dialog.data.role.id);
             handleCloseDialog();
             setSelected([]);
+            
+            // Refresh the user list cache to show the updated list
+            const usersPage = users?.page || 1;
+            const usersPageSize = users?.pageSize || 50;
+            dispatch(fetchUsers({ page: usersPage, pageSize: usersPageSize }));
+
             await fetchPageData(); 
             toast.success("Application approved successfully!");
         } catch (error) {
@@ -177,10 +184,14 @@ function PendingRequests() {
             handleCloseDialog();
             setSelected([]);
             await fetchPageData();
-            const message = rejectMarkAsSpam
-                ? `${selected.length} application(s) rejected and marked as spam.`
-                : `${selected.length} application(s) rejected successfully!`;
-            toast.success(message);
+            if (rejectMarkAsSpam) {
+                toast.success(`${selected.length} application(s) rejected and marked as spam.`);
+            } else {
+                setSuccessDialog({
+                    open: true,
+                    message: `${selected.length} application(s) rejected successfully! The user(s) is allowed to submit application again.`
+                });
+            }
         } catch (error) {
             toast.error(parseApiError(error));
         } finally {
@@ -302,6 +313,18 @@ function PendingRequests() {
                     <Button onClick={handleCloseDialog}>Cancel</Button>
                     <Button onClick={handleConfirmReject} color="error" variant="contained" disabled={actionLoading}>
                         {actionLoading ? <CircularProgress size={24} /> : "Reject"}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={successDialog.open} onClose={() => setSuccessDialog({ open: false, message: '' })}>
+                <DialogTitle>Action Completed</DialogTitle>
+                <DialogContent>
+                    <Typography>{successDialog.message}</Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setSuccessDialog({ open: false, message: '' })} color="primary" variant="contained">
+                        OK
                     </Button>
                 </DialogActions>
             </Dialog>

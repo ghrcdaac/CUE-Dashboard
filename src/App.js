@@ -142,7 +142,7 @@ function App() {
                         <Route path="users" element={<ProtectedRoute><Users /></ProtectedRoute>}>
                            <Route index element={<Users />} />
                             <Route path="pending-requests" element={<PendingRequests />} />
-                            <Route path="rejected-requests" element={<RejectedRequests />} />
+                            <Route path="spam-requests" element={<RejectedRequests />} />
                         </Route>
 
                         <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />

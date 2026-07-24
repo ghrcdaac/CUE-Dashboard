@@ -1,173 +1,229 @@
 // src/pages/users/RejectedRequests.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    Paper, Button, Typography, Checkbox, TablePagination, Dialog, DialogTitle,
-    DialogContent, DialogActions, TextField, Box, Card, CardContent,
-    TableSortLabel, CircularProgress
+    Paper, Button, Typography, Checkbox, TablePagination,
+    TextField, Box, Card, CardContent,
+    TableSortLabel, CircularProgress, Container, Alert,
+    Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
+import { useSelector, useDispatch } from 'react-redux';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import useAuth from '../../hooks/useAuth';
-import DeleteIcon from '@mui/icons-material/Delete';
 
-// API Imports
-import { listUserApplications, deleteUserApplication } from '../../api/userApplicationApi';
-import { fetchProviderById } from '../../api/providerApi';
+import useAuth from '../../hooks/useAuth';
+import usePageTitle from '../../hooks/usePageTitle';
+import { parseApiError } from '../../utils/errorUtils';
+import UndoIcon from '@mui/icons-material/Undo';
+
+import { listUserApplications, restoreUserApplication } from '../../api/userApplicationApi';
+import { fetchProviders } from '../../app/reducers/dataCacheSlice';
+
+
 
 function RejectedRequests() {
-    const [rejectedApplications, setRejectedApplications] = useState([]);
+    const dispatch = useDispatch();
+    const { user: currentUser, activeNgroupId } = useAuth();
+    const { providers } = useSelector((state) => state.dataCache);
+
+    const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [deleteLoading, setDeleteLoading] = useState(false); // Loading for delete
+    const [restoreLoading, setRestoreLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [selectedApplications, setSelectedApplications] = useState([]); // Use array for multiple selections
-    const [selectedApplication, setSelectedApplication] = useState(null); // Single selection
-    const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+    const [selectedApplications, setSelectedApplications] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [spamFilter] = useState('spam');
+    const [confirmUnmarkDialog, setConfirmUnmarkDialog] = useState({ open: false, idsToRestore: [] });
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [order, setOrder] = useState('asc');
     const [orderBy, setOrderBy] = useState('name');
-    const { accessToken, logout } = useAuth();
-    const { navigate } = useAuth();
+
+    usePageTitle(spamFilter === 'spam' ? 'Spam User Requests' : 'Rejected User Requests');
+
+    const isPrivilegedViewer = useMemo(() =>
+        currentUser?.roles?.includes('admin') || currentUser?.roles?.includes('security'),
+        [currentUser?.roles]
+    );
+
+    const hasSelectedSpam = useMemo(() => {
+        return selectedApplications.some(id => {
+            const app = applications.find(a => a.id === id);
+            return app ? app.is_spam : false;
+        });
+    }, [selectedApplications, applications]);
+
+    const activeHeadCells = useMemo(() => {
+        const cells = [
+            { id: 'name', label: 'Name' },
+            { id: 'email', label: 'Email' },
+            { id: 'username', label: 'Username' },
+            { id: 'applied', label: 'Applied' },
+            { id: 'account_type', label: 'Account Type' },
+            { id: 'providerName', label: 'Provider' },
+        ];
+        if (spamFilter === 'all') {
+            cells.push({ id: 'is_spam', label: 'Spam' });
+        }
+        return cells;
+    }, [spamFilter]);
+
+    useEffect(() => {
+        if (providers.status === 'idle') dispatch(fetchProviders());
+    }, [providers.status, dispatch]);
 
     const formatDate = (dateString) => {
         if (!dateString) return '';
-        try {
-            const date = new Date(dateString);
-            return new Intl.DateTimeFormat(navigator.language, {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: 'numeric',
-                second: 'numeric',
-                timeZoneName: 'short'
-            }).format(date);
-        } catch (error) {
-            console.error("Error formatting date:", error);
-            return "Invalid Date";
-        }
+        const date = new Date(dateString);
+        if (Number.isNaN(date.getTime())) return 'Invalid Date';
+
+        return new Intl.DateTimeFormat(navigator.language, {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            second: 'numeric',
+            timeZoneName: 'short'
+        }).format(date);
     };
+
+    const fetchRejectedApplications = useCallback(async () => {
+        if (!isPrivilegedViewer && !activeNgroupId) {
+            setApplications([]);
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            let isSpamVal;
+            if (spamFilter === 'spam') {
+                isSpamVal = true;
+            } else if (spamFilter === 'rejected') {
+                isSpamVal = false;
+            }
+
+            const apps = await listUserApplications('rejected', {
+                forceGlobal: isPrivilegedViewer,
+                isSpam: isSpamVal,
+            });
+            setApplications(apps || []);
+            setSelectedApplications([]);
+        } catch (err) {
+            const apiError = parseApiError(err);
+            setError(apiError);
+            toast.error(apiError);
+        } finally {
+            setLoading(false);
+        }
+    }, [activeNgroupId, isPrivilegedViewer, spamFilter]);
+
+    useEffect(() => {
+        fetchRejectedApplications();
+    }, [fetchRejectedApplications]);
+
+    const processedApplications = useMemo(() => {
+        const providerMap = new Map((providers.data || []).map(provider => [provider.id, provider.short_name]));
+        const lowerSearch = searchTerm.toLowerCase();
+
+        const populated = applications.map(application => ({
+            ...application,
+            providerName: application.provider_id ? providerMap.get(application.provider_id) || 'N/A' : '',
+        }));
+
+        const filtered = lowerSearch
+            ? populated.filter(application =>
+                application.name?.toLowerCase().includes(lowerSearch) ||
+                application.email?.toLowerCase().includes(lowerSearch) ||
+                application.username?.toLowerCase().includes(lowerSearch) ||
+                application.providerName?.toLowerCase().includes(lowerSearch) ||
+                application.justification?.toLowerCase().includes(lowerSearch)
+            )
+            : populated;
+
+        return [...filtered].sort((a, b) => {
+            const isAsc = order === 'asc' ? 1 : -1;
+            const aValue = orderBy === 'applied'
+                ? new Date(a.applied || 0).getTime()
+                : orderBy === 'is_spam'
+                ? (a.is_spam ? 1 : 0)
+                : (a[orderBy] || '').toString().toLowerCase();
+            const bValue = orderBy === 'applied'
+                ? new Date(b.applied || 0).getTime()
+                : orderBy === 'is_spam'
+                ? (b.is_spam ? 1 : 0)
+                : (b[orderBy] || '').toString().toLowerCase();
+
+            if (aValue < bValue) return -1 * isAsc;
+            if (aValue > bValue) return 1 * isAsc;
+            return 0;
+        });
+    }, [applications, providers.data, order, orderBy, searchTerm]);
+
+    const visibleRows = useMemo(
+        () => processedApplications.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
+        [processedApplications, page, rowsPerPage]
+    );
+
     const handleRequestSort = (property) => {
         const isAsc = orderBy === property && order === 'asc';
         setOrder(isAsc ? 'desc' : 'asc');
         setOrderBy(property);
     };
 
-    const sortedApplications = React.useMemo(() => {
-        if (!rejectedApplications) return [];
-        return [...rejectedApplications].sort((a, b) => {
-            const isAsc = order === 'asc';
-            if (orderBy === 'name') {
-                return isAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
-            } else if (orderBy === 'email') {
-                return isAsc ? a.email.localeCompare(b.email) : b.email.localeCompare(a.email);
-            } else if (orderBy === 'username') {
-                return isAsc ? a.username.localeCompare(b.username) : b.username.localeCompare(a.username);
-            } else if (orderBy === 'applied') {
-                const dateA = new Date(a.applied);
-                const dateB = new Date(b.applied);
-                return isAsc ? dateA - dateB : dateB - dateA;
-            } else if (orderBy === 'account_type') {
-                return isAsc ? a.account_type.localeCompare(b.account_type) : b.account_type.localeCompare(a.account_type);
-            } else if (orderBy === 'edpub_id') {
-                const edpubA = a.edpub_id || '';
-                const edpubB = b.edpub_id || '';
-                return isAsc ? edpubA.localeCompare(edpubB) : edpubB.localeCompare(edpubA)
-            } else if (orderBy === 'providerName') {
-                const providerA = a.providerName || '';
-                const providerB = b.providerName || '';
-                return isAsc ? providerA.localeCompare(providerB) : providerB.localeCompare(providerA)
-            }
-            return 0;
+
+
+    const handleUnmarkSpamClick = () => {
+        const spamIdsToUnmark = selectedApplications.filter(id => {
+            const app = applications.find(a => a.id === id);
+            return app ? app.is_spam : false;
         });
-    }, [rejectedApplications, order, orderBy]);
 
-    const visibleRows = React.useMemo(
-        () => {
-            const filteredApplications = sortedApplications.filter(application =>
-                application.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                application.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                application.username.toLowerCase().includes(searchTerm.toLowerCase())
-                || (application.providerName && application.providerName.toLowerCase().includes(searchTerm.toLowerCase())) //search provider name
-            );
-            return filteredApplications.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-        },
-        [sortedApplications, page, rowsPerPage, searchTerm]
-    );
+        const idsToRestore = spamFilter === 'spam' ? selectedApplications : spamIdsToUnmark;
 
-
-
-    const fetchRejectedApplications = useCallback(async () => {
-        setLoading(true);
-        try {
-            const ngroupId = localStorage.getItem('CUE_ngroup_id');
-            if (!ngroupId) {
-                setError("Ngroup ID not found. Please log in again.");
-                toast.error("Ngroup ID not found. Please log in again.");
-                logout(navigate);
-                return;
-            }
-            const applications = await listUserApplications(ngroupId);
-            const rejected = applications.filter(app => app.status === 'rejected');
-
-            const rejectedWithProviders = await Promise.all(rejected.map(async (application) => {
-                if (application.provider_id && application.provider_id.toLowerCase() !== 'none') {
-                    try {
-                        const provider = await fetchProviderById(application.provider_id, accessToken);
-                        return { ...application, providerName: provider ? provider.short_name : '' };
-                    } catch (providerError) {
-                        console.error(`Error fetching provider for application ${application.id}:`, providerError);
-                        return { ...application, providerName: '' };
-                    }
-                } else {
-                    return { ...application, providerName: '' };
-                }
-            }));
-
-            setRejectedApplications(rejectedWithProviders);
-        } catch (error) {
-            setError(error.message);
-            toast.error(error.message);
-        } finally {
-            setLoading(false);
-        }
-    }, [accessToken, logout, navigate]);
-
-
-    useEffect(() => {
-        fetchRejectedApplications();
-    }, [fetchRejectedApplications]);
-
-    const handleDeleteClick = () => {
-        if (selectedApplications.length === 0) {
-            toast.error("Please select at least one application to delete.");
+        if (idsToRestore.length === 0) {
+            toast.error('Please select at least one spam application to unmark.');
             return;
         }
-        setOpenDeleteDialog(true);
+
+        setConfirmUnmarkDialog({ open: true, idsToRestore });
     };
 
-    const handleConfirmDelete = async () => {
-        setDeleteLoading(true); // Set delete loading
+    const handleConfirmUnmarkSpam = async () => {
+        const { idsToRestore } = confirmUnmarkDialog;
+        setRestoreLoading(true);
         try {
-            const ngroupId = localStorage.getItem('CUE_ngroup_id');
-            await Promise.all(selectedApplications.map(applicationId => deleteUserApplication(applicationId, ngroupId, accessToken)));
-            //  Remove deleted from the state
-            setRejectedApplications(rejectedApplications.filter(app => !selectedApplications.includes(app.id)));
-            setSelectedApplications([]); // Clear selection
-            toast.success("Applications deleted successfully!");
-        } catch (error) {
-            toast.error(`Error deleting applications: ${error.message}`);
+            await Promise.all(idsToRestore.map(applicationId => restoreUserApplication(applicationId)));
+            if (spamFilter === 'spam') {
+                setApplications(applications.filter(app => !idsToRestore.includes(app.id)));
+            } else {
+                setApplications(applications.map(app =>
+                    idsToRestore.includes(app.id) ? { ...app, is_spam: false } : app
+                ));
+            }
+            setSelectedApplications(selectedApplications.filter(id => !idsToRestore.includes(id)));
+            setConfirmUnmarkDialog({ open: false, idsToRestore: [] });
+            toast.success('Applications unmarked from spam successfully!');
+        } catch (err) {
+            toast.error(`Error unmarking applications: ${parseApiError(err)}`);
         } finally {
-            setOpenDeleteDialog(false);
-            setDeleteLoading(false); // Reset delete loading
+            setRestoreLoading(false);
         }
     };
 
+    const handleSelectAllClick = (event) => {
+        setSelectedApplications(event.target.checked ? visibleRows.map((row) => row.id) : []);
+    };
 
-    const handleCloseDeleteDialog = () => {
-        setOpenDeleteDialog(false);
+    const handleClick = (id) => {
+        setSelectedApplications((currentSelected) =>
+            currentSelected.includes(id)
+                ? currentSelected.filter(selectedId => selectedId !== id)
+                : [...currentSelected, id]
+        );
     };
 
     const handleChangePage = (event, newPage) => {
@@ -178,220 +234,153 @@ function RejectedRequests() {
         setRowsPerPage(parseInt(event.target.value, 10));
         setPage(0);
     };
-    const handleSelectAllClick = (event) => {
-        if (event.target.checked) {
-            const newSelecteds = visibleRows.map((n) => n.id);
-            setSelectedApplications(newSelecteds);
-            return;
-        }
-        setSelectedApplications([]);
-        setSelectedApplication(null); // Clear single selection
-    };
-
-    const handleClick = (id) => {
-      const selectedIndex = selectedApplications.indexOf(id);
-      let newSelected = [];
-
-      if (selectedIndex === -1) {
-        newSelected = newSelected.concat(selectedApplications, id);
-      } else if (selectedIndex === 0) {
-        newSelected = newSelected.concat(selectedApplications.slice(1));
-      } else if (selectedIndex === selectedApplications.length - 1) {
-        newSelected = newSelected.concat(selectedApplications.slice(0, -1));
-      } else if (selectedIndex > 0) {
-        newSelected = newSelected.concat(
-          selectedApplications.slice(0, selectedIndex),
-          selectedApplications.slice(selectedIndex + 1)
-        );
-      }
-
-      setSelectedApplications(newSelected);
-
-      // For single selection (modal, etc.):  <-- IMPORTANT
-      if (newSelected.length === 1) {
-          setSelectedApplication(rejectedApplications.find(app => app.id === newSelected[0]));
-      } else {
-          setSelectedApplication(null);
-      }
-  };
 
     const isSelected = (id) => selectedApplications.includes(id);
-
+    const emptyMessage = spamFilter === 'spam'
+        ? 'No spam applications found.'
+        : spamFilter === 'rejected'
+        ? 'No rejected applications found.'
+        : 'No rejected or spam applications found.';
 
     return (
-        <Box>
+        <Container maxWidth={false} disableGutters>
             <ToastContainer position="top-center" />
             <Card>
                 <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="h5">Rejected User Applications</Typography>
-                        <Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+                        <Typography variant="h5">
+                            {spamFilter === 'spam' ? 'Spam User Applications' : 'Rejected User Applications'}
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                             <TextField
                                 label="Search Applications"
                                 variant="outlined"
                                 size="small"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                sx={{ mb: 2, mr: 2 }}
+                                onChange={(event) => {
+                                    setSearchTerm(event.target.value);
+                                    setPage(0);
+                                }}
                             />
-                            <Button
-                                variant="contained"
-                                color="error"
-                                onClick={handleDeleteClick}
-                                disabled={selectedApplications.length === 0 || deleteLoading}
-                                startIcon={<DeleteIcon />}
-                            >
-                                {deleteLoading ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
-                            </Button>
+
+                            {((spamFilter === 'spam' && selectedApplications.length > 0) ||
+                              (spamFilter === 'all' && hasSelectedSpam)) && (
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={handleUnmarkSpamClick}
+                                    disabled={restoreLoading}
+                                    startIcon={<UndoIcon />}
+                                >
+                                    {restoreLoading ? <CircularProgress size={24} color="inherit" /> : 'Unmark Spam'}
+                                </Button>
+                            )}
                         </Box>
                     </Box>
+
+                    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
                     {loading ? (
                         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
                             <CircularProgress />
                         </Box>
-                    ) : error ? (
-                        <Typography color="error">Error: {error}</Typography>
-                    ) : (
-                        <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 250px)', overflow: 'auto' }}>
-                            <Table aria-label="rejected applications table" stickyHeader>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black ", padding: '0px 16px' }}>
-                                            <Checkbox
-                                                sx={{
-                                                    '& .MuiSvgIcon-root': { fontSize: 18 },
-                                                    padding: '9px'
-                                                }}
-                                                indeterminate={selectedApplications.length > 0 && selectedApplications.length < visibleRows.length}
-                                                checked={visibleRows.length > 0 && selectedApplications.length === visibleRows.length}
-                                                onChange={handleSelectAllClick}
-
-                                            />
-                                        </TableCell>
-                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>
-                                            <TableSortLabel
-                                                active={orderBy === 'name'}
-                                                direction={orderBy === 'name' ? order : 'asc'}
-                                                onClick={() => handleRequestSort('name')}
-                                            >Name
-                                            </TableSortLabel>
-                                        </TableCell>
-                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>
-                                            <TableSortLabel
-                                                active={orderBy === 'email'}
-                                                direction={orderBy === 'email' ? order : 'asc'}
-                                                onClick={() => handleRequestSort('email')}>
-                                                Email
-                                            </TableSortLabel>
-                                        </TableCell>
-                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>
-                                            <TableSortLabel
-                                                active={orderBy === 'username'}
-                                                direction={orderBy === 'username' ? order : 'asc'}
-                                                onClick={() => handleRequestSort('username')}>
-                                                Username
-                                            </TableSortLabel>
-                                        </TableCell>
-                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>
-                                            <TableSortLabel
-                                                active={orderBy === 'applied'}
-                                                direction={orderBy === 'applied' ? order : 'asc'}
-                                                onClick={() => handleRequestSort('applied')}>
-                                                Applied
-                                            </TableSortLabel>
-                                        </TableCell>
-                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>
-                                            <TableSortLabel
-                                                active={orderBy === 'account_type'}
-                                                direction={orderBy === 'account_type' ? order : 'asc'}
-                                                onClick={() => handleRequestSort('account_type')}>
-                                                Account Type
-                                            </TableSortLabel>
-                                        </TableCell>
-                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>
-                                            <TableSortLabel
-                                                active={orderBy === 'providerName'}
-                                                direction={orderBy === 'providerName' ? order : 'asc'}
-                                                onClick={() => handleRequestSort('providerName')}>
-                                                Provider
-                                            </TableSortLabel>
-                                        </TableCell>
-                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>
-                                            <TableSortLabel
-                                                active={orderBy === 'edpub_id'}
-                                                direction={orderBy === 'edpub_id' ? order : 'asc'}
-                                                onClick={() => handleRequestSort('edpub_id')}>
-                                                EDPub ID
-                                            </TableSortLabel>
-                                        </TableCell>
-                                        <TableCell sx={{ bgcolor: "#E5E8EB", color: "black " }}>Justification</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {visibleRows.length > 0 ? (
-                                        visibleRows.map((application) => {
-                                            const isItemSelected = isSelected(application.id);
-                                            return (
-                                                <TableRow key={application.id} hover
-                                                    onClick={() => handleClick(application.id)}
-                                                    selected={isItemSelected}>
-                                                    <TableCell sx={{ padding: '0px 16px' }}>
-                                                        <Checkbox
-                                                            sx={{
-                                                                '& .MuiSvgIcon-root': { fontSize: 18 },
-                                                                padding: '9px'
-                                                            }}
-                                                            checked={isItemSelected}
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell>{application.name}</TableCell>
-                                                    <TableCell>{application.email}</TableCell>
-                                                    <TableCell>{application.username}</TableCell>
-                                                    <TableCell>{formatDate(application.applied)}</TableCell>
-                                                    <TableCell>{application.account_type}</TableCell>
-                                                    <TableCell>{application.providerName}</TableCell>
-                                                    <TableCell>{application.edpub_id}</TableCell>
-                                                    <TableCell>{application.justification}</TableCell>
-                                                </TableRow>
-                                            );
-                                        })
-                                    ) : (
+                    ) : !error && (
+                        <>
+                            <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 250px)', overflow: 'auto' }}>
+                                <Table aria-label="rejected applications table" stickyHeader>
+                                    <TableHead>
                                         <TableRow>
-                                            <TableCell colSpan={9} align="center">
-                                                No rejected applications found.
+                                            <TableCell padding="checkbox">
+                                                <Checkbox
+                                                    indeterminate={selectedApplications.length > 0 && selectedApplications.length < visibleRows.length}
+                                                    checked={visibleRows.length > 0 && selectedApplications.length === visibleRows.length}
+                                                    onChange={handleSelectAllClick}
+                                                />
                                             </TableCell>
+                                            {activeHeadCells.map((headCell) => (
+                                                <TableCell key={headCell.id} sortDirection={orderBy === headCell.id ? order : false}>
+                                                    <TableSortLabel
+                                                        active={orderBy === headCell.id}
+                                                        direction={orderBy === headCell.id ? order : 'asc'}
+                                                        onClick={() => handleRequestSort(headCell.id)}
+                                                    >
+                                                        {headCell.label}
+                                                    </TableSortLabel>
+                                                </TableCell>
+                                            ))}
+                                            <TableCell>Justification</TableCell>
                                         </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
+                                    </TableHead>
+                                    <TableBody>
+                                        {visibleRows.length > 0 ? (
+                                            visibleRows.map((application) => {
+                                                const isItemSelected = isSelected(application.id);
+                                                return (
+                                                    <TableRow
+                                                        key={application.id}
+                                                        hover
+                                                        onClick={() => handleClick(application.id)}
+                                                        selected={isItemSelected}
+                                                        sx={{ cursor: 'pointer' }}
+                                                    >
+                                                        <TableCell padding="checkbox">
+                                                            <Checkbox checked={isItemSelected} />
+                                                        </TableCell>
+                                                        <TableCell>{application.name}</TableCell>
+                                                        <TableCell>{application.email}</TableCell>
+                                                        <TableCell>{application.username}</TableCell>
+                                                        <TableCell>{formatDate(application.applied)}</TableCell>
+                                                        <TableCell>{application.account_type}</TableCell>
+                                                        <TableCell>{application.providerName || 'N/A'}</TableCell>
+                                                        {spamFilter === 'all' && (
+                                                            <TableCell>{application.is_spam ? 'Yes' : 'No'}</TableCell>
+                                                        )}
+                                                        <TableCell>{application.justification}</TableCell>
+                                                    </TableRow>
+                                                );
+                                            })
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={activeHeadCells.length + 2} align="center">
+                                                    <Typography sx={{ py: 5 }} color="text.secondary">
+                                                        {searchTerm ? 'No applications match your search.' : emptyMessage}
+                                                    </Typography>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                            <TablePagination
+                                rowsPerPageOptions={[5, 10, 25]}
+                                component="div"
+                                count={processedApplications.length}
+                                rowsPerPage={rowsPerPage}
+                                page={page}
+                                onPageChange={handleChangePage}
+                                onRowsPerPageChange={handleChangeRowsPerPage}
+                            />
+                        </>
                     )}
-                    <TablePagination
-                        rowsPerPageOptions={[5, 10, 25]}
-                        component="div"
-                        count={rejectedApplications.length}
-                        rowsPerPage={rowsPerPage}
-                        page={page}
-                        onPageChange={handleChangePage}
-                        onRowsPerPageChange={handleChangeRowsPerPage}
-                    />
                 </CardContent>
             </Card>
 
-            {/* Delete Confirmation Dialog */}
-            <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
-                <DialogTitle>Confirm Delete</DialogTitle>
+            <Dialog open={confirmUnmarkDialog.open} onClose={() => setConfirmUnmarkDialog({ open: false, idsToRestore: [] })}>
+                <DialogTitle>Confirm Unmark Spam</DialogTitle>
                 <DialogContent>
-                    Are you sure you want to delete the selected application(s)?
+                    <Typography>
+                        After unmarking, the user will be able to submit applications again. Do you want to unmark?
+                    </Typography>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleCloseDeleteDialog}>Cancel</Button>
-                    <Button onClick={handleConfirmDelete} color="error" disabled={deleteLoading}>
-                        {deleteLoading ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
+                    <Button onClick={() => setConfirmUnmarkDialog({ open: false, idsToRestore: [] })}>Cancel</Button>
+                    <Button onClick={handleConfirmUnmarkSpam} color="primary" variant="contained" disabled={restoreLoading}>
+                        {restoreLoading ? <CircularProgress size={24} color="inherit" /> : 'Confirm'}
                     </Button>
                 </DialogActions>
             </Dialog>
-        </Box>
+
+        </Container>
     );
 }
 
