@@ -81,6 +81,10 @@ export const deleteCueuser = (userId) => {
  * @param {string} userId - The UUID of the user to update.
  * @param {string} roleId - The UUID of the role to assign.
  */
-export const assignUserRole = (userId, roleId) => {
-  return apiClient.patch(`/cueusers/${userId}/role`, { role_id: roleId });
+export const assignUserRole = (userId, roleId, providerId = null) => {
+  const payload = { role_id: roleId };
+  if (providerId) {
+    payload.provider_id = providerId;
+  }
+  return apiClient.patch(`/cueusers/${userId}/role`, payload);
 };

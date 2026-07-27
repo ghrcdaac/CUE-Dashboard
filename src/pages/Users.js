@@ -74,6 +74,70 @@ function Users() {
     const [prevPage, setPrevPage] = useState(0);
     const wasSearching = useRef(false);
     
+    const [mergedProviders, setMergedProviders] = useState([]);
+    const [providerLoadingPages, setProviderLoadingPages] = useState(new Set());
+
+    useEffect(() => {
+        const page = providers.page;
+        // Remove this page from loadingPages when it finishes
+        setProviderLoadingPages(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(page);
+            return newSet;
+        });
+
+        const newPageStart = providers.cacheStart;
+        const newPageSize = providers.data.length;
+
+        setMergedProviders(prev => {
+            // First load → set directly
+            if (prev.length === 0) {
+                return providers.data;
+            }
+
+            // SCROLL DOWN (next page)
+            if (newPageStart > prev.length - newPageSize) {
+                return [...prev, ...providers.data];
+            }
+
+            // SCROLL UP (previous page)
+            if (newPageStart < 0) {
+                return [...providers.data, ...prev];
+            }
+
+            return prev; // default
+        });
+    }, [providers.data, providers.page, providers.cacheStart]);
+
+    const handleProvidersScroll = (event) => {
+        const listbox = event.currentTarget;
+
+        // Scroll Down
+        if (listbox.scrollTop + listbox.clientHeight >= listbox.scrollHeight - 20) {
+            const nextPage = Math.floor(mergedProviders.length / providers.pageSize) + 1;
+
+            // STOP if all data is loaded
+            if (mergedProviders.length >= providers.total) return;
+
+            // STOP if already loading
+            if (providerLoadingPages.has(nextPage)) return;
+
+            // Mark as loading
+            setProviderLoadingPages(prev => new Set(prev).add(nextPage));
+
+            dispatch(fetchProviders({ page: nextPage, pageSize: providers.pageSize }));
+        }
+
+        // Scroll up
+        if (listbox.scrollTop === 0) {
+            if (mergedProviders.length >= providers.total) return;
+
+            const previousPage = Math.max(1, providers.cacheStart / providers.pageSize);
+
+            dispatch(fetchProviders({ page: previousPage, pageSize: providers.pageSize }));
+        }
+    };
+    
     useEffect(() => {
         const usersMenuItems = [
             { text: 'Users', path: '/users', icon: <PersonIcon /> },
@@ -138,7 +202,6 @@ function Users() {
         if (!users.data || !roles.data || !providers.data) return [];
 
         const roleMap = new Map(roles.data.map(role => [role.short_name, role]));
-        const providerMap = new Map(providers.data.map(provider => [provider.id, provider.short_name]));
         
         const populatedUsers = users.data.map(user => {
             const roleName = user.roles && user.roles.length > 0 ? user.roles[0] : null;
@@ -248,7 +311,8 @@ function Users() {
     const handleOpenDialog = (type) => {
         if (type === 'edit') {
             const userToEdit = processedUsers.find(user => user.id === selected[0]);
-            setDialog({ open: 'edit', data: { ...userToEdit }});
+            const initialProvider = userToEdit.providers && userToEdit.providers.length > 0 ? userToEdit.providers[0] : null;
+            setDialog({ open: 'edit', data: { ...userToEdit, selectedProvider: initialProvider }});
         } else {
             setDialog({ open: 'delete', data: null });
         }
@@ -261,9 +325,14 @@ function Users() {
             toast.error("A role must be selected.");
             return;
         }
+        if (dialog.data.role.short_name === 'provider' && !dialog.data.selectedProvider) {
+            toast.error("A provider must be selected for the provider role.");
+            return;
+        }
         setIsSubmitting(true);
         try {
-            await assignUserRole(dialog.data.id, dialog.data.role.id);
+            const providerId = dialog.data.role.short_name === 'provider' ? dialog.data.selectedProvider.id : null;
+            await assignUserRole(dialog.data.id, dialog.data.role.id, providerId);
             toast.success("User role updated successfully!");
             handleCloseDialog();
             const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
@@ -411,10 +480,22 @@ function Users() {
                         options={getEditableRoles(roles.data, currentUser?.roles)}
                         getOptionLabel={(option) => option.long_name}
                         value={dialog.data?.role || null}
-                        onChange={(event, newValue) => setDialog(prev => ({...prev, data: {...prev.data, role: newValue}}))}
+                        onChange={(event, newValue) => setDialog(prev => ({...prev, data: {...prev.data, role: newValue, selectedProvider: newValue?.short_name === 'provider' ? prev.data.selectedProvider : null}}))}
                         renderInput={(params) => <TextField {...params} label="Role" margin="dense" fullWidth />}
                         isOptionEqualToValue={(option, value) => option.id === value.id}
                     />
+                    {dialog.data?.role?.short_name === 'provider' && (
+                        <Autocomplete
+                            options={mergedProviders || []}
+                            getOptionLabel={(option) => option.short_name || ""}
+                            value={dialog.data?.selectedProvider || null}
+                            onChange={(event, newValue) => setDialog(prev => ({...prev, data: {...prev.data, selectedProvider: newValue}}))}
+                            ListboxProps={{ onScroll: handleProvidersScroll }}
+                            loading={providers.status === 'loading'}
+                            renderInput={(params) => <TextField {...params} label="Provider" margin="dense" fullWidth required />}
+                            isOptionEqualToValue={(option, value) => option.id === value.id}
+                        />
+                    )}
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseDialog}>Cancel</Button>
