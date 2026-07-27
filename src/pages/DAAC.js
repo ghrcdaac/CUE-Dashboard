@@ -197,11 +197,11 @@ export default function DAAC() {
 
     const folderStructurePreview = useMemo(() => {
         let bucket = "<bucket-name>";
-        let destination = "<destination-path>";
+        let destination = "<destination_path>";
         try {
             const parsed = JSON.parse(dialog.data?.config || "{}");
             if (parsed.bucket) bucket = parsed.bucket;
-            if (parsed['destination-path']) destination = parsed['destination-path'];
+            if (parsed['destination_path']) destination = parsed['destination_path'];
         } catch (e) {
             // fallback
         }
@@ -210,7 +210,7 @@ export default function DAAC() {
         const createCollectionSubfolderValue = dialog.data?.create_collection_subfolder || false;
 
         const parts = [bucket];
-        if (destination && destination !== "<destination-path>") {
+        if (destination && destination !== "<destination_path>") {
             parts.push(destination);
         }
         if (createCollectionSubfolderValue) {
