@@ -63,6 +63,7 @@ function Providers() {
     // UPDATED: Restored the missing state declaration for sorting
     const [sorting, setSorting] = useState({ orderBy: 'short_name', order: 'asc' });
 
+    const mergedUsersStartRef = useRef(0);
     const [mergedUsers, setMergedUsers] = useState([]);
     const [filteredCount, setFilteredCount] = useState(0);
     const didMount = useRef(false);
@@ -113,21 +114,22 @@ function Providers() {
         });
 
         const newPageStart = users.cacheStart;
-        const newPageSize = users.data.length;
 
         setMergedUsers(prev => {
             // First load → set directly
             if (prev.length === 0) {
+                mergedUsersStartRef.current = newPageStart;
                 return users.data;
             }
 
             // SCROLL DOWN (next page)
-            if (newPageStart > prev.length - newPageSize) {
+            if (newPageStart > mergedUsersStartRef.current) {
                 return [...prev, ...users.data];
             }
 
             // SCROLL UP (previous page)
-            if (newPageStart < 0) {
+            if (newPageStart < mergedUsersStartRef.current) {
+                mergedUsersStartRef.current = newPageStart;
                 return [...users.data, ...prev];
             }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Paper, Button, Typography, Checkbox, TablePagination, Dialog, DialogTitle,
@@ -50,6 +50,72 @@ function PendingRequests() {
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [order, setOrder] = useState('asc');
     const [orderBy, setOrderBy] = useState('name');
+
+    const mergedProvidersStartRef = useRef(0);
+    const [mergedProviders, setMergedProviders] = useState([]);
+    const [providerLoadingPages, setProviderLoadingPages] = useState(new Set());
+
+    useEffect(() => {
+        const page = providers.page;
+        // Remove this page from loadingPages when it finishes
+        setProviderLoadingPages(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(page);
+            return newSet;
+        });
+
+        const newPageStart = providers.cacheStart;
+
+        setMergedProviders(prev => {
+            // First load → set directly
+            if (prev.length === 0) {
+                mergedProvidersStartRef.current = newPageStart;
+                return providers.data;
+            }
+
+            // SCROLL DOWN (next page)
+            if (newPageStart > mergedProvidersStartRef.current) {
+                return [...prev, ...providers.data];
+            }
+
+            // SCROLL UP (previous page)
+            if (newPageStart < mergedProvidersStartRef.current) {
+                mergedProvidersStartRef.current = newPageStart;
+                return [...providers.data, ...prev];
+            }
+
+            return prev; // default
+        });
+    }, [providers.data, providers.page, providers.cacheStart]);
+
+    const handleProvidersScroll = (event) => {
+        const listbox = event.currentTarget;
+
+        // Scroll Down
+        if (listbox.scrollTop + listbox.clientHeight >= listbox.scrollHeight - 20) {
+            const nextPage = Math.floor(mergedProviders.length / providers.pageSize) + 1;
+
+            // STOP if all data is loaded
+            if (mergedProviders.length >= providers.total) return;
+
+            // STOP if already loading
+            if (providerLoadingPages.has(nextPage)) return;
+
+            // Mark as loading
+            setProviderLoadingPages(prev => new Set(prev).add(nextPage));
+
+            dispatch(fetchProviders({ page: nextPage, pageSize: providers.pageSize }));
+        }
+
+        // Scroll up
+        if (listbox.scrollTop === 0) {
+            if (mergedProviders.length >= providers.total) return;
+
+            const previousPage = Math.max(1, providers.cacheStart / providers.pageSize);
+
+            dispatch(fetchProviders({ page: previousPage, pageSize: providers.pageSize }));
+        }
+    };
 
     // --- Check if the user is an admin or security user ---
     const isPrivilegedViewer = useMemo(() =>

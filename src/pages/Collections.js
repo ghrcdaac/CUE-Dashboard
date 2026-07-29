@@ -57,6 +57,8 @@ function Collections() {
     };
     const [providerLoadingPages, setProviderLoadingPages] = useState(new Set());
     const [egressLoadingPages, setEgressLoadingPages] = useState(new Set());
+    const mergedProvidersStartRef = useRef(0);
+    const mergedEgressStartRef = useRef(0);
     const [mergedProviders, setMergedProviders] = useState([]);
     const [mergedEgress, setMergedEgress] = useState([]);
     const [sorting, setSorting] = useState({ orderBy: 'short_name', order: 'asc' });
@@ -115,21 +117,22 @@ function Collections() {
         });
 
         const newPageStart = providers.cacheStart;
-        const newPageSize = providers.data.length;
 
         setMergedProviders(prev => {
             // First load → set directly
             if (prev.length === 0) {
+                mergedProvidersStartRef.current = newPageStart;
                 return providers.data;
             }
 
             // SCROLL DOWN (next page)
-            if (newPageStart > prev.length - newPageSize) {
+            if (newPageStart > mergedProvidersStartRef.current) {
                 return [...prev, ...providers.data];
             }
 
             // SCROLL UP (previous page)
-            if (newPageStart < 0) {
+            if (newPageStart < mergedProvidersStartRef.current) {
+                mergedProvidersStartRef.current = newPageStart;
                 return [...providers.data, ...prev];
             }
 
@@ -151,21 +154,22 @@ function Collections() {
         });
 
         const newPageStart = egresses.cacheStart;
-        const newPageSize = egresses.data.length;
 
         setMergedEgress(prev => {
             // First load → set directly
             if (prev.length === 0) {
+                mergedEgressStartRef.current = newPageStart;
                 return egresses.data;
             }
 
             // SCROLL DOWN (next page)
-            if (newPageStart > prev.length - newPageSize) {
+            if (newPageStart > mergedEgressStartRef.current) {
                 return [...prev, ...egresses.data];
             }
 
             // SCROLL UP (previous page)
-            if (newPageStart < 0) {
+            if (newPageStart < mergedEgressStartRef.current) {
+                mergedEgressStartRef.current = newPageStart;
                 return [...egresses.data, ...prev];
             }
 
