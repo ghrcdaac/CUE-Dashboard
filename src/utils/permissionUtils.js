@@ -97,6 +97,23 @@ export const canManageAllApiKeys = (privileges = []) => {
 };
 
 /**
+ * Checks if a user can create API keys for another user or proxy user.
+ * Users with 'provider' or 'daac_staff' roles are restricted to creating keys only for themselves.
+ * @param {Object} user - The user object containing roles and privileges.
+ * @param {Function} hasPrivilege - Privilege checking function.
+ * @returns {boolean}
+ */
+export const canCreateApiKeyForOthers = (user, hasPrivilege) => {
+    if (!hasPrivilege || !hasPrivilege('api-key:create')) {
+        return false;
+    }
+    const userRoles = (user?.roles || []).map(r => (typeof r === 'string' ? r.toLowerCase().replace(/\s+/g, '_') : r));
+    const isRestricted = userRoles.includes('provider') || userRoles.includes('daac_observer');
+    return !isRestricted;
+};
+
+
+/**
  * Checks for special security-related privileges.
  * @param {string[]} privileges - The user's list of privileges.
  * @returns {boolean}

@@ -15,6 +15,7 @@ import usePrivileges from '../../hooks/usePrivileges';
 import { createApiKey } from '../../api/apiKeys';
 import { listCueusers } from '../../api/cueUser';
 import { parseApiError } from '../../utils/errorUtils';
+import { canCreateApiKeyForOthers } from '../../utils/permissionUtils';
 
 export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   const [keyName, setKeyName] = React.useState('');
@@ -41,17 +42,19 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   });
 
   const { hasPrivilege } = usePrivileges();
-  const { activeNgroupId } = useAuth(); 
+  const { activeNgroupId, user } = useAuth(); 
+
+  const canCreateForOtherUser = canCreateApiKeyForOthers(user, hasPrivilege);
 
   const maxDate = new Date();
   maxDate.setDate(maxDate.getDate() + 90);
 
   React.useEffect(() => {
-    if (open && hasPrivilege('api-key:create')) {
+    if (open && canCreateForOtherUser) {
       setIsUsersLoading(true);
       fetchUsersPage(usersPage);
     }
-  }, [open, hasPrivilege]);
+  }, [open, canCreateForOtherUser]);
 
   const fetchUsersPage = async (pageNumber) => {
     if (fetchedPages.has(pageNumber) || isUsersLoading) return; // guard against duplicates
@@ -167,16 +170,14 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
     toast.success("Key copied to clipboard!");
   };
 
-  const isManager = hasPrivilege('api-key:create');
-
   // --- scope validation to the disabled check ---
   const atLeastOneScopeSelected = Object.values(scopes).some(v => v);
   const isFormInvalid =
     !keyName.trim() ||
     keyName.trim().length < 3 ||
     !activeNgroupId ||
-    (ownerType === 'user' && !selectedUser) ||
-    (ownerType === 'proxy' && !proxyUserName.trim()) ||
+    (canCreateForOtherUser && ownerType === 'user' && !selectedUser) ||
+    (canCreateForOtherUser && ownerType === 'proxy' && !proxyUserName.trim()) ||
     (expirationType === 'custom' && !customExpirationDate) ||
     !atLeastOneScopeSelected; // <-- New validation rule
 
@@ -203,16 +204,16 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
             sx={{ mb: 3 }}
           />
 
-          <FormControl component="fieldset" sx={{ mb: 3 }}>
+          <FormControl component="fieldset" fullWidth sx={{ mb: 3, display: 'flex' }}>
             <FormLabel component="legend">Key Owner</FormLabel>
             <RadioGroup row value={ownerType} onChange={(e) => setOwnerType(e.target.value)}>
               <FormControlLabel value="self" control={<Radio />} label="My Account" />
-              {isManager && <FormControlLabel value="user" control={<Radio />} label="Another CUE User" />}
-              {isManager && <FormControlLabel value="proxy" control={<Radio />} label="An External (Proxy) User" />}
+              {canCreateForOtherUser && <FormControlLabel value="user" control={<Radio />} label="Another CUE User" />}
+              {canCreateForOtherUser && <FormControlLabel value="proxy" control={<Radio />} label="An External (Proxy) User" />}
             </RadioGroup>
           </FormControl>
 
-          {ownerType === 'user' && (
+          {canCreateForOtherUser && ownerType === 'user' && (
             <Autocomplete
               options={users}
               getOptionLabel={(option) => `${option.name} (@${option.cueusername})`}
@@ -242,10 +243,10 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
             />
           )}
           
-          {ownerType === 'proxy' && (
+          {canCreateForOtherUser && ownerType === 'proxy' && (
             <TextField label="Proxy User Name" fullWidth value={proxyUserName} onChange={(e) => setProxyUserName(e.target.value)} sx={{ mb: 3 }} />
           )}
-          <FormControl component="fieldset" sx={{ mb: 3 }}>
+          <FormControl component="fieldset" fullWidth sx={{ mb: 3, display: 'flex' }}>
             <FormLabel component="legend">Expiration</FormLabel>
             <RadioGroup row value={expirationType} onChange={(e) => setExpirationType(e.target.value)}>
               <FormControlLabel value="5" control={<Radio />} label="5 Days" />
