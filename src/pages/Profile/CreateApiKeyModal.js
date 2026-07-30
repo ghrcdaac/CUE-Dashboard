@@ -64,11 +64,12 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
       const response = await listCueusers(pageNumber, usersPageSize);
       const data = response; // assuming axios
       
+      const fetchedUsers = Array.isArray(data?.users) ? data.users : [];
       setUsers(prev => [
         ...prev,
-        ...data.users.filter(u => !prev.some(pu => pu.id === u.id))
+        ...fetchedUsers.filter(u => !prev.some(pu => pu.id === u.id))
       ]);
-      setUsersTotal(data.total);
+      setUsersTotal(data?.total || 0);
       setUsersPage(pageNumber);
       
       setFetchedPages(prev => new Set(prev).add(pageNumber)); // mark page as fetched

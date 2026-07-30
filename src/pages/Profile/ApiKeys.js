@@ -43,10 +43,10 @@ function ApiKeys() {
     const [total, setTotal] = useState(0);
 
     const fetchApiKeys = useCallback(async () => {
-        // Guard against running if no group is selected.
-        if (!activeNgroupId) {
+        // Guard against running if no group is selected or if user lacks read privilege.
+        if (!activeNgroupId || !hasPrivilege('api-key:read')) {
             setLoading(false);
-            setApiKeys([]); // Clear keys if no group is active
+            setApiKeys([]);
             return;
         }
         setLoading(true);
@@ -56,27 +56,28 @@ function ApiKeys() {
                 page: page + 1,      // state variable
                 page_size: rowsPerPage,
             });
-            setApiKeys(response.api_keys);
-            setTotal(response.total);
-            setPage(response.page - 1);
+            setApiKeys(response?.api_keys || []);
+            setTotal(response?.total || 0);
+            if (response?.page) setPage(response.page - 1);
         } catch (err) {
+            setApiKeys([]);
             toast.error(parseApiError(err));
         } finally {
             setLoading(false);
         }
-    // Added activeNgroupId to the dependency array.
-    }, [activeNgroupId, page, rowsPerPage]);
+    }, [activeNgroupId, page, rowsPerPage, hasPrivilege]);
 
     useEffect(() => {
         fetchApiKeys();
     }, [fetchApiKeys]);
 
     const filteredAndSortedKeys = useMemo(() => {
-        const filtered = apiKeys.filter(key =>
-            key.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (key.key_type && key.key_type.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (key.user_name && key.user_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (key.proxy_user_name && key.proxy_user_name.toLowerCase().includes(searchTerm.toLowerCase()))
+        const safeKeys = Array.isArray(apiKeys) ? apiKeys : [];
+        const filtered = safeKeys.filter(key =>
+            (key?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (key?.key_type || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (key?.user_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (key?.proxy_user_name || '').toLowerCase().includes(searchTerm.toLowerCase())
         );
         const comparator = (a, b) => {
             const isAsc = order === 'asc';
@@ -150,6 +151,18 @@ function ApiKeys() {
             setIsSubmitting(false);
         }
     };
+
+    if (!hasPrivilege('api-key:read')) {
+        return (
+            <Card>
+                <CardContent sx={{ textAlign: 'center', py: 5 }}>
+                    <Typography variant="h6" color="text.secondary">
+                        You do not have permission to view or manage API keys.
+                    </Typography>
+                </CardContent>
+            </Card>
+        );
+    }
 
     return (
         <>
