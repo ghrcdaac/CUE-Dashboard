@@ -11,6 +11,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
 
 // Hooks, Components & Utils
 import usePageTitle from "../../hooks/usePageTitle";
@@ -33,6 +34,10 @@ import SearchIcon from '@mui/icons-material/Search';
 import PublicIcon from '@mui/icons-material/Public';
 
 const FILE_STATUSES = ["unscanned", "clean", "infected", "scan_failed", "distributed"];
+
+const DATE_FORMAT_API_DAYJS = 'YYYY-MM-DD';
+const getDefaultStartDate = () => dayjs().subtract(7, 'day');
+const getDefaultEndDate = () => dayjs();
 
 const formatBytes = (bytes) => {
     if (bytes == null || isNaN(bytes)) return 'N/A';
@@ -179,7 +184,10 @@ function FilesByStatus() {
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [activeFilters, setActiveFilters] = useState({});
+    const [activeFilters, setActiveFilters] = useState({
+        start_date: getDefaultStartDate().format(DATE_FORMAT_API_DAYJS),
+        end_date: getDefaultEndDate().format(DATE_FORMAT_API_DAYJS),
+    });
     const [selectedStatusTab, setSelectedStatusTab] = useState(FILE_STATUSES[0]);
     const [pagination, setPagination] = useState({ page: 0, pageSize: 10 });
     const [searchTerm, setSearchTerm] = useState('');
@@ -238,6 +246,7 @@ function FilesByStatus() {
             const isSearching = debouncedSearchTerm.length > 0;
             const params = isSearching
                 ? {
+                    ...activeFilters,
                     q: debouncedSearchTerm,
                     status: selectedStatusTab,
                     page: pagination.page + 1,
@@ -307,7 +316,10 @@ function FilesByStatus() {
 
     const handleClearFilters = () => {
         setPagination(prev => ({ ...prev, page: 0 }));
-        setActiveFilters({});
+        setActiveFilters({
+            start_date: getDefaultStartDate().format(DATE_FORMAT_API_DAYJS),
+            end_date: getDefaultEndDate().format(DATE_FORMAT_API_DAYJS),
+        });
         setSearchTerm('');
         setDebouncedSearchTerm('');
     };
