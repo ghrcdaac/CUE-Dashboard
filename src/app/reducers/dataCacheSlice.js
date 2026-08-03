@@ -12,7 +12,7 @@ import { listCueusers } from '../../api/cueUser';
 
 export const fetchProviders = createAsyncThunk(
   'dataCache/fetchProviders',
-  async ({ page, pageSize }, { rejectWithValue }) => {
+  async ({ page = 1, pageSize = 50 } = {}, { rejectWithValue }) => {
     try {
       const response = await providerApi.listProviders(page, pageSize);
       response.cacheStart = (page - 1) * pageSize;

@@ -51,6 +51,70 @@ function PendingRequests() {
     const [order, setOrder] = useState('asc');
     const [orderBy, setOrderBy] = useState('name');
 
+    const [mergedProviders, setMergedProviders] = useState([]);
+    const [providerLoadingPages, setProviderLoadingPages] = useState(new Set());
+
+    useEffect(() => {
+        const page = providers.page;
+        // Remove this page from loadingPages when it finishes
+        setProviderLoadingPages(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(page);
+            return newSet;
+        });
+
+        const newPageStart = providers.cacheStart;
+        const newPageSize = providers.data.length;
+
+        setMergedProviders(prev => {
+            // First load → set directly
+            if (prev.length === 0) {
+                return providers.data;
+            }
+
+            // SCROLL DOWN (next page)
+            if (newPageStart > prev.length - newPageSize) {
+                return [...prev, ...providers.data];
+            }
+
+            // SCROLL UP (previous page)
+            if (newPageStart < 0) {
+                return [...providers.data, ...prev];
+            }
+
+            return prev; // default
+        });
+    }, [providers.data, providers.page, providers.cacheStart]);
+
+    const handleProvidersScroll = (event) => {
+        const listbox = event.currentTarget;
+
+        // Scroll Down
+        if (listbox.scrollTop + listbox.clientHeight >= listbox.scrollHeight - 20) {
+            const nextPage = Math.floor(mergedProviders.length / providers.pageSize) + 1;
+
+            // STOP if all data is loaded
+            if (mergedProviders.length >= providers.total) return;
+
+            // STOP if already loading
+            if (providerLoadingPages.has(nextPage)) return;
+
+            // Mark as loading
+            setProviderLoadingPages(prev => new Set(prev).add(nextPage));
+
+            dispatch(fetchProviders({ page: nextPage, pageSize: providers.pageSize }));
+        }
+
+        // Scroll up
+        if (listbox.scrollTop === 0) {
+            if (mergedProviders.length >= providers.total) return;
+
+            const previousPage = Math.max(1, providers.cacheStart / providers.pageSize);
+
+            dispatch(fetchProviders({ page: previousPage, pageSize: providers.pageSize }));
+        }
+    };
+
     // --- Check if the user is an admin or security user ---
     const isPrivilegedViewer = useMemo(() =>
         currentUser?.roles?.includes('admin') || currentUser?.roles?.includes('security'),
@@ -60,7 +124,7 @@ function PendingRequests() {
     useEffect(() => {
         // Fetch dependencies regardless of activeNgroupId, since privileged users don't need one
         if (roles.status === 'idle') dispatch(fetchRoles());
-        if (providers.status === 'idle') dispatch(fetchProviders());
+        if (providers.status === 'idle') dispatch(fetchProviders({ page: 1, pageSize: 50 }));
     }, [roles.status, providers.status, dispatch]);
 
     const fetchPageData = useCallback(async () => {
@@ -141,7 +205,10 @@ function PendingRequests() {
     const handleOpenDialog = (type) => {
         if (type === 'accept') {
             const app = processedApps.find(a => a.id === selected[0]);
-            setDialog({ open: 'accept', data: { ...app, role: null } });
+            const initialProvider = app.provider_id
+                ? (providers.data.find(p => p.id === app.provider_id) || { id: app.provider_id, short_name: app.providerName || '' })
+                : null;
+            setDialog({ open: 'accept', data: { ...app, role: null, selectedProvider: initialProvider } });
         } else {
             setRejectMarkAsSpam(false);
             setDialog({ open: 'reject', data: null });
@@ -157,9 +224,14 @@ function PendingRequests() {
             toast.error("Please select a role for the user.");
             return;
         }
+        if (dialog.data.role.short_name === 'provider' && !dialog.data.selectedProvider) {
+            toast.error("A provider must be selected for the provider role.");
+            return;
+        }
         setActionLoading(true);
         try {
-            await approveUserApplication(dialog.data.id, dialog.data.role.id);
+            const providerId = dialog.data.role.short_name === 'provider' ? dialog.data.selectedProvider.id : null;
+            await approveUserApplication(dialog.data.id, dialog.data.role.id, providerId);
             handleCloseDialog();
             setSelected([]);
             
@@ -277,10 +349,23 @@ function PendingRequests() {
                     <Autocomplete
                         options={getEditableRoles(roles.data, currentUser?.roles)}
                         getOptionLabel={(option) => option.long_name}
-                        onChange={(e, newValue) => setDialog(prev => ({ ...prev, data: { ...prev.data, role: newValue } }))}
+                        value={dialog.data?.role || null}
+                        onChange={(e, newValue) => setDialog(prev => ({ ...prev, data: { ...prev.data, role: newValue, selectedProvider: newValue?.short_name === 'provider' ? prev.data.selectedProvider : null } }))}
                         renderInput={(params) => <TextField {...params} label="Role" margin="dense" fullWidth />}
                         isOptionEqualToValue={(option, value) => option.id === value.id}
                     />
+                    {dialog.data?.role?.short_name === 'provider' && (
+                        <Autocomplete
+                            options={mergedProviders || []}
+                            getOptionLabel={(option) => option.short_name || ""}
+                            value={dialog.data?.selectedProvider || null}
+                            onChange={(event, newValue) => setDialog(prev => ({...prev, data: {...prev.data, selectedProvider: newValue}}))}
+                            ListboxProps={{ onScroll: handleProvidersScroll }}
+                            loading={providers.status === 'loading'}
+                            renderInput={(params) => <TextField {...params} label="Provider" margin="dense" fullWidth required />}
+                            isOptionEqualToValue={(option, value) => option.id === value.id}
+                        />
+                    )}
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseDialog}>Cancel</Button>
