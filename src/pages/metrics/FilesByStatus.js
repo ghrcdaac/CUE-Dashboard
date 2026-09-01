@@ -354,6 +354,8 @@ function FilesByStatus() {
             toast.info("Requesting file status report. You will receive a downloadable link when it is ready.");
             const response = await triggerFileStatusReport({
                 status: selectedStatusTab,
+                start_date: activeFilters?.start_date,
+                end_date: activeFilters?.end_date,
                 filters: activeFilters,
                 format,
             });
