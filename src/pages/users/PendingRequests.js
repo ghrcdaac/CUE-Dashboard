@@ -208,7 +208,12 @@ function PendingRequests() {
             const initialProvider = app.provider_id
                 ? (providers.data.find(p => p.id === app.provider_id) || { id: app.provider_id, short_name: app.providerName || '' })
                 : null;
-            setDialog({ open: 'accept', data: { ...app, role: null, selectedProvider: initialProvider } });
+            const editableRoles = getEditableRoles(roles.data, currentUser?.roles);
+            const isProviderApp = app?.account_type?.toLowerCase() === 'provider' || !!app?.provider_id;
+            const initialRole = isProviderApp
+                ? (editableRoles.find(r => r.short_name === 'provider') || null)
+                : null;
+            setDialog({ open: 'accept', data: { ...app, role: initialRole, selectedProvider: initialProvider } });
         } else {
             setRejectMarkAsSpam(false);
             setDialog({ open: 'reject', data: null });
