@@ -60,6 +60,41 @@ const baseHeadCells = [
     { id: 'upload_time', label: 'Upload Time' },
 ];
 
+const getColumnWidth = (cellId, statusTab) => {
+    const hasScanResults = statusTab === 'infected' || statusTab === 'scan_failed' || statusTab === 'distributed';
+    const isDistributed = statusTab === 'distributed';
+
+    if (hasScanResults) {
+        if (isDistributed) {
+            switch (cellId) {
+                case 'name': return '26%';
+                case 'collection_name': return '18%';
+                case 'size_bytes': return '10%';
+                case 'upload_time': return '13%';
+                case 'egress_start': return '13%';
+                case 'scan_results': return '20%';
+                default: return undefined;
+            }
+        }
+        switch (cellId) {
+            case 'name': return '30%';
+            case 'collection_name': return '20%';
+            case 'size_bytes': return '11%';
+            case 'upload_time': return '14%';
+            case 'scan_results': return '25%';
+            default: return undefined;
+        }
+    }
+
+    switch (cellId) {
+        case 'name': return '38%';
+        case 'collection_name': return '26%';
+        case 'size_bytes': return '16%';
+        case 'upload_time': return '20%';
+        default: return undefined;
+    }
+};
+
 
 const ScanResultsDisplay = ({ results }) => {
     const [expandedMessages, setExpandedMessages] = useState({});
@@ -273,7 +308,7 @@ function FilesByStatus() {
     const mappedFiles = useMemo(() => {
         return rawFiles.map(file => ({
             ...file,
-            collection_name: file.collection?.name || collectionMap.get(file.collection_id) || file.collection_id,
+            collection_name: file.collection?.name || file.collection_name || collectionMap.get(file.collection_id) || file.collection_id,
         }));
     }, [rawFiles, collectionMap]);
 
@@ -302,11 +337,13 @@ function FilesByStatus() {
 
     const handleApplyFilters = (filters) => {
         setPagination(prev => ({ ...prev, page: 0 }));
+        setTotalCount(0);
         setActiveFilters(filters);
     };
 
     const handleClearFilters = () => {
         setPagination(prev => ({ ...prev, page: 0 }));
+        setTotalCount(0);
         setActiveFilters({});
         setSearchTerm('');
         setDebouncedSearchTerm('');
@@ -314,6 +351,7 @@ function FilesByStatus() {
 
     const handleTabChange = (event, newValue) => {
         setPagination(prev => ({ ...prev, page: 0 }));
+        setTotalCount(0);
         setSelectedStatusTab(newValue);
     };
 
@@ -505,32 +543,61 @@ function FilesByStatus() {
                                         <TableHead>
                                             <TableRow>
                                                 {visibleHeadCells.map(headCell => (
-                                                    <TableCell key={headCell.id} sortDirection={sorting.orderBy === headCell.id ? sorting.order : false}>
-                                                        <TableSortLabel active={sorting.orderBy === headCell.id} direction={sorting.orderBy === headCell.id ? sorting.order : 'asc'} onClick={() => handleRequestSort(headCell.id)}>
+                                                    <TableCell
+                                                        key={headCell.id}
+                                                        sx={{ width: getColumnWidth(headCell.id, selectedStatusTab) }}
+                                                        sortDirection={sorting.orderBy === headCell.id ? sorting.order : false}
+                                                    >
+                                                        <TableSortLabel
+                                                            active={sorting.orderBy === headCell.id}
+                                                            direction={sorting.orderBy === headCell.id ? sorting.order : 'asc'}
+                                                            onClick={() => handleRequestSort(headCell.id)}
+                                                        >
                                                             {headCell.label}
                                                         </TableSortLabel>
                                                     </TableCell>
                                                 ))}
                                                 {(selectedStatusTab === 'infected' || selectedStatusTab === 'scan_failed' || selectedStatusTab === 'distributed') && (
-                                                    <TableCell sx={{ width: '32%' }}>Scan Results</TableCell>
+                                                    <TableCell sx={{ width: getColumnWidth('scan_results', selectedStatusTab) }}>
+                                                        Scan Results
+                                                    </TableCell>
                                                 )}
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
                                             {processedFiles.length > 0 ? processedFiles.map((file) => (
                                                 <TableRow hover key={file.id}>
-                                                    <TableCell>{file.name}</TableCell>
-                                                    <TableCell>{file.collection_name}</TableCell>
-                                                    <TableCell>{formatBytes(file.size_bytes)}</TableCell>
-                                                    <TableCell>{formatDisplayDate(file.upload_time)}</TableCell>
+                                                    <TableCell sx={{
+                                                        wordBreak: 'break-all',
+                                                        overflowWrap: 'anywhere',
+                                                        whiteSpace: 'normal',
+                                                        verticalAlign: 'top',
+                                                    }}>
+                                                        {file.name}
+                                                    </TableCell>
+                                                    <TableCell sx={{
+                                                        wordBreak: 'break-word',
+                                                        overflowWrap: 'anywhere',
+                                                        whiteSpace: 'normal',
+                                                        verticalAlign: 'top',
+                                                    }}>
+                                                        {file.collection_name}
+                                                    </TableCell>
+                                                    <TableCell sx={{ whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                                                        {formatBytes(file.size_bytes)}
+                                                    </TableCell>
+                                                    <TableCell sx={{ whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                                                        {formatDisplayDate(file.upload_time)}
+                                                    </TableCell>
                                                     {selectedStatusTab === 'distributed' && (
-                                                        <TableCell>{formatDisplayDate(file.egress_start)}</TableCell>
-                                                    )
-                                                    }
+                                                        <TableCell sx={{ whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                                                            {formatDisplayDate(file.egress_start)}
+                                                        </TableCell>
+                                                    )}
                                                     {(selectedStatusTab === 'infected' || selectedStatusTab === 'scan_failed' || selectedStatusTab === 'distributed') && 
                                                         <TableCell
                                                             sx={{
-                                                                width: '32%',
+                                                                width: getColumnWidth('scan_results', selectedStatusTab),
                                                                 verticalAlign: 'top',
                                                                 overflowWrap: 'anywhere',
                                                                 wordBreak: 'break-word',
