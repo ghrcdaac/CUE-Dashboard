@@ -1,5 +1,5 @@
-# Use a base image with Node.js 16 pre-installed
-FROM node:22.19.0-trixie-slim
+# Use official Node.js 24 LTS base image
+FROM node:24-bookworm-slim
 
 # Set the working directory inside the container
 WORKDIR /app

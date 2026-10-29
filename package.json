@@ -20,20 +20,20 @@
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "gsap": "^3.12.7",
-    "js-cookie": "^3.0.5",
+    "js-cookie": "^3.0.8",
     "jwt-decode": "^4.0.0",
     "oidc-client-ts": "^3.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-oidc-context": "^3.2.0",
     "react-redux": "^9.2.0",
-    "react-router-dom": "^6.28.0",
+    "react-router-dom": "^6.30.6",
     "react-scripts": "5.0.1",
     "react-toastify": "^11.0.3",
     "react-transition-group": "^4.4.5",
     "recharts": "^2.15.1",
     "web-vitals": "^2.1.4",
-    "jspdf": "^2.5.1",
+    "jspdf": "^4.2.1",
     "jspdf-autotable": "^3.8.0"
   },
   "scripts": {
@@ -59,6 +59,12 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "resolutions": {
+    "fast-xml-parser": "^4.5.7"
+  },
+  "engines": {
+    "node": ">=24"
   },
   "main": "index.js",
   "author": "Navaneeth R Selvaraj <navaneeth026@gmail.com>",

@@ -23,7 +23,7 @@ This project is a React-based dashboard application built with TypeScript, Redux
 
 ### Prerequisites
 
--   Node.js 22 (for LTS support)
+-   Node.js 24 (LTS)
 -   Yarn package manager
 
 ### Installation
