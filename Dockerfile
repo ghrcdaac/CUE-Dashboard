@@ -1,5 +1,5 @@
-# Use official Node.js 24 LTS base image
-FROM node:24-bookworm-slim
+# Use official Node.js 26 LTS Alpine base image (recommended by Snyk)
+FROM node:26.7.0-alpine3.24
 
 # Set the working directory inside the container
 WORKDIR /app
