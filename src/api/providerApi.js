@@ -64,3 +64,11 @@ export const deleteProvider = (providerId) => {
  * @deprecated Use getProviderById instead.
  */
 export const fetchProviderById = getProviderById;
+
+/**
+ * Lists the non-deleted collections mapped to a provider (many-to-many), each with is_primary.
+ * @param {string} providerId - The UUID of the provider.
+ */
+export const listProviderCollections = (providerId) => {
+    return apiClient.get(`/providers/${providerId}/collections`);
+};

@@ -88,3 +88,26 @@ export const assignUserRole = (userId, roleId, providerId = null) => {
   }
   return apiClient.patch(`/cueusers/${userId}/role`, payload);
 };
+
+
+// --- User <-> provider mappings (many-to-many) ---
+
+/** Lists the providers assigned to a user. */
+export const listUserProviders = (userId) => {
+    return apiClient.get(`/cueusers/${userId}/providers`);
+};
+
+/** Assigns one more provider to a user. */
+export const addUserProvider = (userId, providerId) => {
+    return apiClient.post(`/cueusers/${userId}/providers`, { provider_id: providerId });
+};
+
+/** Removes one provider from a user. */
+export const removeUserProvider = (userId, providerId) => {
+    return apiClient.delete(`/cueusers/${userId}/providers/${providerId}`);
+};
+
+/** Replaces the user's whole provider set (one transaction on the backend). */
+export const replaceUserProviders = (userId, providerIds) => {
+    return apiClient.put(`/cueusers/${userId}/providers`, { provider_ids: providerIds });
+};

@@ -116,3 +116,32 @@ export async function collectionFilesCount(params, accessToken) {
     if (!response.ok) throw new Error('Failed to fetch collection files count');
     return response.json();
 }
+
+// ==============================================================================
+// === Collection <-> provider mappings (many-to-many) ==========================
+// ==============================================================================
+
+/** Lists the providers mapped to a collection (each with is_primary and can_upload). */
+export const listCollectionProviders = (collectionId) => {
+    return apiClient.get(`/collections/${collectionId}/providers`);
+};
+
+/** Adds a provider (same DAAC) to a collection as a secondary provider. */
+export const addCollectionProvider = (collectionId, providerId) => {
+    return apiClient.post(`/collections/${collectionId}/providers`, { provider_id: providerId });
+};
+
+/** Removes a provider mapping. The backend refuses to remove the primary. */
+export const removeCollectionProvider = (collectionId, providerId) => {
+    return apiClient.delete(`/collections/${collectionId}/providers/${providerId}`);
+};
+
+/** Replaces the whole set of mapped providers. Must include the primary. */
+export const replaceCollectionProviders = (collectionId, providerIds) => {
+    return apiClient.put(`/collections/${collectionId}/providers`, { provider_ids: providerIds });
+};
+
+/** Makes an already mapped provider the primary (the old primary stays mapped). */
+export const setPrimaryCollectionProvider = (collectionId, providerId) => {
+    return apiClient.put(`/collections/${collectionId}/providers/${providerId}/primary`);
+};
