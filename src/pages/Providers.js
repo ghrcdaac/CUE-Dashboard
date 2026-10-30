@@ -21,6 +21,7 @@ import useAuth from '../hooks/useAuth';
 import usePrivileges from '../hooks/usePrivileges';
 import { parseApiError } from '../utils/errorUtils';
 import * as providerApi from '../api/providerApi';
+import ProviderCollectionsDialog from './ProviderCollectionsDialog';
 import ExportMenu from "./reports/ExportMenu";
 import { generatePDFReport } from "./reports/PdfReport";
 
@@ -269,7 +270,9 @@ function Providers() {
     };
 
     const handleOpenDialog = (type, data = null) => {
-        if (type === 'edit') {
+        if (type === 'collections') {
+            setDialog({ open: 'collections', data: processedProviders.find(p => p.id === selected[0]) || null });
+        } else if (type === 'edit') {
             const providerToEdit = processedProviders.find(p => p.id === selected[0]);
             setDialog({ open: 'edit', data: { ...providerToEdit } });
         } else {
@@ -517,6 +520,7 @@ function Providers() {
                             {hasPrivilege('provider:read') && <ExportMenu onExport={handleExportProviders} />}
                             <Button variant="contained" onClick={() => handleOpenDialog('create', { short_name: '', long_name: '', can_upload: true, point_of_contact: null, reason: ''})} startIcon={<AddIcon />} disabled={!hasPrivilege('provider:create')}>Add</Button>
                             <Button variant="contained" onClick={() => handleOpenDialog('edit')} disabled={selected.length !== 1 || !hasPrivilege('provider:update')} startIcon={<EditIcon />}>Edit</Button>
+                            <Button variant="outlined" onClick={() => handleOpenDialog('collections')} disabled={selected.length !== 1 || !hasPrivilege('provider:read')}>Collections</Button>
                             <Button variant="contained" color="error" onClick={() => handleOpenDialog('delete')} disabled={selected.length === 0 || !hasPrivilege('provider:delete')} startIcon={<DeleteIcon />}>Delete</Button>
                         </Box>
                     </Box>
@@ -638,6 +642,12 @@ function Providers() {
                     </DialogActions>
                 </Box>
             </Dialog>
+
+            <ProviderCollectionsDialog
+                open={dialog.open === 'collections'}
+                provider={dialog.open === 'collections' ? dialog.data : null}
+                onClose={handleCloseDialog}
+            />
 
             <Dialog open={dialog.open === 'delete'} onClose={handleCloseDialog}>
                 <DialogTitle>Confirm Delete</DialogTitle>
