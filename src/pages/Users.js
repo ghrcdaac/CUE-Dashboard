@@ -21,7 +21,7 @@ import useAuth from '../hooks/useAuth';
 import usePrivileges from '../hooks/usePrivileges';
 import { parseApiError } from '../utils/errorUtils';
 import { getEditableRoles } from '../utils/permissionUtils';
-import { assignUserRole, deleteCueuser } from '../api/cueUser';
+import { assignUserRole, deleteCueuser, replaceUserProviders } from '../api/cueUser';
 
 // Import actions from the central data cache
 import { fetchUsers, fetchRoles, fetchProviders } from '../app/reducers/dataCacheSlice';
@@ -311,8 +311,9 @@ function Users() {
     const handleOpenDialog = (type) => {
         if (type === 'edit') {
             const userToEdit = processedUsers.find(user => user.id === selected[0]);
-            const initialProvider = userToEdit.providers && userToEdit.providers.length > 0 ? userToEdit.providers[0] : null;
-            setDialog({ open: 'edit', data: { ...userToEdit, selectedProvider: initialProvider }});
+            // Many-to-many: pre-fill every provider the user already has.
+            const initialProviders = userToEdit.providers ? [...userToEdit.providers] : [];
+            setDialog({ open: 'edit', data: { ...userToEdit, originalRoleId: userToEdit.role?.id || null, selectedProviders: initialProviders }});
         } else {
             setDialog({ open: 'delete', data: null });
         }
@@ -325,15 +326,25 @@ function Users() {
             toast.error("A role must be selected.");
             return;
         }
-        if (dialog.data.role.short_name === 'provider' && !dialog.data.selectedProvider) {
-            toast.error("A provider must be selected for the provider role.");
+        const isProviderRole = dialog.data.role.short_name === 'provider';
+        const providerIds = (dialog.data.selectedProviders || []).map(p => p.id);
+        if (isProviderRole && providerIds.length === 0) {
+            toast.error("At least one provider must be selected for the provider role.");
             return;
         }
         setIsSubmitting(true);
         try {
-            const providerId = dialog.data.role.short_name === 'provider' ? dialog.data.selectedProvider.id : null;
-            await assignUserRole(dialog.data.id, dialog.data.role.id, providerId);
-            toast.success("User role updated successfully!");
+            const roleChanged = dialog.data.role.id !== dialog.data.originalRoleId;
+            // The role endpoint replaces all of the user's providers, so only call it when the
+            // role changed (or for non-provider roles, as before). Passing the first selected
+            // provider keeps the user mapped even if the follow-up call fails.
+            if (roleChanged || !isProviderRole) {
+                await assignUserRole(dialog.data.id, dialog.data.role.id, isProviderRole ? providerIds[0] : null);
+            }
+            if (isProviderRole) {
+                await replaceUserProviders(dialog.data.id, providerIds);
+            }
+            toast.success("User updated successfully!");
             handleCloseDialog();
             const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
             dispatch(fetchUsers({ page: apiPage, pageSize: 50 }));
@@ -480,19 +491,21 @@ function Users() {
                         options={getEditableRoles(roles.data, currentUser?.roles)}
                         getOptionLabel={(option) => option.long_name}
                         value={dialog.data?.role || null}
-                        onChange={(event, newValue) => setDialog(prev => ({...prev, data: {...prev.data, role: newValue, selectedProvider: newValue?.short_name === 'provider' ? prev.data.selectedProvider : null}}))}
+                        onChange={(event, newValue) => setDialog(prev => ({...prev, data: {...prev.data, role: newValue, selectedProviders: newValue?.short_name === 'provider' ? (prev.data.selectedProviders || []) : []}}))}
                         renderInput={(params) => <TextField {...params} label="Role" margin="dense" fullWidth />}
                         isOptionEqualToValue={(option, value) => option.id === value.id}
                     />
                     {dialog.data?.role?.short_name === 'provider' && (
                         <Autocomplete
+                            multiple
+                            filterSelectedOptions
                             options={mergedProviders || []}
                             getOptionLabel={(option) => option.short_name || ""}
-                            value={dialog.data?.selectedProvider || null}
-                            onChange={(event, newValue) => setDialog(prev => ({...prev, data: {...prev.data, selectedProvider: newValue}}))}
+                            value={dialog.data?.selectedProviders || []}
+                            onChange={(event, newValue) => setDialog(prev => ({...prev, data: {...prev.data, selectedProviders: newValue}}))}
                             ListboxProps={{ onScroll: handleProvidersScroll }}
                             loading={providers.status === 'loading'}
-                            renderInput={(params) => <TextField {...params} label="Provider" margin="dense" fullWidth required />}
+                            renderInput={(params) => <TextField {...params} label="Providers" margin="dense" fullWidth required={(dialog.data?.selectedProviders || []).length === 0} />}
                             isOptionEqualToValue={(option, value) => option.id === value.id}
                         />
                     )}
