@@ -3,7 +3,7 @@ import {
     Box, Card, CardContent, Typography, Button, TextField,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, 
     TablePagination, TableSortLabel, Checkbox, CircularProgress, Dialog, 
-    DialogTitle, DialogContent, DialogActions, Autocomplete, MenuItem, Container, Alert
+    DialogTitle, DialogContent, DialogActions, Autocomplete, MenuItem, Container, Alert, Tooltip
 } from '@mui/material';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -14,6 +14,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CollectionsIcon from '@mui/icons-material/Collections';
+import GroupWorkIcon from '@mui/icons-material/GroupWork';
 import DoneIcon from '@mui/icons-material/Done';
 import CloseIcon from '@mui/icons-material/Close';
 
@@ -23,6 +24,7 @@ import usePrivileges from '../hooks/usePrivileges';
 import { parseApiError } from '../utils/errorUtils';
 
 import * as collectionApi from '../api/collectionApi';
+import CollectionProvidersDialog from './collections/CollectionProvidersDialog';
 // Import the new Redux cache actions
 import { fetchCollections, fetchProviders, fetchEgresses } from '../app/reducers/dataCacheSlice';
 
@@ -207,6 +209,10 @@ function Collections() {
         const collectionsWithDetails = collections.data.map(collection => ({
             ...collection,
             provider_name: collection.provider?.name || 'N/A',
+            // Many-to-many: the optional `providers` list (primary first). Older backends omit it.
+            secondary_provider_names: (collection.providers || [])
+                .filter(p => !p.is_primary)
+                .map(p => p.short_name),
             egress_path: collection.egress?.path || 'N/A',
         }));
 
@@ -218,6 +224,7 @@ function Collections() {
             filtered = filtered.filter(c => 
                 c.short_name.toLowerCase().includes(lowercasedTerm) ||
                 c.provider_name.toLowerCase().includes(lowercasedTerm) ||
+                c.secondary_provider_names.some(n => (n || '').toLowerCase().includes(lowercasedTerm)) ||
                 c.egress_path.toLowerCase().includes(lowercasedTerm)
             );
         }
@@ -259,7 +266,9 @@ function Collections() {
     }, [collections.data, providers.data, egresses.data, sorting, searchTerm, pagination.page, rowsPerPage]);
     
     const handleOpenDialog = (dialogType, data = null) => {
-        if (dialogType === 'edit') {
+        if (dialogType === 'providers') {
+            setDialog({ open: 'providers', data: processedCollections.find(c => c.id === selected[0]) || null });
+        } else if (dialogType === 'edit') {
             const collectionToEdit = processedCollections.find(c => c.id === selected[0]);
             setDialog({ open: 'edit', data: { ...collectionToEdit } });
         } else {
@@ -275,10 +284,14 @@ function Collections() {
             const { short_name, provider, egress, active } = dialog.data;
             const payload = {
                     short_name: short_name,
-                    provider_id: provider?.id || null,
                     egress_id: egress?.id || null,
                     active: active
             };
+            // Only create sets the (primary) provider. Edit leaves providers alone; they are
+            // managed on the overview page so the legacy "move" meaning never applies by accident.
+            if (dialog.open === 'create') {
+                payload.provider_id = provider?.id || null;
+            }
             if (dialog.open === 'create') {
                 await collectionApi.createCollection({...payload});
                 toast.success("Collection created successfully!");
@@ -495,6 +508,7 @@ function Collections() {
                             <TextField label="Search" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                             <Button variant="contained" onClick={() => handleOpenDialog('create', { short_name: '', provider_id: null, active: true, egress_id: null })} startIcon={<AddIcon />} disabled={!hasPrivilege('collection:create')}>Add</Button>
                             <Button variant="contained" onClick={() => handleOpenDialog('edit')} disabled={selected.length !== 1 || !hasPrivilege('collection:update')} startIcon={<EditIcon />}>Edit</Button>
+                            <Button variant="outlined" onClick={() => handleOpenDialog('providers')} disabled={selected.length !== 1 || !hasPrivilege('collection:read')} startIcon={<GroupWorkIcon />}>Providers</Button>
                             <Button variant="outlined" onClick={handleActiveToggle} disabled={selected.length === 0 || !hasPrivilege('collection:update')} startIcon={firstSelectedStatus ? <CloseIcon /> : <DoneIcon />}>
                                 {firstSelectedStatus ? 'Deactivate' : 'Activate'}
                             </Button>
@@ -537,7 +551,13 @@ function Collections() {
                                                 <TableRow key={collection.id} hover onClick={() => handleRowClick(collection.id)} role="checkbox" tabIndex={-1} selected={isItemSelected}>
                                                     <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
                                                     <TableCell>{collection.short_name}</TableCell>
-                                                    <TableCell>{collection.provider_name}</TableCell>
+                                                    <TableCell>
+                                                        {collection.secondary_provider_names.length === 0 ? collection.provider_name : (
+                                                            <Tooltip title={[collection.provider_name, ...collection.secondary_provider_names].join(', ')}>
+                                                                <span><strong>{collection.provider_name}</strong> +{collection.secondary_provider_names.length}</span>
+                                                            </Tooltip>
+                                                        )}
+                                                    </TableCell>
                                                     <TableCell>{collection.egress_path}</TableCell>
                                                     <TableCell>{collection.active ? 'Active' : 'Inactive'}</TableCell>
                                                 </TableRow>
@@ -566,6 +586,16 @@ function Collections() {
                     dialog.data && (
                         <Box component="form" id="collection-form" onSubmit={handleFormSubmit} noValidate sx={{ mt: 1 }}>
                             <TextField autoFocus margin="dense" name="short_name" label="Collection Short Name" fullWidth value={dialog.data.short_name} onChange={(e) => setDialog({...dialog, data: {...dialog.data, short_name: e.target.value}})} required />
+                            {dialog.open === 'edit' ? (
+                                <TextField
+                                    margin="dense"
+                                    label="Primary provider"
+                                    fullWidth
+                                    value={dialog.data.provider?.name || ''}
+                                    InputProps={{ readOnly: true }}
+                                    helperText="Manage providers with the Providers button."
+                                />
+                            ) : (
                             <Autocomplete
                                     fullWidth
                                     options={mergedProviders}
@@ -602,6 +632,7 @@ function Collections() {
                                         />
                                     )}
                                 />
+                            )}
 
 
                                 <Autocomplete
@@ -653,6 +684,19 @@ function Collections() {
                     <Button type="submit" form="collection-form" variant="contained" disabled={isSubmitting}>{isSubmitting ? <CircularProgress size={24} /> : (dialog.open === 'create' ? 'Create' : 'Save')}</Button>
                 </DialogActions>
             </Dialog>
+
+            <CollectionProvidersDialog
+                open={dialog.open === 'providers'}
+                collection={dialog.open === 'providers' ? dialog.data : null}
+                providerOptions={mergedProviders}
+                canEdit={hasPrivilege('collection:update')}
+                onClose={handleCloseDialog}
+                onChanged={() => {
+                    // Mapping changed: refresh the cached collection page so the Provider column updates.
+                    const apiPage = Math.floor((currentPage * rowsPerPage) / 50) + 1;
+                    dispatch(fetchCollections({ page: apiPage, pageSize: 50 }));
+                }}
+            />
 
             <Dialog open={dialog.open === 'delete'} onClose={handleCloseDialog}>
                 <DialogTitle>Confirm Delete</DialogTitle>
