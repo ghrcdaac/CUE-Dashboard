@@ -39,6 +39,7 @@ function CollectionProvidersDialog({ open, collection, providerOptions = [], can
     }, [open, load]);
 
     // Each action calls one endpoint, then refreshes the card and tells the parent to refresh its cache.
+    // Returns true on success, so callers keep their input when it fails.
     const run = async (action, successMessage) => {
         setBusy(true);
         try {
@@ -46,8 +47,10 @@ function CollectionProvidersDialog({ open, collection, providerOptions = [], can
             toast.success(successMessage);
             await load();
             if (onChanged) onChanged();
+            return true;
         } catch (error) {
             toast.error(parseApiError(error));
+            return false;
         } finally {
             setBusy(false);
         }
@@ -118,7 +121,7 @@ function CollectionProvidersDialog({ open, collection, providerOptions = [], can
                             renderInput={(params) => <TextField {...params} label="Add provider" />}
                         />
                         <Button variant="contained" disabled={!toAdd || busy || loading}
-                            onClick={() => run(() => collectionApi.addCollectionProvider(collectionId, toAdd.id), `${toAdd.short_name} added.`).then(() => setToAdd(null))}>
+                            onClick={() => run(() => collectionApi.addCollectionProvider(collectionId, toAdd.id), `${toAdd.short_name} added.`).then((ok) => { if (ok) setToAdd(null); })}>
                             Add
                         </Button>
                     </Box>
