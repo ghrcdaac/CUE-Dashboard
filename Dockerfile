@@ -1,5 +1,5 @@
-# Use official Node.js 26 LTS Alpine base image (recommended by Snyk)
-FROM node:26.7.0-alpine3.24
+# Use official Node.js 26 LTS Alpine base image (latest patched release)
+FROM node:26-alpine
 
 # Set the working directory inside the container
 WORKDIR /app
