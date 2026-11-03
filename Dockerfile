@@ -1,5 +1,5 @@
-# Use official Node.js 26 LTS Alpine base image (latest patched release)
-FROM node:26-alpine
+# Pin to a Node.js release containing the fix for CVE-2026-111497.
+FROM node:26.12.1-alpine
 
 # Set the working directory inside the container
 WORKDIR /app
