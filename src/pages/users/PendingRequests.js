@@ -218,7 +218,7 @@ function PendingRequests() {
                     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
                     <TableContainer component={Paper}>
-                        <Table>
+                        <Table aria-label="Pending user applications">
                             <TableHead>
                                 <TableRow>
                                     <TableCell padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedApps.length} checked={processedApps.length > 0 && selected.length === processedApps.length} onChange={handleSelectAllClick} inputProps={{ 'aria-label': 'Select all applications' }} /></TableCell>

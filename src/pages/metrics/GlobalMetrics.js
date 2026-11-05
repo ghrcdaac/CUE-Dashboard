@@ -378,7 +378,7 @@ function GlobalMetrics() {
                   DAAC Contribution Overview
                 </Typography>
                 <TableContainer component={Paper}>
-                  <Table>
+                  <Table aria-label="DAAC contribution overview">
                     <TableHead>
                       <TableRow>
                         <TableCell sx={{ fontWeight: 'bold' }}>DAAC Name</TableCell>

@@ -183,3 +183,26 @@ describe('Collections table with rows', () => {
         expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
     });
 });
+
+describe('fixes from the UAT test', () => {
+    test('Home card numbers are not headings', async () => {
+        renderAt('/', registeredSession());
+        await screen.findByRole('heading', { level: 1, name: 'Home' });
+        const h3 = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+        expect(h3.some((t) => /^\d/.test(t))).toBe(false);
+    });
+
+    test('account button is named from the profile (cueusername)', async () => {
+        const s = registeredSession();
+        delete s.user.username;
+        s.user.cueusername = 'tester2';
+        renderAt('/', s);
+        expect(await screen.findByRole('button', { name: 'Account menu for tester2' })).toBeInTheDocument();
+    });
+
+    test('Files by Cost search box and tables are named', async () => {
+        renderAt('/files-by-cost', registeredSession());
+        await screen.findByRole('heading', { level: 1, name: 'Metrics' });
+        expect(await screen.findByRole('textbox', { name: 'Search files by name' })).toBeInTheDocument();
+    });
+});

@@ -538,7 +538,7 @@ function FilesByStatus() {
                          error ? ( <Alert severity="error" sx={{ my: 2 }}>{error}</Alert> ) : (
                             <>
                                 <TableContainer component={Paper}>
-                                    <Table stickyHeader sx={{ tableLayout: 'fixed', width: '100%' }}>
+                                    <Table stickyHeader aria-label={`Files with status ${selectedStatusTab.replace('_', ' ')}`} sx={{ tableLayout: 'fixed', width: '100%' }}>
                                         <TableHead>
                                             <TableRow>
                                                 {visibleHeadCells.map(headCell => (

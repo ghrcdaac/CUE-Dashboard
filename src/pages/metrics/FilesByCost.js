@@ -353,6 +353,7 @@ function FilesByCost() {
                             <Typography variant="h5" component="h2">Files by Cost</Typography>
                             <OutlinedInput
                                 placeholder="Search files..."
+                                inputProps={{ 'aria-label': 'Search files by name' }}
                                 size="small"
                                 value={fileSearchTerm}
                                 onChange={handleFileSearchChange}
@@ -361,7 +362,7 @@ function FilesByCost() {
                         </Box>
                         {loadingFiles ? <CircularProgress aria-label="Loading" /> :
                             <>
-                                <TableContainer component={Paper}><Table><TableHead><TableRow>
+                                <TableContainer component={Paper}><Table aria-label="Files by cost"><TableHead><TableRow>
                                     <TableCell sortDirection={fileSort.field === 'name' ? fileSort.direction : false}>
                                         <TableSortLabel active={fileSort.field === 'name'} direction={fileSort.field === 'name' ? fileSort.direction : 'asc'} onClick={() => handleFileSort('name')}>File Name</TableSortLabel>
                                     </TableCell>

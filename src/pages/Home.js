@@ -56,7 +56,7 @@ const StatCard = ({ title, value, icon, onClick, loading }) => (
                 {loading ? (
                     <CircularProgress size={48} sx={{ my: 0.5 }} aria-label={`Loading ${title}`} />
                 ) : (
-                    <Typography variant="h3" color="primary">{value}</Typography>
+                    <Typography variant="h3" component="p" color="primary">{value}</Typography>
                 )}
             </CardActionArea>
         </Card>
@@ -76,7 +76,7 @@ const MetricCard = ({ title, value, icon, color = "inherit", loading }) => (
                          <CircularProgress size={48} aria-label={`Loading ${title}`} />
                     </Box>
                 ) : (
-                    <Typography  sx={{py:4}} variant="h3" color={color}>{value}</Typography>
+                    <Typography  sx={{py:4}} variant="h3" component="p" color={color}>{value}</Typography>
                 )}
             </CardContent>
         </Card>

@@ -17,7 +17,8 @@ export default function Footer() {
         justifyContent: 'center',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: 10,
+        columnGap: 10,
+        rowGap: 0.5,
       }}
     >
 

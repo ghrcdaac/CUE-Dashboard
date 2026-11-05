@@ -42,7 +42,7 @@ import ApiKeys from "./pages/Profile/ApiKeys";
 
 function SimpleLayout() {
     return (
-        <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', height: { xs: 'auto', md: '100vh' } }}>
             <SkipLink />
             <Header />
             <Box
@@ -51,7 +51,7 @@ function SimpleLayout() {
                 tabIndex={-1}
                 sx={{
                     flexGrow: 1,
-                    overflowY: 'auto',
+                    overflowY: { xs: 'visible', md: 'auto' },
                     p: 3,
                     backgroundColor: '#f4f6f8',
                 }}
@@ -76,10 +76,10 @@ function Layout() {
     };
 
     return (
-        <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', height: { xs: 'auto', md: '100vh' } }}>
             <SkipLink />
             <Header />
-            <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
+            <Box sx={{ display: 'flex', flexGrow: 1, overflow: { xs: 'visible', md: 'hidden' } }}>
                 <SideNav
                     menuItems={menuItems}
                     open={sideNavOpen}
@@ -94,7 +94,7 @@ function Layout() {
                         // UPDATED: This is the definitive fix for the content area
                         flex: 1,
                         minWidth: 0, // A flexbox failsafe to allow shrinking
-                        overflowY: 'auto',
+                        overflowY: { xs: 'visible', md: 'auto' },
                         p: 3,
                         backgroundColor: '#f4f6f8',
                     }}
