@@ -6,6 +6,7 @@ import {
   CircularProgress, TableSortLabel
 } from '@mui/material';
 import { toast } from 'react-toastify';
+import Link from '@mui/material/Link';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import { collectionFilesCount } from '../../api/collectionApi';
@@ -85,13 +86,13 @@ function CollectionOverview() {
       <Box sx={{ flexGrow: 1 }}>
         <Card sx={{ marginBottom: 2 }}>
           <CardContent>
-            <Typography variant="h5" gutterBottom>
+            <Typography variant="h5" component="h2" gutterBottom>
               Collection Files Overview
             </Typography>
 
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
-                <CircularProgress />
+                <CircularProgress aria-label="Loading" />
               </Box>
             ) : (
               <>
@@ -123,7 +124,16 @@ function CollectionOverview() {
                       {sortedCollections.length > 0 ? (
                         sortedCollections.map((col) => (
                           <TableRow key={col.id} hover sx={{ cursor: 'pointer' }}>
-                            <TableCell onClick={() => handleNavigate(col.id, col.name)}>{col.name}</TableCell>
+                            <TableCell onClick={() => handleNavigate(col.id, col.name)}>
+                              <Link
+                                component="button"
+                                type="button"
+                                underline="hover"
+                                onClick={(ev) => { ev.stopPropagation(); handleNavigate(col.id, col.name); }}
+                              >
+                                {col.name}
+                              </Link>
+                            </TableCell>
                             <TableCell onClick={() => handleNavigate(col.id, col.name)}>{col.file_count}</TableCell>
                           </TableRow>
                         ))

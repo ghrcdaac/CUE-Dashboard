@@ -51,10 +51,10 @@ const StatCard = ({ title, value, icon, onClick, loading }) => (
             <CardActionArea onClick={onClick} sx={{ height: '100%', p: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     {icon}
-                    <Typography variant="h6" color="text.secondary">{title}</Typography>
+                    <Typography variant="h6" component="h3" color="text.secondary">{title}</Typography>
                 </Box>
                 {loading ? (
-                    <CircularProgress size={48} sx={{ my: 0.5 }} />
+                    <CircularProgress size={48} sx={{ my: 0.5 }} aria-label={`Loading ${title}`} />
                 ) : (
                     <Typography variant="h3" color="primary">{value}</Typography>
                 )}
@@ -69,11 +69,11 @@ const MetricCard = ({ title, value, icon, color = "inherit", loading }) => (
             <CardContent sx={{ py: 2, px: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     {icon}
-                    <Typography variant="h6" color="text.secondary">{title}</Typography>
+                    <Typography variant="h6" component="h3" color="text.secondary">{title}</Typography>
                 </Box>
                 {loading ? (
                     <Box sx={{ py: 4, display: 'flex', alignItems: 'center' }}>
-                         <CircularProgress size={48} />
+                         <CircularProgress size={48} aria-label={`Loading ${title}`} />
                     </Box>
                 ) : (
                     <Typography  sx={{py:4}} variant="h3" color={color}>{value}</Typography>
@@ -143,13 +143,17 @@ export default function Home() {
 
     return (
         <Container maxWidth="lg" sx={{ py: 4 }}>
-         <Typography variant="h5" sx={{ mb: 2, textAlign: 'center' }}>Cloud Upload Environment (CUE)</Typography>
+         <Typography variant="h5" component="h2" sx={{ mb: 2, textAlign: 'center' }}>Cloud Upload Environment (CUE)</Typography>
             <Grid container spacing={3} justifyContent="center">
                 {hasPrivilege("collection:page") && (
                 <StatCard title="Collections" value={collections.total} onClick={() => navigate('/collections')} icon={<CollectionsIcon color="action" />} loading={collections.status === 'loading'} />
                 )}
+                {hasPrivilege("provider:read") && (
                 <StatCard title="Providers" value={providers.total} onClick={() => navigate('/providers')} icon={<AccountBoxIcon color="action" />} loading={providers.status === 'loading'} />
+                )}
+                {hasPrivilege("egress:read") && (
                 <StatCard title="Egress" value={egresses.total} onClick={() => navigate('/daac')} icon={<OutputIcon color="action" />} loading={egresses.status === 'loading'} />
+                )}
                 {/*The Users card is now only rendered if the user has the 'user:page' privilege. */}
                 {hasPrivilege("user:page") && (
                     <StatCard title="Users" value={users.total} onClick={() => navigate('/users')} icon={<GroupIcon color="action" />} loading={users.status === 'loading'} />
@@ -158,7 +162,7 @@ export default function Home() {
 
             <Divider sx={{ my: 4 }} />
 
-            <Typography variant="h5" sx={{ mb: 2, textAlign: 'center' }}>Metrics Summary (Last 7 Days)</Typography>
+            <Typography variant="h5" component="h2" sx={{ mb: 2, textAlign: 'center' }}>Metrics Summary (Last 7 Days)</Typography>
             
             <Grid container justifyContent="center" sx={{ mb: 4 }}>
                 <Grid item xs={12} lg={10}>

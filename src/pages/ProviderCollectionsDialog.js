@@ -31,7 +31,7 @@ function ProviderCollectionsDialog({ open, provider, onClose }) {
             <DialogTitle>Collections for {provider?.short_name} ({loading ? '…' : rows.length})</DialogTitle>
             <DialogContent>
                 {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}><CircularProgress /></Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}><CircularProgress aria-label="Loading" /></Box>
                 ) : (
                     <Table size="small">
                         <TableHead>

@@ -6,7 +6,7 @@ import {
     TextField, TableSortLabel, CircularProgress, MenuItem, Container, Alert,
     Autocomplete
 } from "@mui/material";
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useOutletContext, Outlet, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
@@ -27,6 +27,7 @@ import { generatePDFReport } from "./reports/PdfReport";
 
 // Import the new Redux cache actions
 import { fetchProviders, fetchUsers } from '../app/reducers/dataCacheSlice';
+import { BusySpinner } from '../components/a11y';
 
 const headCells = [
     { id: 'short_name', label: 'Short Name' },
@@ -402,7 +403,7 @@ function Providers() {
     };
 
     const handleExportProviders = async (format) => {
-        if (format !== 'pdf') return;
+        if (format !== 'pdf' && format !== 'csv') return;
 
         try {
             const pageSize = 50;
@@ -450,7 +451,8 @@ function Providers() {
                     point_of_contact_name: p.point_of_contact?.name || "",
                 })),
                 null,
-                info
+                info,
+                format
             );
 
         } catch (err) {
@@ -505,11 +507,10 @@ function Providers() {
 
     return (
         <Container maxWidth={false} disableGutters>
-            <ToastContainer position="top-center" />
             <Card>
                 <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-                        <Typography variant="h5">Providers</Typography>
+                        <Typography variant="h5" component="h2">Providers</Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                             <TextField label="Search Providers" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                             <TextField select label="Filter by Status" value={filter} onChange={(e) => setFilter(e.target.value)} size="small" sx={{ minWidth: 180 }}>
@@ -528,10 +529,10 @@ function Providers() {
                     {(providers.error || users.error) && <Alert severity="error" sx={{ mb: 2 }}>{providers.error || users.error}</Alert>}
                     
                     <TableContainer component={Paper}>
-                        <Table stickyHeader>
+                        <Table stickyHeader aria-label="Providers">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell sx={{ bgcolor: "#E5E8EB" }} padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedProviders.length} checked={processedProviders.length > 0 && selected.length === processedProviders.length} onChange={handleSelectAllClick} /></TableCell>
+                                    <TableCell sx={{ bgcolor: "#E5E8EB" }} padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedProviders.length} checked={processedProviders.length > 0 && selected.length === processedProviders.length} onChange={handleSelectAllClick} inputProps={{ 'aria-label': 'Select all providers' }} /></TableCell>
                                     {headCells.map(headCell => (
                                         <TableCell  sx={{ bgcolor: "#E5E8EB" }} key={headCell.id} sortDirection={sorting.orderBy === headCell.id ? sorting.order : false}>
                                             <TableSortLabel active={sorting.orderBy === headCell.id} direction={sorting.orderBy === headCell.id ? sorting.order : 'asc'} onClick={() => handleRequestSort(headCell.id)}>
@@ -543,7 +544,7 @@ function Providers() {
                             </TableHead>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow><TableCell colSpan={6} align="center" sx={{ py: 5 }}><CircularProgress /></TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={6} align="center" sx={{ py: 5 }}><CircularProgress aria-label="Loading" /></TableCell></TableRow>
                                 ) : processedProviders.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={6} align="center">
@@ -556,8 +557,8 @@ function Providers() {
                                     processedProviders.map(provider => {
                                         const isItemSelected = selected.indexOf(provider.id) !== -1;
                                         return (
-                                            <TableRow key={provider.id} hover onClick={() => handleRowClick(provider.id)} role="checkbox" tabIndex={-1} selected={isItemSelected}>
-                                                <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
+                                            <TableRow key={provider.id} hover onClick={() => handleRowClick(provider.id)} selected={isItemSelected}>
+                                                <TableCell padding="checkbox"><Checkbox checked={isItemSelected} inputProps={{ 'aria-label': `Select ${provider.short_name}` }} /></TableCell>
                                                 <TableCell>{provider.short_name}</TableCell>
                                                 <TableCell>{provider.long_name}</TableCell>
                                                 <TableCell>{provider.can_upload ? 'Yes' : 'No'}</TableCell>
@@ -638,7 +639,7 @@ function Providers() {
                     </DialogContent>
                     <DialogActions>
                         <Button onClick={handleCloseDialog}>Cancel</Button>
-                        <Button type="submit" variant="contained" disabled={isSubmitting}>{isSubmitting ? <CircularProgress size={24} /> : (dialog.open === 'create' ? 'Create' : 'Save')}</Button>
+                        <Button type="submit" variant="contained" disabled={isSubmitting}>{isSubmitting ? <BusySpinner /> : (dialog.open === 'create' ? 'Create' : 'Save')}</Button>
                     </DialogActions>
                 </Box>
             </Dialog>
@@ -654,7 +655,7 @@ function Providers() {
                 <DialogContent>Are you sure you want to delete the {selected.length} selected provider(s)?</DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseDialog}>Cancel</Button>
-                    <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={isSubmitting}>{isSubmitting ? <CircularProgress size={24} /> : 'Delete'}</Button>
+                    <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={isSubmitting}>{isSubmitting ? <BusySpinner /> : 'Delete'}</Button>
                 </DialogActions>
             </Dialog>
         </Container>

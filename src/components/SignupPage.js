@@ -4,7 +4,10 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material/styles';
+import theme from '../theme';
+import usePageTitle from '../hooks/usePageTitle';
+import { BusySpinner } from './a11y';
 import Paper from '@mui/material/Paper';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -12,7 +15,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import Autocomplete from "@mui/material/Autocomplete";
-import { FormControl, InputLabel, Select, MenuItem, CircularProgress, Grid } from '@mui/material';
+import { FormControl, InputLabel, Select, MenuItem, Grid } from '@mui/material';
 import { isValidEmail, isNotEmpty } from '../utils/validation';
 import { createUserApplication } from '../api/userApplicationApi';
 import { getNgroupsForApplication } from '../api/ngroupApi';
@@ -22,19 +25,14 @@ import { parseApiError } from '../utils/errorUtils';
 // --- ADDED IMPORT ---
 import useAuth from '../hooks/useAuth';
 
-const theme = createTheme({
-    palette: {
-        primary: {
-            main: "#19577F",
-        },
-    },
-});
+
 
 function SignupPage() {
     const navigate = useNavigate();
     const location = useLocation();
     // --- ADDED HOOK ---
     const { logout, authProvider } = useAuth();
+    usePageTitle('New user application');
 
     const [formData, setFormData] = useState({
         name: location.state?.name || '',
@@ -189,12 +187,12 @@ function SignupPage() {
 
     return (
         <ThemeProvider theme={theme}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: 'primary.main', p: 2 }}>
+            <Box component="main" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: 'primary.main', p: 2 }}>
                 <Paper elevation={5} sx={{ padding: 3, maxWidth: 600, width: '100%' }}>
                     <Typography component="h1" variant="h5" sx={{ color: 'primary.main', textAlign: 'center', mb: 2 }}>
                         Cloud Upload Environment - New User Application
                     </Typography>
-                    {submissionError && <Typography color="error" align="center">{submissionError}</Typography>}
+                    <div role="alert">{submissionError && <Typography color="error" align="center">{submissionError}</Typography>}</div>
                     <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1 }}>
                         <TextField 
                             fullWidth 
@@ -289,7 +287,7 @@ function SignupPage() {
                                     variant="contained" 
                                     disabled={isLoading}
                                 >
-                                    {isLoading ? <CircularProgress size={24} /> : 'Submit Application'}
+                                    {isLoading ? <BusySpinner label="Submitting" /> : 'Submit Application'}
                                 </Button>
                             </Grid>
                         </Grid>

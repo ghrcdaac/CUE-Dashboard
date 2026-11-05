@@ -53,7 +53,7 @@ function ProfileInfo() {
             </Avatar>
           </Grid>
           <Grid item xs>
-            <Typography variant="h4" component="h1">{user.name}</Typography>
+            <Typography variant="h4" component="h2">{user.name}</Typography>
             <Typography color="text.secondary">-- {user.cueusername}</Typography>
           </Grid>
         </Grid>
@@ -62,15 +62,15 @@ function ProfileInfo() {
 
         <Stack spacing={2}>
             <Box>
-                <Typography variant="subtitle2" color="text.secondary">Full Name</Typography>
+                <Typography variant="subtitle2" component="p" color="text.secondary">Full Name</Typography>
                 <Typography>{user.name || 'N/A'}</Typography>
             </Box>
             <Box>
-                <Typography variant="subtitle2" color="text.secondary">Email Address</Typography>
+                <Typography variant="subtitle2" component="p" color="text.secondary">Email Address</Typography>
                 <Typography>{user.email || 'N/A'}</Typography>
             </Box>
             <Box>
-                <Typography variant="subtitle2" color="text.secondary">Registered On</Typography>
+                <Typography variant="subtitle2" component="p" color="text.secondary">Registered On</Typography>
                 {/* Use user.registered for the timestamp */}
                 <Typography>{formatLocalDate(user.registered)}</Typography>
             </Box>
@@ -78,7 +78,7 @@ function ProfileInfo() {
 
         <Divider sx={{ my: 3 }} />
         <Box>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h6" component="h3" gutterBottom>
             Assigned Roles
           </Typography>
           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
@@ -99,7 +99,7 @@ function ProfileInfo() {
 
         <Divider sx={{ my: 3 }} />
         <Box>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h6" component="h3" gutterBottom>
             Associated DAACs
           </Typography>
           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">

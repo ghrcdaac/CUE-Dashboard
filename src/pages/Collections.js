@@ -5,7 +5,7 @@ import {
     TablePagination, TableSortLabel, Checkbox, CircularProgress, Dialog, 
     DialogTitle, DialogContent, DialogActions, Autocomplete, MenuItem, Container, Alert, Tooltip
 } from '@mui/material';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Outlet, useLocation, useOutletContext } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
@@ -27,6 +27,7 @@ import * as collectionApi from '../api/collectionApi';
 import CollectionProvidersDialog from './collections/CollectionProvidersDialog';
 // Import the new Redux cache actions
 import { fetchCollections, fetchProviders, fetchEgresses } from '../app/reducers/dataCacheSlice';
+import { BusySpinner, VisuallyHidden } from '../components/a11y';
 
 const headCells = [
     { id: 'short_name', label: 'Short Name' },
@@ -499,11 +500,10 @@ function Collections() {
 
     return (
         <Container maxWidth={false} disableGutters>
-            <ToastContainer position="top-center" />
             <Card>
                 <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-                        <Typography variant="h5">Collections</Typography>
+                        <Typography variant="h5" component="h2">Collections</Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                             <TextField label="Search" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                             <Button variant="contained" onClick={() => handleOpenDialog('create', { short_name: '', provider_id: null, active: true, egress_id: null })} startIcon={<AddIcon />} disabled={!hasPrivilege('collection:create')}>Add</Button>
@@ -519,10 +519,10 @@ function Collections() {
                     {collections.status === 'failed' && <Alert severity="error" sx={{ mb: 2 }}>{collections.error}</Alert>}
                     
                     <TableContainer component={Paper}>
-                        <Table stickyHeader>
+                        <Table stickyHeader aria-label="Collections">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell sx={{ bgcolor: "#E5E8EB" }} padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedCollections.length} checked={processedCollections.length > 0 && selected.length === processedCollections.length} onChange={handleSelectAllClick} /></TableCell>
+                                    <TableCell sx={{ bgcolor: "#E5E8EB" }} padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedCollections.length} checked={processedCollections.length > 0 && selected.length === processedCollections.length} onChange={handleSelectAllClick} inputProps={{ 'aria-label': 'Select all collections' }} /></TableCell>
                                     {headCells.map(headCell => (
                                         <TableCell sx={{ bgcolor: "#E5E8EB" }} key={headCell.id} sortDirection={sorting.orderBy === headCell.id ? sorting.order : false}>
                                             <TableSortLabel active={sorting.orderBy === headCell.id} direction={sorting.orderBy === headCell.id ? sorting.order : 'asc'} onClick={() => handleRequestSort(headCell.id)}>
@@ -534,11 +534,11 @@ function Collections() {
                             </TableHead>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow><TableCell colSpan={5} align="center" sx={{ py: 5 }}><CircularProgress /></TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={5} align="center" sx={{ py: 5 }}><CircularProgress aria-label="Loading" /></TableCell></TableRow>
                                 ) : processedCollections.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={5} align="center">
-                                            <Typography variant="subtitle1" color="text.secondary" sx={{ py: 5 }}>
+                                            <Typography variant="subtitle1" component="p" color="text.secondary" sx={{ py: 5 }}>
                                                 {searchTerm ? "No collections match your search." : "No collections found."}
                                             </Typography>
                                         </TableCell>
@@ -548,13 +548,16 @@ function Collections() {
                                         .map((collection) => {
                                             const isItemSelected = selected.indexOf(collection.id) !== -1;
                                             return (
-                                                <TableRow key={collection.id} hover onClick={() => handleRowClick(collection.id)} role="checkbox" tabIndex={-1} selected={isItemSelected}>
-                                                    <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
+                                                <TableRow key={collection.id} hover onClick={() => handleRowClick(collection.id)} selected={isItemSelected}>
+                                                    <TableCell padding="checkbox"><Checkbox checked={isItemSelected} inputProps={{ 'aria-label': `Select ${collection.short_name}` }} /></TableCell>
                                                     <TableCell>{collection.short_name}</TableCell>
                                                     <TableCell>
                                                         {collection.secondary_provider_names.length === 0 ? collection.provider_name : (
-                                                            <Tooltip title={[collection.provider_name, ...collection.secondary_provider_names].join(', ')}>
-                                                                <span><strong>{collection.provider_name}</strong> +{collection.secondary_provider_names.length}</span>
+                                                            <Tooltip describeChild title={[collection.provider_name, ...collection.secondary_provider_names].join(', ')}>
+                                                                <span tabIndex={0} onClick={(ev) => ev.stopPropagation()}>
+                                                                    <strong>{collection.provider_name}</strong> +{collection.secondary_provider_names.length}
+                                                                    <VisuallyHidden>{` more: ${collection.secondary_provider_names.join(', ')}`}</VisuallyHidden>
+                                                                </span>
                                                             </Tooltip>
                                                         )}
                                                     </TableCell>
@@ -681,7 +684,7 @@ function Collections() {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseDialog}>Cancel</Button>
-                    <Button type="submit" form="collection-form" variant="contained" disabled={isSubmitting}>{isSubmitting ? <CircularProgress size={24} /> : (dialog.open === 'create' ? 'Create' : 'Save')}</Button>
+                    <Button type="submit" form="collection-form" variant="contained" disabled={isSubmitting}>{isSubmitting ? <BusySpinner /> : (dialog.open === 'create' ? 'Create' : 'Save')}</Button>
                 </DialogActions>
             </Dialog>
 
@@ -703,7 +706,7 @@ function Collections() {
                 <DialogContent>Are you sure you want to delete the {selected.length} selected collection(s)?</DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseDialog}>Cancel</Button>
-                    <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={isSubmitting}>{isSubmitting ? <CircularProgress size={24} /> : 'Delete'}</Button>
+                    <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={isSubmitting}>{isSubmitting ? <BusySpinner /> : 'Delete'}</Button>
                 </DialogActions>
             </Dialog>
         </Container>

@@ -3,6 +3,47 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 
+// ---------- CSV (accessible alternative to the PDF) ----------
+
+function csvCell(value) {
+  const text = value === null || value === undefined ? "" : String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+/**
+ * Builds and downloads a CSV with the same sections as the PDF.
+ * sections: [{ title, head: [..], body: [[..], ..] }]
+ */
+export function downloadCsv(fileName, title, info, summary, sections) {
+  const lines = [csvCell(title), ""];
+  Object.entries(info || {}).forEach(([k, v]) => lines.push([csvCell(k), csvCell(v || "N/A")].join(",")));
+  if (summary && Object.keys(summary).length) {
+    lines.push("", csvCell("Summary"));
+    Object.entries(summary).forEach(([k, v]) => lines.push([csvCell(k), csvCell(v)].join(",")));
+  }
+  (sections || []).forEach((sec) => {
+    lines.push("", csvCell(sec.title));
+    lines.push(sec.head.map(csvCell).join(","));
+    sec.body.forEach((row) => lines.push(row.map(csvCell).join(",")));
+  });
+  // BOM so Excel opens UTF-8 correctly.
+  const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** Title and language in the PDF's metadata, so readers announce what it is. */
+function setPdfMetadata(doc, title) {
+  doc.setProperties({ title, subject: title, creator: "CUE Dashboard" });
+  if (typeof doc.setLanguage === "function") doc.setLanguage("en-US");
+}
+
 function getUserInfo(userInfo){
   const session = localStorage.getItem('CUE_USER_SESSION');
   const parsedData = JSON.parse(session);
@@ -62,9 +103,16 @@ function toCamelCaseTitle(str) {
  * @param {Array} columns - Array of { header, dataKey }
  * @param {Array} rows - Array of objects with keys matching dataKey
  */
-export function generatePDFReport(title, columns, rows, summary = null, userInfo) {
+export function generatePDFReport(title, columns, rows, summary = null, userInfo, format = "pdf") {
+  if (format === "csv") {
+    downloadCsv(`${title.replace(/\s+/g, "_")}.csv`, "CUE - " + toCamelCaseTitle(title), getUserInfo(userInfo), summary, [
+      { title: toCamelCaseTitle(title), head: columns.map((c) => c.header), body: rows.map((row) => columns.map((c) => row[c.dataKey] ?? "")) },
+    ]);
+    return;
+  }
 
   const doc = new jsPDF();
+  setPdfMetadata(doc, "CUE - " + toCamelCaseTitle(title));
   let y = 20;
 
   // Title
@@ -103,8 +151,17 @@ export function generatePDFReport(title, columns, rows, summary = null, userInfo
   doc.save(`${title.replace(/\s+/g, "_")}.pdf`);
 }
 
-export function generateCostReport(summary, daily, collections, files, userInfo) {
+export function generateCostReport(summary, daily, collections, files, userInfo, format = "pdf") {
+  if (format === "csv") {
+    downloadCsv("FilesByCostReport.csv", "CUE - Files by Cost Report", getUserInfo(userInfo), summary, [
+      { title: "Daily Cost", head: ["Date", "Cost ($)"], body: (daily || []).map((d) => [d.day, d.value]) },
+      { title: "Collection Cost", head: ["Collection", "Cost ($)"], body: (collections || []).map((c) => [c.name, c.cost]) },
+      { title: "Files by Cost", head: ["File Name", "Cost ($)", "Size (Bytes)"], body: (files || []).map((f) => [f.name, f.cost, f.size]) },
+    ]);
+    return;
+  }
   const doc = new jsPDF();
+  setPdfMetadata(doc, "CUE - Files by Cost Report");
   let y = 20;
 
   // ====== Title ======
@@ -172,8 +229,17 @@ export function generateCostReport(summary, daily, collections, files, userInfo)
   doc.save("FilesByCostReport.pdf");
 }
 
-export function generateMetricsReport(summary, statusCounts, dailyVolume, dailyCount, userInfo) {
+export function generateMetricsReport(summary, statusCounts, dailyVolume, dailyCount, userInfo, format = "pdf") {
+  if (format === "csv") {
+    downloadCsv("MetricsOverviewReport.csv", "CUE - Metrics Overview Report", getUserInfo(userInfo), summary, [
+      { title: "Status Distribution", head: ["Status", "Count"], body: (statusCounts || []).map((s) => [s.status, s.count]) },
+      { title: "Daily Volume", head: ["Day", "Volume"], body: (dailyVolume || []).map((d) => [d.day, d.value]) },
+      { title: "Daily File Count", head: ["Day", "Files"], body: (dailyCount || []).map((d) => [d.day, d.value]) },
+    ]);
+    return;
+  }
   const doc = new jsPDF();
+  setPdfMetadata(doc, "CUE - Metrics Overview Report");
   let y = 20;
  // ===== Title =====
   doc.setFont("helvetica", "bold");

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
-    Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Autocomplete, TextField, Typography
+    Table, TableBody, TableCell, TableHead, TableRow, Autocomplete, TextField, Typography
 } from '@mui/material';
 import { toast } from 'react-toastify';
 
@@ -65,7 +65,7 @@ function CollectionProvidersDialog({ open, collection, providerOptions = [], can
             <DialogTitle>Providers for {collection?.short_name}</DialogTitle>
             <DialogContent>
                 {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}><CircularProgress /></Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}><CircularProgress aria-label="Loading" /></Box>
                 ) : (
                     <Table size="small">
                         <TableHead>
@@ -89,18 +89,22 @@ function CollectionProvidersDialog({ open, collection, providerOptions = [], can
                                         <TableCell align="right">
                                             {!m.is_primary && (
                                                 <Button size="small" disabled={busy}
+                                                    aria-label={`Make primary: ${m.short_name}`}
                                                     onClick={() => run(() => collectionApi.setPrimaryCollectionProvider(collectionId, m.provider_id), `${m.short_name} is now the primary provider.`)}>
                                                     Make primary
                                                 </Button>
                                             )}
-                                            <Tooltip title={m.is_primary ? 'Set another primary first' : ''}>
-                                                <span>
-                                                    <Button size="small" color="error" disabled={busy || m.is_primary}
-                                                        onClick={() => run(() => collectionApi.removeCollectionProvider(collectionId, m.provider_id), `${m.short_name} removed.`)}>
-                                                        Remove
-                                                    </Button>
-                                                </span>
-                                            </Tooltip>
+                                            {m.is_primary ? (
+                                                <Typography variant="caption" color="text.secondary">
+                                                    Set another primary to remove
+                                                </Typography>
+                                            ) : (
+                                                <Button size="small" color="error" disabled={busy}
+                                                    aria-label={`Remove ${m.short_name}`}
+                                                    onClick={() => run(() => collectionApi.removeCollectionProvider(collectionId, m.provider_id), `${m.short_name} removed.`)}>
+                                                    Remove
+                                                </Button>
+                                            )}
                                         </TableCell>
                                     )}
                                 </TableRow>

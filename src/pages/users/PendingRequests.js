@@ -6,7 +6,7 @@ import {
     TableSortLabel, CircularProgress, Autocomplete, Container, Alert,
     FormControlLabel
 } from '@mui/material';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useSelector, useDispatch } from 'react-redux';
 
@@ -18,6 +18,7 @@ import { getEditableRoles } from '../../utils/permissionUtils';
 
 import { listUserApplications, approveUserApplication, rejectUserApplication } from '../../api/userApplicationApi';
 import { fetchRoles, fetchProviders, fetchUsers } from '../../app/reducers/dataCacheSlice';
+import { BusySpinner } from '../../components/a11y';
 
 const headCells = [
     { id: 'name', label: 'Name' },
@@ -203,11 +204,10 @@ function PendingRequests() {
 
     return (
         <Container maxWidth={false} disableGutters>
-            <ToastContainer position="top-center" />
             <Card>
                 <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="h5">Pending User Applications</Typography>
+                        <Typography variant="h5" component="h2">Pending User Applications</Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <TextField label="Search Applications" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                             <Button variant="contained" color="primary" onClick={() => handleOpenDialog('accept')} disabled={selected.length !== 1 || actionLoading || !hasPrivilege('application:approve')}>Accept</Button>
@@ -221,7 +221,7 @@ function PendingRequests() {
                         <Table>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedApps.length} checked={processedApps.length > 0 && selected.length === processedApps.length} onChange={handleSelectAllClick} /></TableCell>
+                                    <TableCell padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedApps.length} checked={processedApps.length > 0 && selected.length === processedApps.length} onChange={handleSelectAllClick} inputProps={{ 'aria-label': 'Select all applications' }} /></TableCell>
                                     {headCells.map((headCell) => (
                                         <TableCell key={headCell.id} sortDirection={orderBy === headCell.id ? order : false}>
                                             <TableSortLabel active={orderBy === headCell.id} direction={orderBy === headCell.id ? order : 'asc'} onClick={() => handleRequestSort(headCell.id)}>
@@ -233,7 +233,7 @@ function PendingRequests() {
                             </TableHead>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow><TableCell colSpan={headCells.length + 1} align="center" sx={{py: 5}}><CircularProgress /></TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={headCells.length + 1} align="center" sx={{py: 5}}><CircularProgress aria-label="Loading" /></TableCell></TableRow>
                                 ) : processedApps.length === 0 ? (
                                     <TableRow><TableCell colSpan={headCells.length + 1} align="center">
                                         <Typography sx={{py: 5}} color="text.secondary">
@@ -244,8 +244,8 @@ function PendingRequests() {
                                     processedApps.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(app => {
                                         const isItemSelected = isSelected(app.id);
                                         return (
-                                            <TableRow key={app.id} hover onClick={() => handleClick(app.id)} selected={isItemSelected} role="checkbox" tabIndex={-1} sx={{ cursor: 'pointer' }}>
-                                                <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
+                                            <TableRow key={app.id} hover onClick={() => handleClick(app.id)} selected={isItemSelected} sx={{ cursor: 'pointer' }}>
+                                                <TableCell padding="checkbox"><Checkbox checked={isItemSelected} inputProps={{ 'aria-label': `Select ${app.name}` }} /></TableCell>
                                                 <TableCell>{app.name}</TableCell>
                                                 <TableCell>{app.email}</TableCell>
                                                 <TableCell>{app.username}</TableCell>
@@ -285,7 +285,7 @@ function PendingRequests() {
                 <DialogActions>
                     <Button onClick={handleCloseDialog}>Cancel</Button>
                     <Button onClick={handleConfirmApprove} variant="contained" disabled={actionLoading}>
-                        {actionLoading ? <CircularProgress size={24} /> : "Approve"}
+                        {actionLoading ? <BusySpinner /> : "Approve"}
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -312,7 +312,7 @@ function PendingRequests() {
                 <DialogActions>
                     <Button onClick={handleCloseDialog}>Cancel</Button>
                     <Button onClick={handleConfirmReject} color="error" variant="contained" disabled={actionLoading}>
-                        {actionLoading ? <CircularProgress size={24} /> : "Reject"}
+                        {actionLoading ? <BusySpinner /> : "Reject"}
                     </Button>
                 </DialogActions>
             </Dialog>

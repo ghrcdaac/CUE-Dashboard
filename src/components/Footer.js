@@ -3,10 +3,12 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
 import { config } from '../config';
+import { VisuallyHidden } from './a11y';
 
 export default function Footer() {
   return (
     <Box
+      component="footer"
       sx={{
         bgcolor: '#19577F',
         color: '#f0f0f0',
@@ -30,15 +32,15 @@ export default function Footer() {
       </Typography>
 
       <Typography variant="body2">
-         <Link href="https://www.nasa.gov/foia/" color="inherit" target="_blank" rel="noopener"> FOIA</Link> 
+         <Link href="https://www.nasa.gov/foia/" color="inherit" target="_blank" rel="noopener"> FOIA<VisuallyHidden> (opens in a new tab)</VisuallyHidden></Link>
       </Typography>
 
       <Typography variant="body2">
-         <Link href="https://www.nasa.gov/privacy/" color="inherit" target="_blank" rel="noopener">NASA Privacy Policy</Link>
+         <Link href="https://www.nasa.gov/privacy/" color="inherit" target="_blank" rel="noopener">NASA Privacy Policy<VisuallyHidden> (opens in a new tab)</VisuallyHidden></Link>
       </Typography>
 
       <Typography variant="body2">
-         <Link href="https://USA.gov" color="inherit" target="_blank" rel="noopener"> USA.gov</Link>
+         <Link href="https://USA.gov" color="inherit" target="_blank" rel="noopener"> USA.gov<VisuallyHidden> (opens in a new tab)</VisuallyHidden></Link>
       </Typography>
     </Box>
   );

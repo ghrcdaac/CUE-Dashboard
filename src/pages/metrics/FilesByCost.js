@@ -9,7 +9,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import { LineChart, BarChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useOutletContext } from 'react-router-dom';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 // Hooks, Components & Utils
@@ -29,6 +29,8 @@ import FilePresentIcon from '@mui/icons-material/FilePresent';
 import MoneyIcon from '@mui/icons-material/Money';
 import SearchIcon from '@mui/icons-material/Search';
 import PublicIcon from '@mui/icons-material/Public';
+import { ChartWithTable } from '../../components/a11y';
+import { CHART_COLORS } from '../../theme';
 
 const formatBytes = (bytes, decimals = 2) => {
     if (!+bytes) return '0 Bytes';
@@ -199,7 +201,7 @@ function FilesByCost() {
         });
     }, [fileCosts, fileSearchTerm, fileSort]);
 
-    const handleExportCostReport = async () => {
+    const handleExportCostReport = async (format = 'pdf') => {
         try {
             toast.info("Generating Files by Cost report. This may take a moment...");
             const now = new Date();
@@ -243,7 +245,7 @@ function FilesByCost() {
                 "Total Size": formatBytes(summaryData?.total_size_bytes ?? 0)
             };
 
-            generateCostReport(summaryInfo, daily, collections, files, userInfo);
+            generateCostReport(summaryInfo, daily, collections, files, userInfo, format);
             toast.success("Files by Cost report downloaded successfully!");
         } catch (err) {
             toast.error("Failed to generate report: " + parseApiError(err));
@@ -253,14 +255,13 @@ function FilesByCost() {
     return (
         <Container maxWidth={false} disableGutters>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <ToastContainer position="top-center" />
                 <MetricsFilter 
                     onApplyFilters={handleApplyFilters} 
                     onClearFilters={handleClearFilters}
                     isDataLoading={loadingSummary || loadingCollections || loadingFiles}
                 />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h5">Cost Overview</Typography>
+                    <Typography variant="h5" component="h2">Cost Overview</Typography>
                     <ExportMenu onExport={handleExportCostReport} />
                 </Box>
                 
@@ -275,24 +276,24 @@ function FilesByCost() {
                         <Grid item sx={{ width: '33.333%', p: 1.5 }}>
                             <Card sx={{ height: '100%' }}>
                                 <CardContent>
-                                    <Typography variant="subtitle1" color="text.secondary">Total Cost</Typography>
-                                    <Typography variant="h4">{`$${summary?.total_cost?.value?.toFixed(2) ?? '0.00'}`}</Typography>
+                                    <Typography variant="subtitle1" component="h3" color="text.secondary">Total Cost</Typography>
+                                    <Typography variant="h4" component="p">{`$${summary?.total_cost?.value?.toFixed(2) ?? '0.00'}`}</Typography>
                                 </CardContent>
                             </Card>
                         </Grid>
                         <Grid item sx={{ width: '33.333%', p: 1.5 }}>
                             <Card sx={{ height: '100%' }}>
                                 <CardContent>
-                                    <Typography variant="subtitle1" color="text.secondary">Total Files</Typography>
-                                    <Typography variant="h4">{summary?.total_files?.toLocaleString() ?? 0}</Typography>
+                                    <Typography variant="subtitle1" component="h3" color="text.secondary">Total Files</Typography>
+                                    <Typography variant="h4" component="p">{summary?.total_files?.toLocaleString() ?? 0}</Typography>
                                 </CardContent>
                             </Card>
                         </Grid>
                         <Grid item sx={{ width: '33.333%', p: 1.5 }}>
                             <Card sx={{ height: '100%' }}>
                                 <CardContent>
-                                    <Typography variant="subtitle1" color="text.secondary">Total Size</Typography>
-                                    <Typography variant="h4">{formatBytes(summary?.total_size_bytes ?? 0)}</Typography>
+                                    <Typography variant="subtitle1" component="h3" color="text.secondary">Total Size</Typography>
+                                    <Typography variant="h4" component="p">{formatBytes(summary?.total_size_bytes ?? 0)}</Typography>
                                 </CardContent>
                             </Card>
                         </Grid>
@@ -302,33 +303,43 @@ function FilesByCost() {
                 {/* Chart Cards */}
                 <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
                     <Grid item sx={{ width: '50%', p: 1.5 }}>
-                        <Card sx={{ height: 450 }}>
+                        <Card sx={{ minHeight: 450 }}>
                             <CardContent>
-                                <Typography variant="h5" gutterBottom>Daily Cost</Typography>
+                                <Typography variant="h5" component="h3" gutterBottom>Daily Cost</Typography>
                                 {loadingSummary ? <Skeleton variant="rounded" height={300} /> : !summary?.daily_cost?.length ? <Typography variant="body2">No data available.</Typography> : 
-                                <ResponsiveContainer width="100%" height={300}>
+                                <ChartWithTable
+                                    title="Daily cost"
+                                    summary="Line chart of the cost each day. Use Show data table for the values."
+                                    columns={[{ key: 'day', header: 'Day' }, { key: 'value', header: 'Cost', format: (v) => `$${Number(v ?? 0).toFixed(2)}` }]}
+                                    rows={summary.daily_cost}
+                                ><ResponsiveContainer width="100%" height={300}>
                                     <LineChart data={summary.daily_cost} margin={{ right: 30, left: 20 }}>
-                                        <CartesianGrid /><XAxis dataKey="day" /><YAxis /><Tooltip formatter={(value) => [`$${value.toFixed(2)}`, "Cost"]}/><Legend /><Line type="monotone" dataKey="value" stroke="#8884d8" name="Cost"/>
+                                        <CartesianGrid /><XAxis dataKey="day" /><YAxis /><Tooltip formatter={(value) => [`$${value.toFixed(2)}`, "Cost"]}/><Legend /><Line type="monotone" dataKey="value" stroke={CHART_COLORS[0]} strokeWidth={2} name="Cost"/>
                                     </LineChart>
-                                </ResponsiveContainer>}
+                                </ResponsiveContainer></ChartWithTable>}
                             </CardContent>
                         </Card>
                     </Grid>
                     <Grid item sx={{ width: '50%', p: 1.5 }}>
-                        <Card sx={{ height: 450 }}>
+                        <Card sx={{ minHeight: 450 }}>
                             <CardContent>
-                                <Typography variant="h5" gutterBottom>Cost by Collection</Typography>
+                                <Typography variant="h5" component="h3" gutterBottom>Cost by Collection</Typography>
                                 {loadingCollections ? <Skeleton variant="rounded" height={300} /> : !collectionCosts?.length ? <Typography variant="body2">No data available.</Typography> : 
-                                <ResponsiveContainer width="100%" height={300}>
+                                <ChartWithTable
+                                    title="Cost by collection"
+                                    summary="Bar chart of the total cost of each collection on this page. Use Show data table for the values."
+                                    columns={[{ key: 'name', header: 'Collection' }, { key: 'cost', header: 'Total cost', format: (v) => `$${Number(v ?? 0).toFixed(2)}` }]}
+                                    rows={collectionCosts}
+                                ><ResponsiveContainer width="100%" height={300}>
                                     <BarChart data={collectionCosts} margin={{ right: 30, left: 20 }}>
                                         <CartesianGrid />
                                         <XAxis dataKey="name" />
                                         <YAxis domain={[0, 'dataMax']} />
                                         <Tooltip cursor={{fill: 'transparent'}} formatter={(value) => [`$${value.toFixed(2)}`, "Cost"]}/>
                                         <Legend />
-                                        <Bar dataKey="cost" fill="#82ca9d" name="Total Cost" />
+                                        <Bar dataKey="cost" fill={CHART_COLORS[2]} name="Total Cost" />
                                     </BarChart>
-                                </ResponsiveContainer>}
+                                </ResponsiveContainer></ChartWithTable>}
                             </CardContent>
                             <TablePagination component="div" count={collectionPagination.total} page={collectionPagination.page} onPageChange={handleCollectionPageChange} rowsPerPage={collectionPagination.pageSize} rowsPerPageOptions={[collectionPagination.pageSize]}/>
                         </Card>
@@ -339,7 +350,7 @@ function FilesByCost() {
                 <Card>
                     <CardContent>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="h5">Files by Cost</Typography>
+                            <Typography variant="h5" component="h2">Files by Cost</Typography>
                             <OutlinedInput
                                 placeholder="Search files..."
                                 size="small"
@@ -348,7 +359,7 @@ function FilesByCost() {
                                 endAdornment={<InputAdornment position="end"><SearchIcon /></InputAdornment>}
                             />
                         </Box>
-                        {loadingFiles ? <CircularProgress /> :
+                        {loadingFiles ? <CircularProgress aria-label="Loading" /> :
                             <>
                                 <TableContainer component={Paper}><Table><TableHead><TableRow>
                                     <TableCell sortDirection={fileSort.field === 'name' ? fileSort.direction : false}>

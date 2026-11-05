@@ -10,7 +10,7 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useSelector, useDispatch } from 'react-redux';
 
@@ -21,6 +21,7 @@ import usePageTitle from "../hooks/usePageTitle";
 import { parseApiError } from "../utils/errorUtils";
 import { fetchEgresses } from '../app/reducers/dataCacheSlice';
 import OutputIcon from '@mui/icons-material/Output';
+import { BusySpinner } from '../components/a11y';
 
 const headCells = [
     { id: 'type', label: 'Type' },
@@ -346,11 +347,10 @@ export default function DAAC() {
 
     return (
         <Container maxWidth={false} disableGutters>
-            <ToastContainer position="top-center" />
             <Card>
                 <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-                        <Typography variant="h5">Egress</Typography>
+                        <Typography variant="h5" component="h2">Egress</Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <TextField label="Search" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                             <Button variant="contained" color="primary" onClick={() => handleOpenDialog('add')} startIcon={<AddIcon />} disabled={!hasPrivilege('egress:create')}>Add</Button>
@@ -362,10 +362,10 @@ export default function DAAC() {
                     {egresses.error && <Alert severity="error" sx={{ my: 2 }}>{egresses.error}</Alert>}
 
                     <TableContainer component={Paper}>
-                        <Table stickyHeader>
+                        <Table stickyHeader aria-label="Egress paths">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell sx={{ bgcolor: "#E5E8EB" }} padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedEgresses.length} checked={processedEgresses.length > 0 && selected.length === processedEgresses.length} onChange={handleSelectAllClick} /></TableCell>
+                                    <TableCell sx={{ bgcolor: "#E5E8EB" }} padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedEgresses.length} checked={processedEgresses.length > 0 && selected.length === processedEgresses.length} onChange={handleSelectAllClick} inputProps={{ 'aria-label': 'Select all egress paths' }} /></TableCell>
                                     {headCells.map(headCell => (
                                         <TableCell sx={{ bgcolor: "#E5E8EB" }} key={headCell.id} sortDirection={sorting.orderBy === headCell.id ? sorting.order : false}>
                                             <TableSortLabel active={sorting.orderBy === headCell.id} direction={sorting.orderBy === headCell.id ? sorting.order : 'asc'} onClick={() => handleRequestSort(headCell.id)}>
@@ -377,7 +377,7 @@ export default function DAAC() {
                             </TableHead>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow><TableCell colSpan={4} align="center" sx={{ py: 5 }}><CircularProgress /></TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={4} align="center" sx={{ py: 5 }}><CircularProgress aria-label="Loading" /></TableCell></TableRow>
                                 ) : processedEgresses.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={4} align="center">
@@ -390,8 +390,8 @@ export default function DAAC() {
                                     processedEgresses.map((row) => {
                                         const isItemSelected = selected.indexOf(row.id) !== -1;
                                         return (
-                                            <TableRow key={row.id} hover onClick={() => handleClick(row.id)} role="checkbox" tabIndex={-1} selected={isItemSelected}>
-                                                <TableCell padding="checkbox"><Checkbox checked={isItemSelected} /></TableCell>
+                                            <TableRow key={row.id} hover onClick={() => handleClick(row.id)} selected={isItemSelected}>
+                                                <TableCell padding="checkbox"><Checkbox checked={isItemSelected} inputProps={{ 'aria-label': `Select ${row.path}` }} /></TableCell>
                                                 <TableCell>{row.type}</TableCell>
                                                 <TableCell>{row.path}</TableCell>
                                                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{JSON.stringify(row.config)}</TableCell>
@@ -449,7 +449,7 @@ export default function DAAC() {
                                 {(dialog.data.prefix_username || dialog.data.create_collection_subfolder) && (
                                     <Box sx={{ mt: 2 }}>
                                         <Alert severity="info">
-                                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                                            <Typography variant="subtitle2" component="p" sx={{ fontWeight: 'bold' }}>
                                                 Folder Structure Preview:
                                             </Typography>
                                             <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all', mt: 0.5 }}>
@@ -464,7 +464,7 @@ export default function DAAC() {
                     <DialogActions>
                         <Button onClick={handleCloseDialog}>Cancel</Button>
                         <Button type="submit" variant="contained" disabled={isSubmitting}>
-                            {isSubmitting ? <CircularProgress size={24} /> : (dialog.open === 'add' ? 'Add' : 'Save')}
+                            {isSubmitting ? <BusySpinner /> : (dialog.open === 'add' ? 'Add' : 'Save')}
                         </Button>
                     </DialogActions>
                 </Box>
@@ -476,7 +476,7 @@ export default function DAAC() {
                 <DialogActions>
                     <Button onClick={handleCloseDialog}>Cancel</Button>
                     <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={isSubmitting}>
-                        {isSubmitting ? <CircularProgress size={24} /> : 'Delete'}
+                        {isSubmitting ? <BusySpinner /> : 'Delete'}
                     </Button>
                 </DialogActions>
             </Dialog>

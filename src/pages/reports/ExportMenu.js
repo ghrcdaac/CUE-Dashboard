@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { Button, Menu, MenuItem } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 
 export default function ExportMenu({ onExport }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
+  const menuId = useId();
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -26,12 +27,17 @@ export default function ExportMenu({ onExport }) {
         color="secondary"
         onClick={handleClick}
         endIcon={<ArrowDropDownIcon />}
-        sx={{ ml: 1, mr: 1 }}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
+        // Light-grey button on a white card: a border keeps its edge visible (WCAG 1.4.11).
+        sx={{ ml: 1, mr: 1, border: "1px solid #8a8a8a" }}
       >
         Export
       </Button>
 
       <Menu
+        id={menuId}
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
@@ -42,9 +48,8 @@ export default function ExportMenu({ onExport }) {
         }}
       >
         <MenuItem onClick={() => handleExport("pdf")}>PDF</MenuItem>
-        {/* Later more can be added:
-        <MenuItem onClick={() => handleExport("csv")}>CSV</MenuItem>
-        */}
+        {/* CSV is the accessible version of every report (jsPDF can't make tagged PDFs). */}
+        <MenuItem onClick={() => handleExport("csv")}>CSV (accessible)</MenuItem>
       </Menu>
     </>
   );

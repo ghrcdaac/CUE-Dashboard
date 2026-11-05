@@ -5,20 +5,17 @@ import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
 import Link from '@mui/material/Link';
 import Grid from '@mui/material/Grid';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material/styles';
+import theme from '../theme';
+import usePageTitle from '../hooks/usePageTitle';
 import useAuth from '../hooks/useAuth';
 
 // theme consistent with other pages
-const theme = createTheme({
-    palette: {
-        primary: {
-            main: "#19577F",
-        },
-    },
-});
+
 
 function LoginPage() {
     const { login, isLoading } = useAuth();
+    usePageTitle('Sign in');
 
     const handleLogin = (event) => {
         // Prevent default link behavior if this is called from the link
@@ -31,6 +28,7 @@ function LoginPage() {
     return (
         <ThemeProvider theme={theme}>
             <Box
+                component="main"
                 sx={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -51,7 +49,7 @@ function LoginPage() {
                     }}
                 >
                     <img src="/nasa_logo.png" alt="NASA Logo" style={{ width: '150px', height: 'auto', marginBottom: '20px' }} />
-                    <Typography variant="h5" component="h2" sx={{ mt: 1 }}>
+                    <Typography variant="h5" component="p" sx={{ mt: 1 }}>
                         Cloud Upload Environment
                     </Typography>
                 </Box>
@@ -75,7 +73,7 @@ function LoginPage() {
                     <Grid container justifyContent="center">
                         <Grid item>
                             {/* This link now triggers the same login flow */}
-                            <Link href="#" onClick={handleLogin} variant="body2" sx={{ color: 'primary.main' }}>
+                            <Link component="button" type="button" onClick={handleLogin} variant="body2" sx={{ color: 'primary.main' }}>
                                 New User? Request an Account
                             </Link>
                         </Grid>

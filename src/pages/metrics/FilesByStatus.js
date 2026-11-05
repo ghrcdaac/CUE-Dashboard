@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import { useOutletContext } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -374,7 +374,7 @@ function FilesByStatus() {
     }, [selectedStatusTab]);
 
     const handleExport = async (format) => {
-        if (format !== "pdf") return; 
+        if (format !== "pdf" && format !== "csv") return;
         
         try {
             const now = new Date();
@@ -494,8 +494,8 @@ function FilesByStatus() {
             });
             return row;
             });
-            await generatePDFReport(`${selectedStatusTab} Files`, columns, rows, null, info);
-            toast.success("PDF report generated successfully!");
+            await generatePDFReport(`${selectedStatusTab} Files`, columns, rows, null, info, format);
+            toast.success(`${format.toUpperCase()} report generated successfully!`);
         } catch (err) {
             console.error(err);
             toast.error("Failed to download files report: " + err.message);
@@ -505,7 +505,6 @@ function FilesByStatus() {
     return (
         <Container maxWidth={false} disableGutters>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <ToastContainer position="top-center" />
                 <MetricsFilter 
                     onApplyFilters={handleApplyFilters} 
                     onClearFilters={handleClearFilters}
@@ -515,7 +514,7 @@ function FilesByStatus() {
                 <Card>
                     <CardContent>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, flexWrap: 'wrap', gap: 2 }}>
-                            <Typography variant="h5">Files by Status</Typography>
+                            <Typography variant="h5" component="h2">Files by Status</Typography>
                             <Box sx={{ display: 'flex', gap: 1 }}>
                                 <TextField 
                                     label="Search by File Name"
@@ -535,7 +534,7 @@ function FilesByStatus() {
                             </Tabs>
                         </Box>
 
-                        {loading ? ( <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}><CircularProgress /></Box> ) : 
+                        {loading ? ( <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}><CircularProgress aria-label="Loading" /></Box> ) : 
                          error ? ( <Alert severity="error" sx={{ my: 2 }}>{error}</Alert> ) : (
                             <>
                                 <TableContainer component={Paper}>

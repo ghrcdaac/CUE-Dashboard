@@ -18,9 +18,14 @@ import RejectedRequests from "./pages/users/RejectedRequests";
 import FilesByStatus from './pages/metrics/FilesByStatus';
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import RequirePrivilege from "./components/RequirePrivilege";
+import { SkipLink } from "./components/a11y";
+import { ToastContainer } from "react-toastify";
+import "./utils/toastSetup";
 import useAuth from "./hooks/useAuth";
 import { useSelector } from 'react-redux';
-import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { ThemeProvider } from "@mui/material/styles";
+import theme from "./theme";
 import { CircularProgress, Box } from "@mui/material";
 
 import LoginPage from "./components/LoginPage";
@@ -35,23 +40,15 @@ import CollectionOverview from "./pages/collections/CollectionOverview";
 import ProfileInfo from "./pages/Profile/ProfileInfo";
 import ApiKeys from "./pages/Profile/ApiKeys";
 
-
-const theme = createTheme({
-    palette: {
-        primary: {
-            main: "#19577F",
-        },
-        secondary: {
-            main: "#f0f0f0",
-        },
-    },
-});
 function SimpleLayout() {
     return (
         <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
+            <SkipLink />
             <Header />
             <Box
                 component="main"
+                id="main-content"
+                tabIndex={-1}
                 sx={{
                     flexGrow: 1,
                     overflowY: 'auto',
@@ -68,7 +65,10 @@ function SimpleLayout() {
 
 
 function Layout() {
-    const [sideNavOpen, setSideNavOpen] = useState(true);
+    // Starts collapsed on narrow screens / high zoom so content has room to reflow (WCAG 1.4.10).
+    const [sideNavOpen, setSideNavOpen] = useState(
+        () => typeof window === 'undefined' || !window.matchMedia || window.matchMedia('(min-width: 900px)').matches
+    );
     const [menuItems, setMenuItems] = useState([]);
 
     const handleToggleSideNav = () => {
@@ -77,6 +77,7 @@ function Layout() {
 
     return (
         <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
+            <SkipLink />
             <Header />
             <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
                 <SideNav
@@ -86,7 +87,10 @@ function Layout() {
                 />
                 <Box
                     component="main"
+                    id="main-content"
+                    tabIndex={-1}
                     sx={{
+                        outline: 'none',
                         // UPDATED: This is the definitive fix for the content area
                         flex: 1,
                         minWidth: 0, // A flexbox failsafe to allow shrinking
@@ -115,39 +119,42 @@ function App() {
     if (isLoading) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <CircularProgress />
+                <CircularProgress aria-label="Loading CUE Dashboard" />
             </div>
         );
     }
 
     return (
         <ThemeProvider theme={theme}>
+            <ToastContainer position="top-center" />
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                  <Routes>
-                    <Route element={<SimpleLayout />}>
-                        <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                    {/* Signed-in area: ProtectedRoute guards each layout once, so no page can be left out.
+                        RequirePrivilege matches the privilege that shows the page's link in the Header. */}
+                    <Route element={<ProtectedRoute><SimpleLayout /></ProtectedRoute>}>
+                        <Route path="/" element={<Home />} />
                     </Route>
-                    <Route element={<Layout />}>
-                        <Route path="collections" element={<ProtectedRoute><Collections /></ProtectedRoute>}>
+                    <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                        <Route path="collections" element={<RequirePrivilege privilege="collection:page"><Collections /></RequirePrivilege>}>
                             <Route index element={<Collections />} />
                             <Route path="create" element={<CollectionOverview />} />
                             <Route path="files" element={<CollectionFileBrowser />} />
                         </Route>
 
-                        <Route path="providers" element={<ProtectedRoute><Providers /></ProtectedRoute>} />
-                        <Route path="metrics" element={<ProtectedRoute><Metrics /></ProtectedRoute>} />
-                        <Route path="files-by-status" element={<FilesByStatus />} />
-                        <Route path="files-by-cost" element={<FilesByCost/>} />
-                        <Route path="global-metrics" element={<ProtectedRoute><GlobalMetrics /></ProtectedRoute>} />
-                        <Route path="users" element={<ProtectedRoute><Users /></ProtectedRoute>}>
+                        <Route path="providers" element={<RequirePrivilege privilege="provider:read"><Providers /></RequirePrivilege>} />
+                        <Route path="metrics" element={<RequirePrivilege privilege="metrics:read"><Metrics /></RequirePrivilege>} />
+                        <Route path="files-by-status" element={<RequirePrivilege privilege="metrics:read"><FilesByStatus /></RequirePrivilege>} />
+                        <Route path="files-by-cost" element={<RequirePrivilege privilege="metrics:read"><FilesByCost /></RequirePrivilege>} />
+                        <Route path="global-metrics" element={<RequirePrivilege privilege="metrics:read"><GlobalMetrics /></RequirePrivilege>} />
+                        <Route path="users" element={<RequirePrivilege privilege="user:page"><Users /></RequirePrivilege>}>
                            <Route index element={<Users />} />
                             <Route path="pending-requests" element={<PendingRequests />} />
                             <Route path="spam-requests" element={<RejectedRequests />} />
                         </Route>
 
-                        <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />
+                        <Route path="daac" element={<RequirePrivilege privilege="egress:read"><DAAC /></RequirePrivilege>} />
 
-                        <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} >
+                        <Route path="profile" element={<Profile />} >
                             <Route index element={<ProfileInfo />} />
                             <Route path="api-keys" element={<ApiKeys />} />
                         </Route>

@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, RadioGroup,
   FormControlLabel, Radio, FormControl, FormLabel, Checkbox, Box, Typography,
-  CircularProgress, Autocomplete, FormGroup // --- FormGroup for better layout
+  Autocomplete, FormGroup // --- FormGroup for better layout
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -15,6 +15,7 @@ import usePrivileges from '../../hooks/usePrivileges';
 import { createApiKey } from '../../api/apiKeys';
 import { listCueusers } from '../../api/cueUser';
 import { parseApiError } from '../../utils/errorUtils';
+import { BusySpinner } from '../../components/a11y';
 
 export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   const [keyName, setKeyName] = React.useState('');
@@ -32,6 +33,7 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   const [usersTotal, setUsersTotal] = React.useState(0);
   const [fetchedPages, setFetchedPages] = React.useState(new Set());
   const [keyNameError, setKeyNameError] = React.useState('');
+  const [copied, setCopied] = React.useState(false);
 
   
   // ---  State to manage scope checkboxes. Both are enabled by default. ---
@@ -87,6 +89,7 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
     setExpirationType('5');
     setCustomExpirationDate(null);
     setNewKey(null);
+    setCopied(false);
     // --- Reset scopes state on close ---
     setScopes({ 'file:upload': true, 'file:read': true });
     onClose();
@@ -164,6 +167,7 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
   
   const handleCopyToClipboard = () => {
     navigator.clipboard.writeText(newKey);
+    setCopied(true);
     toast.success("Key copied to clipboard!");
   };
 
@@ -179,6 +183,16 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
     (ownerType === 'proxy' && !proxyUserName.trim()) ||
     (expirationType === 'custom' && !customExpirationDate) ||
     !atLeastOneScopeSelected; // <-- New validation rule
+
+  // Tells the user why "Create Key" is disabled (WCAG 3.3.1 / 3.3.2).
+  const missingItems = [
+    (!keyName.trim() || keyName.trim().length < 3) && 'a key name of at least 3 characters',
+    !activeNgroupId && 'an active DAAC group',
+    ownerType === 'user' && !selectedUser && 'the user who will own the key',
+    ownerType === 'proxy' && !proxyUserName.trim() && 'the proxy user name',
+    expirationType === 'custom' && !customExpirationDate && 'an expiration date',
+    !atLeastOneScopeSelected && 'at least one permission',
+  ].filter(Boolean);
 
   const renderForm = () => (
       <>
@@ -295,10 +309,16 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
           </FormControl>
 
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap' }}>
+          {isFormInvalid && missingItems.length > 0 && (
+            <Typography id="create-key-missing" variant="caption" color="text.secondary" sx={{ flexGrow: 1, pl: 1 }}>
+              To create the key, add {missingItems.join(', ')}.
+            </Typography>
+          )}
           <Button onClick={handleClose} disabled={isSubmitting}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained" disabled={isFormInvalid || isSubmitting}>
-            {isSubmitting ? <CircularProgress size={24} /> : "Create Key"}
+          <Button onClick={handleSubmit} variant="contained" disabled={isFormInvalid || isSubmitting}
+            aria-describedby={isFormInvalid ? 'create-key-missing' : undefined}>
+            {isSubmitting ? <BusySpinner /> : "Create Key"}
           </Button>
         </DialogActions>
       </>
@@ -315,6 +335,9 @@ export default function CreateApiKeyModal({ open, onClose, onKeyCreated }) {
             <Typography variant="body2" sx={{ fontFamily: 'monospace', flexGrow: 1, wordBreak: 'break-all' }}>{newKey}</Typography>
             <Button startIcon={<ContentCopyIcon />} onClick={handleCopyToClipboard} sx={{ ml: 2 }}>Copy</Button>
           </Box>
+          <Typography role="status" variant="body2" color="success.main" sx={{ minHeight: '1.5em' }}>
+            {copied ? 'Key copied to clipboard.' : ''}
+          </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose} variant="contained">Close</Button>
