@@ -60,6 +60,7 @@ export default function Header() {
     else if (location.pathname.startsWith("/users")) sectionTitle = "Users";
     else if (location.pathname.startsWith("/daac")) sectionTitle = "DAAC";
     else if (location.pathname.startsWith("/profile")) sectionTitle = "Profile";
+    else if (location.pathname.startsWith("/sitemap")) sectionTitle = "Site map";
 
     // Browser tab title names the exact page (WCAG 2.4.2), e.g. "CUE - Users - Pending Requests".
     const pageName = PAGE_NAMES[location.pathname.replace(/\/+$/, "")];
@@ -97,7 +98,7 @@ export default function Header() {
                                     mr: 5
                                 }}
                             >
-                                <img src="/nasa_logo.png" alt="NASA Logo" height="60" style={{ marginRight: '16px' }} />
+                                <img src="/nasa_logo.png" alt="NASA Logo" width="72" height="60" style={{ marginRight: '16px' }} />
                                 <Typography variant="h4" component="span" sx={{ fontWeight: "bold" }}>CUE</Typography>
                             </Box>
                             

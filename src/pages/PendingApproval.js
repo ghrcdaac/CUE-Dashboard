@@ -34,7 +34,7 @@ function PendingApproval() {
                         paddingTop: 10,
                     }}
                 >
-                    <img src="/nasa_logo.png" alt="NASA Logo" style={{ width: '150px', height: 'auto', marginBottom: '20px' }} />
+                    <img src="/nasa_logo.png" alt="NASA Logo" width="150" height="125" style={{ width: '150px', height: 'auto', marginBottom: '20px' }} />
                     <Typography variant="h5" component="p" sx={{ mt: 1 }}>
                         Cloud Upload Environment
                     </Typography>

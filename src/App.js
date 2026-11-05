@@ -39,6 +39,7 @@ import CollectionOverview from "./pages/collections/CollectionOverview";
 
 import ProfileInfo from "./pages/Profile/ProfileInfo";
 import ApiKeys from "./pages/Profile/ApiKeys";
+import SiteMap from "./pages/SiteMap";
 
 function SimpleLayout() {
     return (
@@ -153,6 +154,7 @@ function App() {
                         </Route>
 
                         <Route path="daac" element={<RequirePrivilege privilege="egress:read"><DAAC /></RequirePrivilege>} />
+                        <Route path="sitemap" element={<SiteMap />} />
 
                         <Route path="profile" element={<Profile />} >
                             <Route index element={<ProfileInfo />} />

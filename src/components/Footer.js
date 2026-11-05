@@ -2,6 +2,7 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
+import { Link as RouterLink } from 'react-router-dom';
 import { config } from '../config';
 import { VisuallyHidden } from './a11y';
 
@@ -28,8 +29,12 @@ export default function Footer() {
 
 </Typography>
 
-<Typography variant="body2"> 
-        NASA Official: Doug Newman 
+<Typography variant="body2">
+        NASA Official: Doug Newman
+      </Typography>
+
+      <Typography variant="body2">
+         <Link component={RouterLink} to="/sitemap" color="inherit">Site map</Link>
       </Typography>
 
       <Typography variant="body2">

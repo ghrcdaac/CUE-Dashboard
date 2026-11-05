@@ -75,7 +75,7 @@ function renderAt(path, session) {
 }
 
 describe('route protection', () => {
-    test.each(['/', '/collections', '/files-by-status', '/files-by-cost', '/users', '/profile'])(
+    test.each(['/', '/collections', '/files-by-status', '/files-by-cost', '/users', '/profile', '/sitemap'])(
         'signed-out visitor to %s is sent to the login page', async (path) => {
             renderAt(path, null);
             expect(await screen.findByRole('heading', { level: 1, name: 'Sign In' })).toBeInTheDocument();
@@ -120,6 +120,23 @@ describe('route protection', () => {
     });
 });
 
+describe('site map (WCAG 2.4.5 Multiple Ways)', () => {
+    test('the footer links to the site map', async () => {
+        renderAt('/', registeredSession());
+        await screen.findByRole('heading', { level: 1, name: 'Home' });
+        expect(screen.getByRole('link', { name: 'Site map' })).toHaveAttribute('href', '/sitemap');
+    });
+
+    test('only pages the user has the privilege for are listed', async () => {
+        renderAt('/sitemap', registeredSession(['collection:page', 'metrics:read']));
+        await screen.findByRole('heading', { level: 1, name: 'Site map' });
+        expect(screen.getByRole('link', { name: 'Collections list' })).toHaveAttribute('href', '/collections');
+        expect(screen.getByRole('link', { name: 'Files by status' })).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Users' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Egress paths' })).not.toBeInTheDocument();
+    });
+});
+
 describe('accessibility scan (axe)', () => {
     // color-contrast needs real layout, so it is checked in the browser instead.
     const axeOptions = { rules: { 'color-contrast': { enabled: false } } };
@@ -137,6 +154,7 @@ describe('accessibility scan (axe)', () => {
         ['/files-by-cost', registeredSession(), 'Metrics'],
         ['/profile', registeredSession(), 'Profile'],
         ['/profile/api-keys', registeredSession(), 'Profile'],
+        ['/sitemap', registeredSession(), 'Site map'],
         ['/pending-approval', tokenOnlySession('pending_approval'), 'Application Submitted'],
     ];
 
