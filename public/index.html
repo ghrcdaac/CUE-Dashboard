@@ -27,27 +27,30 @@
     <title>CUE Dashboard</title>
   </head>
   <body>
-    <!-- Shown only without JavaScript (and to tools that read this file before the app runs):
-         a heading and the ways to reach the pages, so even this page meets WCAG 2.4.5. -->
-    <noscript>
-      <main>
-        <h1>CUE Dashboard</h1>
-        <p>You need to enable JavaScript to run this app.</p>
+    <!-- Loading page. React replaces everything inside #root as soon as the app starts, so
+         people see this only for a moment (or always, without JavaScript). It is real HTML
+         (not <noscript>, which scanners such as SortSite read as plain text), so tools that
+         read this file without running the app still find a heading and the ways to reach
+         every page (WCAG 2.4.5 Multiple Ways). -->
+    <div id="root">
+      <main id="boot" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; color: #10202d; line-height: 1.5;">
+        <h1 style="color: #19577F; font-size: 1.75rem; margin: 0 0 0.5rem;">CUE Dashboard</h1>
+        <p style="margin: 0 0 1rem;">Loading the Cloud Upload Environment dashboard…</p>
+        <noscript><p style="margin: 0 0 1rem;">You need to enable JavaScript to run this app.</p></noscript>
         <nav aria-label="Pages">
-          <ul>
-            <li><a href="/">Home</a></li>
-            <li><a href="/sitemap">Site map</a></li>
-            <li><a href="/collections">Collections</a></li>
-            <li><a href="/providers">Providers</a></li>
-            <li><a href="/metrics">Metrics</a></li>
-            <li><a href="/users">Users</a></li>
-            <li><a href="/daac">DAAC</a></li>
-            <li><a href="/profile">Profile</a></li>
+          <ul style="padding-left: 1.25rem; margin: 0;">
+            <li><a href="/" style="color: #19577F;">Home</a></li>
+            <li><a href="/sitemap" style="color: #19577F;">Site map</a></li>
+            <li><a href="/collections" style="color: #19577F;">Collections</a></li>
+            <li><a href="/providers" style="color: #19577F;">Providers</a></li>
+            <li><a href="/metrics" style="color: #19577F;">Metrics</a></li>
+            <li><a href="/users" style="color: #19577F;">Users</a></li>
+            <li><a href="/daac" style="color: #19577F;">DAAC</a></li>
+            <li><a href="/profile" style="color: #19577F;">Profile</a></li>
           </ul>
         </nav>
       </main>
-    </noscript>
-    <div id="root"></div>
+    </div>
     <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.
