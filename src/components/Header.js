@@ -107,7 +107,7 @@ export default function Header() {
                                 {hasPrivilege("provider:read") && navLink("/providers", "Providers")}
                                 {hasPrivilege("metrics:read") && navLink("/metrics", "Metrics")}
                                 {hasPrivilege("user:page") && navLink("/users", "Users")}
-                                {hasPrivilege("egress:read") && navLink("/daac", <abbr title="Distributed Active Archive Center">DAAC</abbr>)}
+                                {hasPrivilege("egress:read") && navLink("/daac", <abbr title="Distributed Active Archive Center" style={{ textDecoration: "none" }}>DAAC</abbr>)}
                             </Box>
                         </Box>
                         <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
