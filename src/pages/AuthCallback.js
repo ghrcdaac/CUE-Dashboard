@@ -1,22 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
-import { CircularProgress, Box, Typography, Paper, Button, createTheme, ThemeProvider } from '@mui/material';
+import { CircularProgress, Box, Typography, Paper, Button, ThemeProvider } from '@mui/material';
+import theme from '../theme';
+import usePageTitle from '../hooks/usePageTitle';
 import { jwtDecode } from 'jwt-decode';
 
-const theme = createTheme({
-    palette: {
-        primary: {
-            main: "#19577F",
-        },
-    },
-});
+
 
 function AuthCallback() {
     const { handleAuthCallback, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [error, setError] = useState(null);
+    usePageTitle(error ? 'Sign-in failed' : 'Signing in');
 
     useEffect(() => {
         const processAuth = async () => {
@@ -68,10 +65,11 @@ function AuthCallback() {
 
     return (
         <ThemeProvider theme={theme}>
-            <Box 
-                sx={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
+            <Box
+                component="main"
+                sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
                     justifyContent: 'center', 
                     alignItems: 'center', 
                     height: '100vh', 
@@ -80,8 +78,8 @@ function AuthCallback() {
             >
                 <Paper elevation={3} sx={{ p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: '400px' }}>
                     {error ? (
-                        <>
-                            <Typography variant="h6" color="error">Authentication Failed</Typography>
+                        <Box role="alert" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: '100%' }}>
+                            <Typography variant="h6" component="h1" color="error">Authentication Failed</Typography>
                             <Typography color="text.secondary" align="center">{error}</Typography>
                             <Button
                                 variant="contained"
@@ -90,14 +88,14 @@ function AuthCallback() {
                             >
                                 Back to Login
                             </Button>
-                        </>
+                        </Box>
                     ) : (
-                        <>
-                            <CircularProgress />
-                            <Typography sx={{ mt: 2 }} color="text.secondary">
+                        <Box role="status" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <CircularProgress aria-hidden="true" />
+                            <Typography component="h1" sx={{ mt: 2 }} color="text.secondary">
                                 Finalizing authentication, please wait...
                             </Typography>
-                        </>
+                        </Box>
                     )}
                 </Paper>
             </Box>

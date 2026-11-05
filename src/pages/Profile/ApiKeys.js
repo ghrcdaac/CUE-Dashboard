@@ -8,7 +8,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import SyncLockIcon from '@mui/icons-material/SyncLock';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import useAuth from '../../hooks/useAuth';
@@ -16,6 +16,7 @@ import usePrivileges from '../../hooks/usePrivileges';
 import { getApiKeys, revokeApiKey, updateApiKey } from '../../api/apiKeys';
 import { parseApiError } from '../../utils/errorUtils';
 import CreateApiKeyModal from './CreateApiKeyModal';
+import { BusySpinner } from '../../components/a11y';
 
 const formatDate = (isoString, emptyText = 'N/A') => {
     if (!isoString) return emptyText;
@@ -168,9 +169,9 @@ function ApiKeys() {
         <>
             <Card>
                 <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="h5">API Key Management</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+                        <Typography variant="h5" component="h2">API Key Management</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                             <TextField label="Search Keys" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                             <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick} disabled={!hasPrivilege('api-key:create')}>Create API Key</Button>
                             {hasPrivilege('api-key:update') && (
@@ -180,10 +181,10 @@ function ApiKeys() {
                         </Box>
                     </Box>
                     <TableContainer component={Paper}>
-                        <Table stickyHeader>
+                        <Table stickyHeader aria-label="API keys">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell padding="checkbox" sx={{ bgcolor: "#E5E8EB" }}><Checkbox color="primary" indeterminate={selected.length > 0 && selected.length < filteredAndSortedKeys.length} checked={filteredAndSortedKeys.length > 0 && selected.length === filteredAndSortedKeys.length} onChange={handleSelectAllClick} /></TableCell>
+                                    <TableCell padding="checkbox" sx={{ bgcolor: "#E5E8EB" }}><Checkbox color="primary" indeterminate={selected.length > 0 && selected.length < filteredAndSortedKeys.length} checked={filteredAndSortedKeys.length > 0 && selected.length === filteredAndSortedKeys.length} onChange={handleSelectAllClick} inputProps={{ 'aria-label': 'Select all API keys' }} /></TableCell>
                                     <TableCell sx={{ bgcolor: "#E5E8EB" }}><TableSortLabel active={orderBy === 'name'} direction={order} onClick={() => handleRequestSort('name')}>Name</TableSortLabel></TableCell>
                                     <TableCell sx={{ bgcolor: "#E5E8EB" }}><TableSortLabel active={orderBy === 'key_type'} direction={order} onClick={() => handleRequestSort('key_type')}>Key Type</TableSortLabel></TableCell>
                                     <TableCell sx={{ bgcolor: "#E5E8EB" }}>Key Suffix</TableCell>
@@ -195,13 +196,13 @@ function ApiKeys() {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {loading ? <TableRow><TableCell colSpan={9} align="center"><CircularProgress /></TableCell></TableRow>
+                                {loading ? <TableRow><TableCell colSpan={9} align="center"><CircularProgress aria-label="Loading" /></TableCell></TableRow>
                                     : filteredAndSortedKeys.length > 0 ? filteredAndSortedKeys.map((row) => {
                                         const isItemSelected = isSelected(row.id);
                                         const isExpired = row.expires_at && new Date(row.expires_at) < new Date();
                                         return (
-                                            <TableRow hover onClick={(event) => handleClick(event, row.id)} role="checkbox" tabIndex={-1} key={row.id} selected={isItemSelected}>
-                                                <TableCell padding="checkbox"><Checkbox color="primary" checked={isItemSelected} /></TableCell>
+                                            <TableRow hover onClick={(event) => handleClick(event, row.id)} key={row.id} selected={isItemSelected}>
+                                                <TableCell padding="checkbox"><Checkbox color="primary" checked={isItemSelected} inputProps={{ 'aria-label': `Select ${row.name}` }} /></TableCell>
                                                 <TableCell>{row.name}</TableCell>
                                                 <TableCell>{row.key_type}</TableCell>
                                                 <TableCell><code>...{row.key_display_suffix}</code></TableCell>
@@ -241,7 +242,7 @@ function ApiKeys() {
                 <DialogContent><Typography>Are you sure you want to permanently revoke {selected.length} selected key(s)? This action cannot be undone.</Typography></DialogContent>
                 <DialogActions>
                     <Button onClick={() => setRevokeDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
-                    <Button onClick={handleConfirmRevoke} color="error" variant="contained" disabled={isSubmitting}>{isSubmitting ? <CircularProgress size={24} /> : 'Revoke'}</Button>
+                    <Button onClick={handleConfirmRevoke} color="error" variant="contained" disabled={isSubmitting}>{isSubmitting ? <BusySpinner /> : 'Revoke'}</Button>
                 </DialogActions>
             </Dialog>
             <Dialog open={suspendDialogOpen} onClose={() => setSuspendDialogOpen(false)}>
@@ -249,12 +250,11 @@ function ApiKeys() {
                 <DialogContent><Typography>What action would you like to perform on the {selected.length} selected key(s)?</Typography></DialogContent>
                 <DialogActions>
                     <Button onClick={() => setSuspendDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
-                    <Button onClick={() => handleConfirmSuspendReactivate(true)} color="success" variant="outlined" disabled={isSubmitting}>{isSubmitting ? <CircularProgress size={24} /> : 'Reactivate'}</Button>
-                    <Button onClick={() => handleConfirmSuspendReactivate(false)} color="warning" variant="contained" disabled={isSubmitting}>{isSubmitting ? <CircularProgress size={24} /> : 'Suspend'}</Button>
+                    <Button onClick={() => handleConfirmSuspendReactivate(true)} color="success" variant="outlined" disabled={isSubmitting}>{isSubmitting ? <BusySpinner /> : 'Reactivate'}</Button>
+                    <Button onClick={() => handleConfirmSuspendReactivate(false)} color="warning" variant="contained" disabled={isSubmitting}>{isSubmitting ? <BusySpinner /> : 'Suspend'}</Button>
                 </DialogActions>
             </Dialog>
             
-            <ToastContainer position="top-center" />
         </>
     );
 }

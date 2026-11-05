@@ -229,7 +229,7 @@ function MetricsFilter({ onApplyFilters, onClearFilters, isDataLoading }) {
   return (
     <Card sx={{ marginBottom: 3 }}>
       <CardContent>
-        <Typography variant="h5" gutterBottom>
+        <Typography variant="h5" component="h2" gutterBottom>
           Metrics Filters
         </Typography>
         {!activeNgroupId && (

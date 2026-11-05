@@ -1,22 +1,20 @@
-import { Box, Typography, Paper, Button, createTheme, ThemeProvider } from '@mui/material';
+import { Box, Typography, Paper, Button, ThemeProvider } from '@mui/material';
+import theme from '../theme';
+import usePageTitle from '../hooks/usePageTitle';
 // --- ADDED IMPORT ---
 import useAuth from '../hooks/useAuth';
 
-const theme = createTheme({
-    palette: {
-        primary: {
-            main: "#19577F",
-        },
-    },
-});
+
 
 function PendingApproval() {
     // --- ADDED HOOK ---
     const { logout } = useAuth();
+    usePageTitle('Application submitted');
 
     return (
         <ThemeProvider theme={theme}>
             <Box
+                component="main"
                 sx={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -36,14 +34,14 @@ function PendingApproval() {
                         paddingTop: 10,
                     }}
                 >
-                    <img src="/nasa_logo.png" alt="NASA Logo" style={{ width: '150px', height: 'auto', marginBottom: '20px' }} />
-                    <Typography variant="h5" component="h2" sx={{ mt: 1 }}>
+                    <img src="/nasa_logo.png" alt="NASA Logo" width="150" height="125" style={{ width: '150px', height: 'auto', marginBottom: '20px' }} />
+                    <Typography variant="h5" component="p" sx={{ mt: 1 }}>
                         Cloud Upload Environment
                     </Typography>
                 </Box>
 
                 <Paper elevation={3} sx={{ p: 4, textAlign: 'center', maxWidth: '500px' }}>
-                    <Typography variant="h5" gutterBottom sx={{ color: 'primary.main' }}>
+                    <Typography variant="h5" component="h1" gutterBottom sx={{ color: 'primary.main' }}>
                         Application Submitted
                     </Typography>
                     <Typography variant="body1" color="text.secondary">

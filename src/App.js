@@ -18,9 +18,13 @@ import RejectedRequests from "./pages/users/RejectedRequests";
 import FilesByStatus from './pages/metrics/FilesByStatus';
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import { SkipLink } from "./components/a11y";
+import { ToastContainer } from "react-toastify";
+import "./utils/toastSetup";
 import useAuth from "./hooks/useAuth";
 import { useSelector } from 'react-redux';
-import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { ThemeProvider } from "@mui/material/styles";
+import theme from "./theme";
 import { CircularProgress, Box } from "@mui/material";
 
 import LoginPage from "./components/LoginPage";
@@ -34,27 +38,20 @@ import CollectionOverview from "./pages/collections/CollectionOverview";
 
 import ProfileInfo from "./pages/Profile/ProfileInfo";
 import ApiKeys from "./pages/Profile/ApiKeys";
+import SiteMap from "./pages/SiteMap";
 
-
-const theme = createTheme({
-    palette: {
-        primary: {
-            main: "#19577F",
-        },
-        secondary: {
-            main: "#f0f0f0",
-        },
-    },
-});
 function SimpleLayout() {
     return (
-        <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', height: { xs: 'auto', md: '100vh' } }}>
+            <SkipLink />
             <Header />
             <Box
                 component="main"
+                id="main-content"
+                tabIndex={-1}
                 sx={{
                     flexGrow: 1,
-                    overflowY: 'auto',
+                    overflowY: { xs: 'visible', md: 'auto' },
                     p: 3,
                     backgroundColor: '#f4f6f8',
                 }}
@@ -68,7 +65,10 @@ function SimpleLayout() {
 
 
 function Layout() {
-    const [sideNavOpen, setSideNavOpen] = useState(true);
+    // Starts collapsed on narrow screens / high zoom so content has room to reflow (WCAG 1.4.10).
+    const [sideNavOpen, setSideNavOpen] = useState(
+        () => typeof window === 'undefined' || !window.matchMedia || window.matchMedia('(min-width: 900px)').matches
+    );
     const [menuItems, setMenuItems] = useState([]);
 
     const handleToggleSideNav = () => {
@@ -76,9 +76,10 @@ function Layout() {
     };
 
     return (
-        <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', height: { xs: 'auto', md: '100vh' } }}>
+            <SkipLink />
             <Header />
-            <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
+            <Box sx={{ display: 'flex', flexGrow: 1, overflow: { xs: 'visible', md: 'hidden' } }}>
                 <SideNav
                     menuItems={menuItems}
                     open={sideNavOpen}
@@ -86,11 +87,14 @@ function Layout() {
                 />
                 <Box
                     component="main"
+                    id="main-content"
+                    tabIndex={-1}
                     sx={{
+                        outline: 'none',
                         // UPDATED: This is the definitive fix for the content area
                         flex: 1,
                         minWidth: 0, // A flexbox failsafe to allow shrinking
-                        overflowY: 'auto',
+                        overflowY: { xs: 'visible', md: 'auto' },
                         p: 3,
                         backgroundColor: '#f4f6f8',
                     }}
@@ -115,13 +119,14 @@ function App() {
     if (isLoading) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <CircularProgress />
+                <CircularProgress aria-label="Loading CUE Dashboard" />
             </div>
         );
     }
 
     return (
         <ThemeProvider theme={theme}>
+            <ToastContainer position="top-center" />
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                  <Routes>
                     <Route element={<SimpleLayout />}>
@@ -146,6 +151,7 @@ function App() {
                         </Route>
 
                         <Route path="daac" element={<ProtectedRoute><DAAC /></ProtectedRoute>} />
+                        <Route path="sitemap" element={<ProtectedRoute><SiteMap /></ProtectedRoute>} />
 
                         <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} >
                             <Route index element={<ProfileInfo />} />

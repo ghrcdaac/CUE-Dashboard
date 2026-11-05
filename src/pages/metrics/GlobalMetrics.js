@@ -36,7 +36,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useOutletContext, useNavigate } from 'react-router-dom';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 // Hooks, Components & Utils
@@ -54,6 +54,8 @@ import MoneyIcon from '@mui/icons-material/Money';
 import PublicIcon from '@mui/icons-material/Public';
 import ClearIcon from '@mui/icons-material/Clear';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import { ChartWithTable } from '../../components/a11y';
+import { CHART_COLORS } from '../../theme';
 
 const DATE_FORMAT_API_DAYJS = 'YYYY-MM-DD';
 const getDefaultStartDate = () => dayjs().subtract(7, 'month');
@@ -71,16 +73,7 @@ const formatBytes = (bytes, decimals = 2) => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 };
 
-const DAAC_COLORS = [
-  '#19577F',
-  '#82ca9d',
-  '#ffc658',
-  '#8884d8',
-  '#ff8042',
-  '#a4de6c',
-  '#d0ed57',
-  '#8dd1e1',
-];
+const DAAC_COLORS = CHART_COLORS;
 
 function GlobalMetrics() {
   usePageTitle('Global Metrics');
@@ -227,7 +220,7 @@ function GlobalMetrics() {
   if (!hasGlobalAccess) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-        <CircularProgress />
+        <CircularProgress aria-label="Loading" />
       </Box>
     );
   }
@@ -235,12 +228,11 @@ function GlobalMetrics() {
   return (
     <Container maxWidth={false} disableGutters>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <ToastContainer position="top-center" autoClose={3000} />
 
         {/* Filter Panel at the top */}
         <Card sx={{ marginBottom: 3 }}>
           <CardContent>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="h6" component="h3" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               Global Filters
             </Typography>
             <Grid container spacing={2} alignItems="center">
@@ -310,17 +302,17 @@ function GlobalMetrics() {
 
         {/* Page Title */}
         <Box sx={{ mb: 2 }}>
-          <Typography variant="h5">Global Metrics Overview</Typography>
+          <Typography variant="h5" component="h2">Global Metrics Overview</Typography>
         </Box>
 
         {/* Loading / Error States */}
         {loadingData && (
           <Box>
             <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Skeleton variant="rounded" height={100} />
               </Grid>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Skeleton variant="rounded" height={100} />
               </Grid>
             </Grid>
@@ -330,10 +322,10 @@ function GlobalMetrics() {
               </Grid>
             </Grid>
             <Grid container sx={{ ml: -1.5, mr: -1.5 }}>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Skeleton variant="rounded" height={350} />
               </Grid>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Skeleton variant="rounded" height={350} />
               </Grid>
             </Grid>
@@ -351,25 +343,25 @@ function GlobalMetrics() {
           <Box>
             {/* Counts & Volume Cards */}
             <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
-                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+                    <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>
                       Total Distributed Files
                     </Typography>
-                    <Typography variant="h4">
+                    <Typography variant="h4" component="p">
                       {summaryData?.total?.total_distributed_files?.toLocaleString() ?? 0}
                     </Typography>
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
-                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+                    <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>
                       Total Distributed Volume
                     </Typography>
-                    <Typography variant="h4">
+                    <Typography variant="h4" component="p">
                       {summaryData?.total?.total_size_bytes
                         ? formatBytes(summaryData.total.total_size_bytes)
                         : '0 Bytes'}
@@ -382,11 +374,11 @@ function GlobalMetrics() {
             {/* DAAC Contribution Table */}
             <Card sx={{ mb: 3 }}>
               <CardContent>
-                <Typography variant="h6" sx={{ mb: 2 }}>
+                <Typography variant="h6" component="h3" sx={{ mb: 2 }}>
                   DAAC Contribution Overview
                 </Typography>
                 <TableContainer component={Paper}>
-                  <Table>
+                  <Table aria-label="DAAC contribution overview">
                     <TableHead>
                       <TableRow>
                         <TableCell sx={{ fontWeight: 'bold' }}>DAAC Name</TableCell>
@@ -424,15 +416,20 @@ function GlobalMetrics() {
             {/* Historical Charts */}
             <Grid container sx={{ ml: -1.5, mr: -1.5 }}>
               {/* Chart 1: Files */}
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Card>
                   <CardContent>
-                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+                    <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>
                       Monthly Distributed Files Trend
                     </Typography>
                     {chartData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <ChartWithTable
+                        title="Monthly distributed files"
+                        summary="Bar chart of distributed files per month, stacked by DAAC. Use Show data table for the values."
+                        columns={[{ key: 'month', header: 'Month' }, ...uniqueDaacNames.map((n) => ({ key: n, header: n, format: (v) => (v ?? 0).toLocaleString() }))]}
+                        rows={chartData}
+                      ><ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="month" />
                           <YAxis />
@@ -441,7 +438,7 @@ function GlobalMetrics() {
                           {activeFilters.ngroup_id ? (
                             <Bar
                               dataKey={uniqueDaacNames[0] || 'total_files'}
-                              fill="#19577F"
+                              fill={CHART_COLORS[0]}
                               name={uniqueDaacNames[0] || 'Files'}
                             />
                           ) : (
@@ -456,7 +453,7 @@ function GlobalMetrics() {
                             ))
                           )}
                         </BarChart>
-                      </ResponsiveContainer>
+                      </ResponsiveContainer></ChartWithTable>
                     ) : (
                       <Typography variant="body2" color="text.secondary">
                         No monthly historical count data.
@@ -467,24 +464,29 @@ function GlobalMetrics() {
               </Grid>
 
               {/* Chart 2: Volume */}
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Card>
                   <CardContent>
-                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+                    <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>
                       Monthly Distributed Volume Trend
                     </Typography>
                     {chartData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <ChartWithTable
+                        title="Monthly distributed volume"
+                        summary="Bar chart of distributed volume per month, stacked by DAAC. Use Show data table for the values."
+                        columns={[{ key: 'month', header: 'Month' }, ...uniqueDaacNames.map((n) => ({ key: `${n}_volume`, header: n, format: (v) => formatBytes(v ?? 0) }))]}
+                        rows={chartData}
+                      ><ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="month" />
-                          <YAxis tickFormatter={(tick) => formatBytes(tick, 0)} />
+                          <YAxis tickFormatter={(tick) => formatBytes(tick, 0)} width={80} />
                           <Tooltip formatter={(value, name) => [formatBytes(value), name]} />
                           <Legend />
                           {activeFilters.ngroup_id ? (
                             <Bar
                               dataKey={`${uniqueDaacNames[0]}_volume` || 'total_volume'}
-                              fill="#82ca9d"
+                              fill={CHART_COLORS[2]}
                               name={uniqueDaacNames[0] || 'Volume'}
                             />
                           ) : (
@@ -499,7 +501,7 @@ function GlobalMetrics() {
                             ))
                           )}
                         </BarChart>
-                      </ResponsiveContainer>
+                      </ResponsiveContainer></ChartWithTable>
                     ) : (
                       <Typography variant="body2" color="text.secondary">
                         No monthly historical volume data.

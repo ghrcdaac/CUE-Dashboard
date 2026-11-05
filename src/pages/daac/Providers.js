@@ -8,7 +8,7 @@ function Providers() {
     usePageTitle("DAAC Providers"); // Set title
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4">DAAC Providers</Typography>
+      <Typography variant="h4" component="h2">DAAC Providers</Typography>
       <Typography variant="body1">
         This is a placeholder for the DAAC Providers content.
       </Typography>

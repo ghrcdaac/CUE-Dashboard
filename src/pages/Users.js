@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import { useOutletContext, Outlet, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import PersonIcon from '@mui/icons-material/Person';
@@ -25,6 +25,7 @@ import { assignUserRole, deleteCueuser } from '../api/cueUser';
 
 // Import actions from the central data cache
 import { fetchUsers, fetchRoles, fetchProviders } from '../app/reducers/dataCacheSlice';
+import { BusySpinner } from '../components/a11y';
 
 const canModifyUser = (currentUser, targetUser) => {
     if (!currentUser || !targetUser?.role) return false;
@@ -278,7 +279,7 @@ function Users() {
     
     const tableBodyContent = useMemo(() => {
         if (loading) {
-            return ( <TableRow><TableCell colSpan={6} align="center" sx={{ py: 5 }}><CircularProgress /></TableCell></TableRow> );
+            return ( <TableRow><TableCell colSpan={6} align="center" sx={{ py: 5 }}><CircularProgress aria-label="Loading" /></TableCell></TableRow> );
         }
         if (processedUsers.length === 0) {
             return (
@@ -296,8 +297,8 @@ function Users() {
                 const isItemSelected = selected.indexOf(user.id) !== -1;
                 const isManageable = canModifyUser(currentUser, user);
                 return (
-                    <TableRow key={user.id} hover onClick={() => isManageable && handleClick(user.id)} role="checkbox" tabIndex={-1} selected={isItemSelected} sx={{ cursor: isManageable ? 'pointer' : 'default' }}>
-                        <TableCell padding="checkbox"><Checkbox checked={isItemSelected} disabled={!isManageable} /></TableCell>
+                    <TableRow key={user.id} hover onClick={() => isManageable && handleClick(user.id)} selected={isItemSelected} sx={{ cursor: isManageable ? 'pointer' : 'default' }}>
+                        <TableCell padding="checkbox"><Checkbox checked={isItemSelected} disabled={!isManageable} inputProps={{ 'aria-label': `Select ${user.name}` }} /></TableCell>
                         <TableCell>{user.name}</TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{user.cueusername}</TableCell>
@@ -427,12 +428,11 @@ function Users() {
 
     return (
         <Container maxWidth={false} disableGutters>
-            <ToastContainer position="top-center" />
             <Card>
                 <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="h5">Users</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+                        <Typography variant="h5" component="h2">Users</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                             <TextField label="Search Users" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                             <Button variant="contained" onClick={() => handleOpenDialog('edit')} disabled={selected.length !== 1 || !hasPrivilege('user:assign_role')} startIcon={<EditIcon />}>Modify Role</Button>
                             <Button variant="contained" color="error" onClick={() => handleOpenDialog('delete')} disabled={selected.length === 0 || !hasPrivilege('user:delete')} startIcon={<DeleteIcon />}>Delete</Button>
@@ -442,10 +442,10 @@ function Users() {
                     {(users.error || roles.error || providers.error) && <Alert severity="error" sx={{ my: 2 }}>{users.error || roles.error || providers.error}</Alert>}
 
                     <TableContainer component={Paper}>
-                        <Table stickyHeader>
+                        <Table stickyHeader aria-label="Users">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell sx={{ bgcolor: "#E5E8EB" }} padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedUsers.length} checked={processedUsers.length > 0 && selected.length === processedUsers.length} onChange={handleSelectAllClick} /></TableCell>
+                                    <TableCell sx={{ bgcolor: "#E5E8EB" }} padding="checkbox"><Checkbox indeterminate={selected.length > 0 && selected.length < processedUsers.length} checked={processedUsers.length > 0 && selected.length === processedUsers.length} onChange={handleSelectAllClick} inputProps={{ 'aria-label': 'Select all users' }} /></TableCell>
                                     {headCells.map((headCell) => (
                                         <TableCell sx={{ bgcolor: "#E5E8EB" }} key={headCell.id} sortDirection={sorting.orderBy === headCell.id ? sorting.order : false}>
                                             <TableSortLabel active={sorting.orderBy === headCell.id} direction={sorting.orderBy === headCell.id ? sorting.order : 'asc'} onClick={() => handleRequestSort(headCell.id)}>
@@ -499,7 +499,7 @@ function Users() {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseDialog}>Cancel</Button>
-                    <Button onClick={handleUpdateUser} variant="contained" disabled={isSubmitting}>{isSubmitting ? <CircularProgress size={24} /> : "Save"}</Button>
+                    <Button onClick={handleUpdateUser} variant="contained" disabled={isSubmitting}>{isSubmitting ? <BusySpinner /> : "Save"}</Button>
                 </DialogActions>
             </Dialog>
             
@@ -508,7 +508,7 @@ function Users() {
                 <DialogContent>Are you sure you want to delete the {selected.length} selected user(s)?</DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseDialog}>Cancel</Button>
-                    <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={isSubmitting}>{isSubmitting ? <CircularProgress size={24} /> : "Delete"}</Button>
+                    <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={isSubmitting}>{isSubmitting ? <BusySpinner /> : "Delete"}</Button>
                 </DialogActions>
             </Dialog>
         </Container>

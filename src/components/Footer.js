@@ -2,11 +2,14 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
+import { Link as RouterLink } from 'react-router-dom';
 import { config } from '../config';
+import { VisuallyHidden } from './a11y';
 
 export default function Footer() {
   return (
     <Box
+      component="footer"
       sx={{
         bgcolor: '#19577F',
         color: '#f0f0f0',
@@ -15,7 +18,8 @@ export default function Footer() {
         justifyContent: 'center',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: 10,
+        columnGap: 10,
+        rowGap: 0.5,
       }}
     >
 
@@ -25,20 +29,24 @@ export default function Footer() {
 
 </Typography>
 
-<Typography variant="body2"> 
-        NASA Official: Doug Newman 
+<Typography variant="body2">
+        NASA Official: Doug Newman
       </Typography>
 
       <Typography variant="body2">
-         <Link href="https://www.nasa.gov/foia/" color="inherit" target="_blank" rel="noopener"> FOIA</Link> 
+         <Link component={RouterLink} to="/sitemap" color="inherit">Site map</Link>
       </Typography>
 
       <Typography variant="body2">
-         <Link href="https://www.nasa.gov/privacy/" color="inherit" target="_blank" rel="noopener">NASA Privacy Policy</Link>
+         <Link href="https://www.nasa.gov/foia/" color="inherit" target="_blank" rel="noopener"> FOIA<VisuallyHidden> (opens in a new tab)</VisuallyHidden></Link>
       </Typography>
 
       <Typography variant="body2">
-         <Link href="https://USA.gov" color="inherit" target="_blank" rel="noopener"> USA.gov</Link>
+         <Link href="https://www.nasa.gov/privacy/" color="inherit" target="_blank" rel="noopener">NASA Privacy Policy<VisuallyHidden> (opens in a new tab)</VisuallyHidden></Link>
+      </Typography>
+
+      <Typography variant="body2">
+         <Link href="https://USA.gov" color="inherit" target="_blank" rel="noopener"> USA.gov<VisuallyHidden> (opens in a new tab)</VisuallyHidden></Link>
       </Typography>
     </Box>
   );

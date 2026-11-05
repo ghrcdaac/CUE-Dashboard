@@ -8,7 +8,7 @@ import {
     Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import { useSelector, useDispatch } from 'react-redux';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import useAuth from '../../hooks/useAuth';
@@ -18,6 +18,7 @@ import UndoIcon from '@mui/icons-material/Undo';
 
 import { listUserApplications, restoreUserApplication } from '../../api/userApplicationApi';
 import { fetchProviders } from '../../app/reducers/dataCacheSlice';
+import { BusySpinner } from '../../components/a11y';
 
 
 
@@ -244,11 +245,10 @@ function RejectedRequests() {
 
     return (
         <Container maxWidth={false} disableGutters>
-            <ToastContainer position="top-center" />
             <Card>
                 <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-                        <Typography variant="h5">
+                        <Typography variant="h5" component="h2">
                             {spamFilter === 'spam' ? 'Spam User Applications' : 'Rejected User Applications'}
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -272,7 +272,7 @@ function RejectedRequests() {
                                     disabled={restoreLoading}
                                     startIcon={<UndoIcon />}
                                 >
-                                    {restoreLoading ? <CircularProgress size={24} color="inherit" /> : 'Unmark Spam'}
+                                    {restoreLoading ? <BusySpinner /> : 'Unmark Spam'}
                                 </Button>
                             )}
                         </Box>
@@ -282,19 +282,19 @@ function RejectedRequests() {
 
                     {loading ? (
                         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
-                            <CircularProgress />
+                            <CircularProgress aria-label="Loading" />
                         </Box>
                     ) : !error && (
                         <>
                             <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 250px)', overflow: 'auto' }}>
-                                <Table aria-label="rejected applications table" stickyHeader>
+                                <Table aria-label="Rejected applications" stickyHeader>
                                     <TableHead>
                                         <TableRow>
                                             <TableCell padding="checkbox">
                                                 <Checkbox
                                                     indeterminate={selectedApplications.length > 0 && selectedApplications.length < visibleRows.length}
                                                     checked={visibleRows.length > 0 && selectedApplications.length === visibleRows.length}
-                                                    onChange={handleSelectAllClick}
+                                                    onChange={handleSelectAllClick} inputProps={{ 'aria-label': 'Select all applications' }}
                                                 />
                                             </TableCell>
                                             {activeHeadCells.map((headCell) => (
@@ -324,7 +324,7 @@ function RejectedRequests() {
                                                         sx={{ cursor: 'pointer' }}
                                                     >
                                                         <TableCell padding="checkbox">
-                                                            <Checkbox checked={isItemSelected} />
+                                                            <Checkbox checked={isItemSelected} inputProps={{ 'aria-label': `Select ${application.name}` }} />
                                                         </TableCell>
                                                         <TableCell>{application.name}</TableCell>
                                                         <TableCell>{application.email}</TableCell>
@@ -375,7 +375,7 @@ function RejectedRequests() {
                 <DialogActions>
                     <Button onClick={() => setConfirmUnmarkDialog({ open: false, idsToRestore: [] })}>Cancel</Button>
                     <Button onClick={handleConfirmUnmarkSpam} color="primary" variant="contained" disabled={restoreLoading}>
-                        {restoreLoading ? <CircularProgress size={24} color="inherit" /> : 'Confirm'}
+                        {restoreLoading ? <BusySpinner /> : 'Confirm'}
                     </Button>
                 </DialogActions>
             </Dialog>

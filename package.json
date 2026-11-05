@@ -68,5 +68,14 @@
   },
   "main": "index.js",
   "author": "Navaneeth R Selvaraj <navaneeth026@gmail.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "jest": {
+    "transformIgnorePatterns": [
+      "[/\\\\]node_modules[/\\\\](?!(date-fns|@mui[/\\\\]x-[a-z-]+|d3-[a-z-]+|internmap|jwt-decode)[/\\\\]).+\\.(js|jsx|mjs|cjs|ts|tsx)$",
+      "^.+\\.module\\.(css|sass|scss)$"
+    ],
+    "moduleNameMapper": {
+      "^react-router/dom$": "<rootDir>/node_modules/react-router/dist/development/dom-export.js"
+    }
+  }
 }

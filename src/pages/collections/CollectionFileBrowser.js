@@ -116,7 +116,7 @@ function CollectionFileBrowser() {
       <Box sx={{ flexGrow: 1 }}>
         <Card sx={{ marginBottom: 2 }}>
           <CardContent>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h6" component="h3" gutterBottom>
               Files in Collection
             </Typography>
 
@@ -162,7 +162,7 @@ function CollectionFileBrowser() {
 
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
-                <CircularProgress />
+                <CircularProgress aria-label="Loading" />
               </Box>
             ) : (
               <>

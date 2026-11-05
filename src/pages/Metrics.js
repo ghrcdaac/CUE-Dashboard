@@ -13,7 +13,7 @@ import {
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import {
   LineChart,
@@ -43,6 +43,8 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import FilePresentIcon from '@mui/icons-material/FilePresent';
 import MoneyIcon from '@mui/icons-material/Money';
 import PublicIcon from '@mui/icons-material/Public';
+import { ChartWithTable } from '../components/a11y';
+import { CHART_COLORS } from '../theme';
 
 const DATE_FORMAT_API_DAYJS = 'YYYY-MM-DD';
 const getDefaultStartDate = () => dayjs().subtract(7, 'day');
@@ -167,7 +169,7 @@ function Metrics() {
   };
 
   const handleExport = (format) => {
-    if (format !== 'pdf') return;
+    if (format !== 'pdf' && format !== 'csv') return;
     const summaryData = {
         "Total Volume": overallVolumeData ? formatBytes(overallVolumeData.total_volume_bytes) : 'N/A',
         "Total Files": overallCountData ? overallCountData.total_count.toLocaleString() : 'N/A',
@@ -185,7 +187,7 @@ function Metrics() {
       value: formatBytes(item.value),
     }));
 
-    generateMetricsReport(summaryData, statusCountsData, dailyVolumeForPdf, dailyCountData, info);
+    generateMetricsReport(summaryData, statusCountsData, dailyVolumeForPdf, dailyCountData, info, format);
   };
 
   const volumeTooltipFormatter = (value) => [formatBytes(value), 'Volume'];
@@ -195,28 +197,27 @@ function Metrics() {
   return (
     <Container maxWidth={false} disableGutters>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <ToastContainer position="top-center" autoClose={3000} />
         <MetricsFilter
           onApplyFilters={handleApplyFilters}
           onClearFilters={handleClearFilters}
           isDataLoading={loadingMetrics}
         />
         
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h5">Metrics Overview</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+            <Typography variant="h5" component="h2">Metrics Overview</Typography>
             <ExportMenu onExport={handleExport} />
         </Box>
 
         {loadingMetrics && (
           <Box>
             <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
-              <Grid item sx={{ width: '33.333%', p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
-              <Grid item sx={{ width: '33.333%', p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
-              <Grid item sx={{ width: '33.333%', p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
+              <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
+              <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
+              <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
             </Grid>
             <Grid container sx={{ ml: -1.5, mr: -1.5 }}>
-              <Grid item sx={{ width: '50%', p: 1.5 }}><Skeleton variant="rounded" height={350} /></Grid>
-              <Grid item sx={{ width: '50%', p: 1.5 }}><Skeleton variant="rounded" height={350} /></Grid>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}><Skeleton variant="rounded" height={350} /></Grid>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}><Skeleton variant="rounded" height={350} /></Grid>
             </Grid>
           </Box>
         )}
@@ -227,26 +228,26 @@ function Metrics() {
         {!loadingMetrics && !errorMetrics && (
           <Box>
             <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
-              <Grid item sx={{ width: '33.333%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
-                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Total Volume</Typography>
-                    <Typography variant="h4">{overallVolumeData ? formatBytes(overallVolumeData.total_volume_bytes) : 'N/A'}</Typography>
+                    <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>Total Volume</Typography>
+                    <Typography variant="h4" component="p">{overallVolumeData ? formatBytes(overallVolumeData.total_volume_bytes) : 'N/A'}</Typography>
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item sx={{ width: '33.333%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
-                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Total Files</Typography>
-                    <Typography variant="h4">{overallCountData ? overallCountData.total_count.toLocaleString() : 'N/A'}</Typography>
+                    <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>Total Files</Typography>
+                    <Typography variant="h4" component="p">{overallCountData ? overallCountData.total_count.toLocaleString() : 'N/A'}</Typography>
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item sx={{ width: '33.333%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
-                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Status Distribution</Typography>
+                    <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>Status Distribution</Typography>
                     {statusCountsData && statusCountsData.length > 0 ? (
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', minHeight: 50 }}>
                         {statusCountsData.map((item) => (
@@ -260,40 +261,50 @@ function Metrics() {
             </Grid>
 
             <Grid container sx={{ ml: -1.5, mr: -1.5 }}>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Card>
                   <CardContent>
-                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Daily Volume</Typography>
+                    <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>Daily Volume</Typography>
                     {dailyVolumeData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={dailyVolumeData} margin={{ top: 5, right: 30, left: 50, bottom: 5 }}>
+                      <ChartWithTable
+                        title="Daily volume"
+                        summary="Line chart of the volume uploaded each day. Use Show data table for the values."
+                        columns={[{ key: 'day', header: 'Day' }, { key: 'value', header: 'Volume', format: (v) => formatBytes(v) }]}
+                        rows={dailyVolumeData}
+                      ><ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={dailyVolumeData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="day" />
-                          <YAxis tickFormatter={yAxisVolumeFormatter} />
+                          <YAxis tickFormatter={yAxisVolumeFormatter} width={80} />
                           <Tooltip formatter={volumeTooltipFormatter} />
                           <Legend />
-                          <Line type="monotone" dataKey="value" stroke="#8884d8" name="Volume" />
+                          <Line type="monotone" dataKey="value" stroke={CHART_COLORS[0]} strokeWidth={2} name="Volume" />
                         </LineChart>
-                      </ResponsiveContainer>
+                      </ResponsiveContainer></ChartWithTable>
                     ) : ( <Typography variant="body2" color="text.secondary">No daily volume data.</Typography> )}
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Card>
                   <CardContent>
-                    <Typography variant="subtitle1" color="text.secondary" gutterBottom>Daily File Count</Typography>
+                    <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>Daily File Count</Typography>
                     {dailyCountData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={dailyCountData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <ChartWithTable
+                        title="Daily file count"
+                        summary="Line chart of the number of files uploaded each day. Use Show data table for the values."
+                        columns={[{ key: 'day', header: 'Day' }, { key: 'value', header: 'Files', format: (v) => (v ?? 0).toLocaleString() }]}
+                        rows={dailyCountData}
+                      ><ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={dailyCountData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="day" />
                           <YAxis />
                           <Tooltip formatter={countTooltipFormatter} />
                           <Legend />
-                          <Line type="monotone" dataKey="value" stroke="#82ca9d" name="Files" />
+                          <Line type="monotone" dataKey="value" stroke={CHART_COLORS[2]} strokeWidth={2} name="Files" />
                         </LineChart>
-                      </ResponsiveContainer>
+                      </ResponsiveContainer></ChartWithTable>
                     ) : ( <Typography variant="body2" color="text.secondary">No daily file count data.</Typography> )}
                   </CardContent>
                 </Card>
