@@ -351,7 +351,7 @@ export default function DAAC() {
                 <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
                         <Typography variant="h5" component="h2">Egress</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                             <TextField label="Search" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                             <Button variant="contained" color="primary" onClick={() => handleOpenDialog('add')} startIcon={<AddIcon />} disabled={!hasPrivilege('egress:create')}>Add</Button>
                             <Button variant="contained" onClick={() => handleOpenDialog('edit')} disabled={selected.length !== 1 || !hasPrivilege('egress:update')} startIcon={<EditIcon />}>Edit</Button>

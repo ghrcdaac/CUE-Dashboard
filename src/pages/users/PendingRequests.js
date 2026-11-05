@@ -206,9 +206,9 @@ function PendingRequests() {
         <Container maxWidth={false} disableGutters>
             <Card>
                 <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
                         <Typography variant="h5" component="h2">Pending User Applications</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                             <TextField label="Search Applications" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                             <Button variant="contained" color="primary" onClick={() => handleOpenDialog('accept')} disabled={selected.length !== 1 || actionLoading || !hasPrivilege('application:approve')}>Accept</Button>
                             <Button variant="contained" color="error" onClick={() => handleOpenDialog('reject')} disabled={selected.length === 0 || actionLoading || !hasPrivilege('application:approve')}>Reject</Button>

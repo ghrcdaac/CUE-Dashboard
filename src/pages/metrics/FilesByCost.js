@@ -260,20 +260,20 @@ function FilesByCost() {
                     onClearFilters={handleClearFilters}
                     isDataLoading={loadingSummary || loadingCollections || loadingFiles}
                 />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
                     <Typography variant="h5" component="h2">Cost Overview</Typography>
                     <ExportMenu onExport={handleExportCostReport} />
                 </Box>
                 
                 {loadingSummary ? (
                     <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
-                        <Grid item sx={{ width: '33.333%', p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
-                        <Grid item sx={{ width: '33.333%', p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
-                        <Grid item sx={{ width: '33.333%', p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
+                        <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
+                        <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
+                        <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
                     </Grid>
                 ) : error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : (
                     <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
-                        <Grid item sx={{ width: '33.333%', p: 1.5 }}>
+                        <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}>
                             <Card sx={{ height: '100%' }}>
                                 <CardContent>
                                     <Typography variant="subtitle1" component="h3" color="text.secondary">Total Cost</Typography>
@@ -281,7 +281,7 @@ function FilesByCost() {
                                 </CardContent>
                             </Card>
                         </Grid>
-                        <Grid item sx={{ width: '33.333%', p: 1.5 }}>
+                        <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}>
                             <Card sx={{ height: '100%' }}>
                                 <CardContent>
                                     <Typography variant="subtitle1" component="h3" color="text.secondary">Total Files</Typography>
@@ -289,7 +289,7 @@ function FilesByCost() {
                                 </CardContent>
                             </Card>
                         </Grid>
-                        <Grid item sx={{ width: '33.333%', p: 1.5 }}>
+                        <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}>
                             <Card sx={{ height: '100%' }}>
                                 <CardContent>
                                     <Typography variant="subtitle1" component="h3" color="text.secondary">Total Size</Typography>
@@ -302,7 +302,7 @@ function FilesByCost() {
 
                 {/* Chart Cards */}
                 <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
-                    <Grid item sx={{ width: '50%', p: 1.5 }}>
+                    <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                         <Card sx={{ minHeight: 450 }}>
                             <CardContent>
                                 <Typography variant="h5" component="h3" gutterBottom>Daily Cost</Typography>
@@ -313,14 +313,14 @@ function FilesByCost() {
                                     columns={[{ key: 'day', header: 'Day' }, { key: 'value', header: 'Cost', format: (v) => `$${Number(v ?? 0).toFixed(2)}` }]}
                                     rows={summary.daily_cost}
                                 ><ResponsiveContainer width="100%" height={300}>
-                                    <LineChart data={summary.daily_cost} margin={{ right: 30, left: 20 }}>
+                                    <LineChart data={summary.daily_cost} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                         <CartesianGrid /><XAxis dataKey="day" /><YAxis /><Tooltip formatter={(value) => [`$${value.toFixed(2)}`, "Cost"]}/><Legend /><Line type="monotone" dataKey="value" stroke={CHART_COLORS[0]} strokeWidth={2} name="Cost"/>
                                     </LineChart>
                                 </ResponsiveContainer></ChartWithTable>}
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid item sx={{ width: '50%', p: 1.5 }}>
+                    <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                         <Card sx={{ minHeight: 450 }}>
                             <CardContent>
                                 <Typography variant="h5" component="h3" gutterBottom>Cost by Collection</Typography>
@@ -331,7 +331,7 @@ function FilesByCost() {
                                     columns={[{ key: 'name', header: 'Collection' }, { key: 'cost', header: 'Total cost', format: (v) => `$${Number(v ?? 0).toFixed(2)}` }]}
                                     rows={collectionCosts}
                                 ><ResponsiveContainer width="100%" height={300}>
-                                    <BarChart data={collectionCosts} margin={{ right: 30, left: 20 }}>
+                                    <BarChart data={collectionCosts} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                         <CartesianGrid />
                                         <XAxis dataKey="name" />
                                         <YAxis domain={[0, 'dataMax']} />
@@ -349,7 +349,7 @@ function FilesByCost() {
                 {/* Table: Cost by File */}
                 <Card>
                     <CardContent>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
                             <Typography variant="h5" component="h2">Files by Cost</Typography>
                             <OutlinedInput
                                 placeholder="Search files..."

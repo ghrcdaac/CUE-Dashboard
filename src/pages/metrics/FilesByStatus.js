@@ -515,7 +515,7 @@ function FilesByStatus() {
                     <CardContent>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, flexWrap: 'wrap', gap: 2 }}>
                             <Typography variant="h5" component="h2">Files by Status</Typography>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                                 <TextField 
                                     label="Search by File Name"
                                     variant="outlined"
@@ -529,16 +529,17 @@ function FilesByStatus() {
                         </Box>
                         
                         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-                            <Tabs value={selectedStatusTab} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
-                                {FILE_STATUSES.map(status => <Tab label={status.replace('_', ' ').toUpperCase()} value={status} key={status} />)}
+                            <Tabs value={selectedStatusTab} onChange={handleTabChange} variant="scrollable" scrollButtons="auto" aria-label="File status">
+                                {FILE_STATUSES.map(status => <Tab label={status.replace('_', ' ').toUpperCase()} value={status} key={status} id={`status-tab-${status}`} aria-controls="status-tabpanel" />)}
                             </Tabs>
                         </Box>
 
+                        <Box role="tabpanel" id="status-tabpanel" aria-labelledby={`status-tab-${selectedStatusTab}`}>
                         {loading ? ( <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}><CircularProgress aria-label="Loading" /></Box> ) : 
                          error ? ( <Alert severity="error" sx={{ my: 2 }}>{error}</Alert> ) : (
                             <>
                                 <TableContainer component={Paper}>
-                                    <Table stickyHeader aria-label={`Files with status ${selectedStatusTab.replace('_', ' ')}`} sx={{ tableLayout: 'fixed', width: '100%' }}>
+                                    <Table stickyHeader aria-label={`Files with status ${selectedStatusTab.replace('_', ' ')}`} sx={{ tableLayout: 'fixed', width: '100%', minWidth: 760 }}>
                                         <TableHead>
                                             <TableRow>
                                                 {visibleHeadCells.map(headCell => (
@@ -585,11 +586,11 @@ function FilesByStatus() {
                                                     <TableCell sx={{ whiteSpace: 'nowrap', verticalAlign: 'top' }}>
                                                         {formatBytes(file.size_bytes)}
                                                     </TableCell>
-                                                    <TableCell sx={{ whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                                                    <TableCell sx={{ whiteSpace: 'normal', verticalAlign: 'top' }}>
                                                         {formatDisplayDate(file.upload_time)}
                                                     </TableCell>
                                                     {selectedStatusTab === 'distributed' && (
-                                                        <TableCell sx={{ whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                                                        <TableCell sx={{ whiteSpace: 'normal', verticalAlign: 'top' }}>
                                                             {formatDisplayDate(file.egress_start)}
                                                         </TableCell>
                                                     )}
@@ -630,6 +631,7 @@ function FilesByStatus() {
                                 />
                             </>
                         )}
+                        </Box>
                     </CardContent>
                 </Card>
             </LocalizationProvider>

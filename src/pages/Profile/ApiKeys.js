@@ -156,9 +156,9 @@ function ApiKeys() {
         <>
             <Card>
                 <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
                         <Typography variant="h5" component="h2">API Key Management</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                             <TextField label="Search Keys" variant="outlined" size="small" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                             <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick} disabled={!hasPrivilege('api-key:create')}>Create API Key</Button>
                             <Button variant="outlined" startIcon={<SyncLockIcon />} onClick={handleSuspendReactivateClick} disabled={selected.length === 0 || !hasPrivilege('api-key:update')}>Suspend/Reactivate</Button>

@@ -309,10 +309,10 @@ function GlobalMetrics() {
         {loadingData && (
           <Box>
             <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Skeleton variant="rounded" height={100} />
               </Grid>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Skeleton variant="rounded" height={100} />
               </Grid>
             </Grid>
@@ -322,10 +322,10 @@ function GlobalMetrics() {
               </Grid>
             </Grid>
             <Grid container sx={{ ml: -1.5, mr: -1.5 }}>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Skeleton variant="rounded" height={350} />
               </Grid>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Skeleton variant="rounded" height={350} />
               </Grid>
             </Grid>
@@ -343,7 +343,7 @@ function GlobalMetrics() {
           <Box>
             {/* Counts & Volume Cards */}
             <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
                     <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>
@@ -355,7 +355,7 @@ function GlobalMetrics() {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
                     <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>
@@ -416,7 +416,7 @@ function GlobalMetrics() {
             {/* Historical Charts */}
             <Grid container sx={{ ml: -1.5, mr: -1.5 }}>
               {/* Chart 1: Files */}
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Card>
                   <CardContent>
                     <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>
@@ -429,7 +429,7 @@ function GlobalMetrics() {
                         columns={[{ key: 'month', header: 'Month' }, ...uniqueDaacNames.map((n) => ({ key: n, header: n, format: (v) => (v ?? 0).toLocaleString() }))]}
                         rows={chartData}
                       ><ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="month" />
                           <YAxis />
@@ -464,7 +464,7 @@ function GlobalMetrics() {
               </Grid>
 
               {/* Chart 2: Volume */}
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Card>
                   <CardContent>
                     <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>
@@ -477,10 +477,10 @@ function GlobalMetrics() {
                         columns={[{ key: 'month', header: 'Month' }, ...uniqueDaacNames.map((n) => ({ key: `${n}_volume`, header: n, format: (v) => formatBytes(v ?? 0) }))]}
                         rows={chartData}
                       ><ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="month" />
-                          <YAxis tickFormatter={(tick) => formatBytes(tick, 0)} />
+                          <YAxis tickFormatter={(tick) => formatBytes(tick, 0)} width={80} />
                           <Tooltip formatter={(value, name) => [formatBytes(value), name]} />
                           <Legend />
                           {activeFilters.ngroup_id ? (

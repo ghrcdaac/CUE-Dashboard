@@ -203,7 +203,7 @@ function Metrics() {
           isDataLoading={loadingMetrics}
         />
         
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
             <Typography variant="h5" component="h2">Metrics Overview</Typography>
             <ExportMenu onExport={handleExport} />
         </Box>
@@ -211,13 +211,13 @@ function Metrics() {
         {loadingMetrics && (
           <Box>
             <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
-              <Grid item sx={{ width: '33.333%', p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
-              <Grid item sx={{ width: '33.333%', p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
-              <Grid item sx={{ width: '33.333%', p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
+              <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
+              <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
+              <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}><Skeleton variant="rounded" height={100} /></Grid>
             </Grid>
             <Grid container sx={{ ml: -1.5, mr: -1.5 }}>
-              <Grid item sx={{ width: '50%', p: 1.5 }}><Skeleton variant="rounded" height={350} /></Grid>
-              <Grid item sx={{ width: '50%', p: 1.5 }}><Skeleton variant="rounded" height={350} /></Grid>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}><Skeleton variant="rounded" height={350} /></Grid>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}><Skeleton variant="rounded" height={350} /></Grid>
             </Grid>
           </Box>
         )}
@@ -228,7 +228,7 @@ function Metrics() {
         {!loadingMetrics && !errorMetrics && (
           <Box>
             <Grid container sx={{ mb: 3, ml: -1.5, mr: -1.5 }}>
-              <Grid item sx={{ width: '33.333%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
                     <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>Total Volume</Typography>
@@ -236,7 +236,7 @@ function Metrics() {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item sx={{ width: '33.333%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
                     <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>Total Files</Typography>
@@ -244,7 +244,7 @@ function Metrics() {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item sx={{ width: '33.333%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', sm: '33.333%' }, p: 1.5 }}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
                     <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>Status Distribution</Typography>
@@ -261,7 +261,7 @@ function Metrics() {
             </Grid>
 
             <Grid container sx={{ ml: -1.5, mr: -1.5 }}>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Card>
                   <CardContent>
                     <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>Daily Volume</Typography>
@@ -272,10 +272,10 @@ function Metrics() {
                         columns={[{ key: 'day', header: 'Day' }, { key: 'value', header: 'Volume', format: (v) => formatBytes(v) }]}
                         rows={dailyVolumeData}
                       ><ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={dailyVolumeData} margin={{ top: 5, right: 30, left: 50, bottom: 5 }}>
+                        <LineChart data={dailyVolumeData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="day" />
-                          <YAxis tickFormatter={yAxisVolumeFormatter} />
+                          <YAxis tickFormatter={yAxisVolumeFormatter} width={80} />
                           <Tooltip formatter={volumeTooltipFormatter} />
                           <Legend />
                           <Line type="monotone" dataKey="value" stroke={CHART_COLORS[0]} strokeWidth={2} name="Volume" />
@@ -285,7 +285,7 @@ function Metrics() {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item sx={{ width: '50%', p: 1.5 }}>
+              <Grid item sx={{ width: { xs: '100%', md: '50%' }, p: 1.5 }}>
                 <Card>
                   <CardContent>
                     <Typography variant="subtitle1" component="h3" color="text.secondary" gutterBottom>Daily File Count</Typography>
@@ -296,7 +296,7 @@ function Metrics() {
                         columns={[{ key: 'day', header: 'Day' }, { key: 'value', header: 'Files', format: (v) => (v ?? 0).toLocaleString() }]}
                         rows={dailyCountData}
                       ><ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={dailyCountData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                        <LineChart data={dailyCountData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="day" />
                           <YAxis />
