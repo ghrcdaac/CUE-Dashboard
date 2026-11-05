@@ -5,6 +5,9 @@ import { config } from '../config';
  */
 const CUE_SESSION_KEY = 'CUE_USER_SESSION';
 
+// The refresh currently in progress, shared by every request that needs a new token.
+let refreshInFlight = null;
+
 const sessionService = {
     /**
      * Saves the complete user session object to localStorage.
@@ -53,9 +56,22 @@ const sessionService = {
 
     /**
      * Refreshes the access token using the stored refresh token.
+     * Requests that find the token expiring at the same moment share ONE refresh call:
+     * parallel refreshes with the same refresh token can fail when Keycloak rotates
+     * refresh tokens, which would sign the user out.
      * @returns {Promise<string|null>} The new access token, or null if refresh failed.
      */
-    async refreshAccessToken() {
+    refreshAccessToken() {
+        if (!refreshInFlight) {
+            refreshInFlight = sessionService._refreshOnce().finally(() => {
+                refreshInFlight = null;
+            });
+        }
+        return refreshInFlight;
+    },
+
+    /** One refresh call. Use refreshAccessToken() so parallel callers share it. */
+    async _refreshOnce() {
         const session = this.getSession();
         if (!session?.refreshToken) {
             console.error("No refresh token available for refresh.");
@@ -83,6 +99,8 @@ const sessionService = {
                 ...session,
                 accessToken: newAccessTokenData.access_token,
                 expiresAt: Date.now() + (newAccessTokenData.expires_in * 1000),
+                // With refresh-token rotation the old refresh token stops working: keep the new one.
+                ...(newAccessTokenData.refresh_token ? { refreshToken: newAccessTokenData.refresh_token } : {}),
             };
             this.setSession(newSession);
 
