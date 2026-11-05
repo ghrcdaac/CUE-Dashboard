@@ -24,8 +24,8 @@ import "./utils/toastSetup";
 import useAuth from "./hooks/useAuth";
 import { useSelector } from 'react-redux';
 import { ThemeProvider } from "@mui/material/styles";
-import theme from "./theme";
-import { CircularProgress, Box } from "@mui/material";
+import theme, { focusStyles } from "./theme";
+import { CircularProgress, Box, GlobalStyles } from "@mui/material";
 
 import LoginPage from "./components/LoginPage";
 import AuthCallback from './pages/AuthCallback';
@@ -126,6 +126,7 @@ function App() {
 
     return (
         <ThemeProvider theme={theme}>
+            <GlobalStyles styles={focusStyles} />
             <ToastContainer position="top-center" />
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                  <Routes>
