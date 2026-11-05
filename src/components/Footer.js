@@ -12,7 +12,7 @@ export default function Footer() {
       component="footer"
       sx={{
         bgcolor: '#19577F',
-        color: '#f0f0f0',
+        color: '#ffffff', // 7.75:1 on the brand blue (AAA)
         p: 0.2,
         display: 'flex',
         justifyContent: 'center',

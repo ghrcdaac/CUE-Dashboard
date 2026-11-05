@@ -99,7 +99,7 @@ export default function Header() {
                                 }}
                             >
                                 <img src="/nasa_logo.png" alt="NASA Logo" width="72" height="60" style={{ marginRight: '16px' }} />
-                                <Typography variant="h4" component="span" sx={{ fontWeight: "bold" }}>CUE</Typography>
+                                <Typography variant="h4" component="span" sx={{ fontWeight: "bold" }}><abbr title="Cloud Upload Environment" style={{ textDecoration: "none" }}>CUE</abbr></Typography>
                             </Box>
                             
                             <Box component="nav" aria-label="Main" sx={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
@@ -107,7 +107,7 @@ export default function Header() {
                                 {hasPrivilege("provider:read") && navLink("/providers", "Providers")}
                                 {hasPrivilege("metrics:read") && navLink("/metrics", "Metrics")}
                                 {hasPrivilege("user:page") && navLink("/users", "Users")}
-                                {hasPrivilege("egress:read") && navLink("/daac", "DAAC")}
+                                {hasPrivilege("egress:read") && navLink("/daac", <abbr title="Distributed Active Archive Center">DAAC</abbr>)}
                             </Box>
                         </Box>
                         <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
@@ -135,7 +135,7 @@ export default function Header() {
                                             </FormControl>
                                         )
                                     )}
-                                    <IconButton size="large" aria-label={`Account menu for ${user?.username || user?.cueusername || user?.name || 'user'}`}aria-controls={anchorEl ? "menu-appbar" : undefined} aria-haspopup="menu" aria-expanded={Boolean(anchorEl)} onClick={handleMenu} color="inherit" sx={{ padding: 0 }}>
+                                    <IconButton size="large" aria-label={`Account menu for ${user?.username || user?.cueusername || user?.name || 'user'}`} aria-controls={anchorEl ? "menu-appbar" : undefined} aria-haspopup="menu" aria-expanded={Boolean(anchorEl)} onClick={handleMenu} color="inherit" sx={{ padding: 0 }}>
                                         <AccountCircle aria-hidden="true" />
                                         <Typography sx={{ ml: 1, textTransform: 'none' }}>{user?.username || user?.cueusername}</Typography>
                                         <ArrowDropDownIcon aria-hidden="true" />
