@@ -224,3 +224,29 @@ describe('fixes from the UAT test', () => {
         expect(await screen.findByRole('textbox', { name: 'Search files by name' })).toBeInTheDocument();
     });
 });
+
+describe('signup form and the Launchpad gate (plan 28)', () => {
+    const axeOptions = { rules: { 'color-contrast': { enabled: false } } };
+
+    test('provider-only login: account type is locked to Provider, with a note, and axe passes', async () => {
+        const { container } = renderAt('/signup', { ...tokenOnlySession('unregistered'), authProvider: 'google', providerOnly: true });
+        await screen.findByRole('heading', { level: 1, name: /New User Application/ });
+        const accountType = screen.getByRole('combobox', { name: /Account Type/ });
+        expect(accountType).toHaveTextContent('Provider');
+        expect(accountType).toHaveAttribute('aria-disabled', 'true');
+        expect(screen.getByText(/sign in with Launchpad/)).toBeInTheDocument();
+        expect(screen.getByRole('combobox', { name: 'Provider' })).toBeInTheDocument();
+        await new Promise((r) => setTimeout(r, 50));
+        const results = await axe.run(container, axeOptions);
+        expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+    });
+
+    test('Launchpad login: form unchanged (DAAC selected, not locked)', async () => {
+        renderAt('/signup', tokenOnlySession('unregistered'));
+        await screen.findByRole('heading', { level: 1, name: /New User Application/ });
+        const accountType = screen.getByRole('combobox', { name: /Account Type/ });
+        expect(accountType).toHaveTextContent('DAAC');
+        expect(accountType).not.toHaveAttribute('aria-disabled');
+        expect(screen.queryByText(/sign in with Launchpad/)).not.toBeInTheDocument();
+    });
+});

@@ -15,7 +15,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import Autocomplete from "@mui/material/Autocomplete";
-import { FormControl, InputLabel, Select, MenuItem, Grid } from '@mui/material';
+import { FormControl, FormHelperText, InputLabel, Select, MenuItem, Grid } from '@mui/material';
 import { isValidEmail, isNotEmpty } from '../utils/validation';
 import { createUserApplication } from '../api/userApplicationApi';
 import { getNgroupsForApplication } from '../api/ngroupApi';
@@ -31,7 +31,7 @@ function SignupPage() {
     const navigate = useNavigate();
     const location = useLocation();
     // --- ADDED HOOK ---
-    const { logout, authProvider } = useAuth();
+    const { logout, authProvider, providerOnly } = useAuth();
     usePageTitle('New user application');
 
     const [formData, setFormData] = useState({
@@ -40,7 +40,7 @@ function SignupPage() {
         username: location.state?.username || '',
         justification: '',
         ngroup_id: '',
-        account_type: 'daac',
+        account_type: providerOnly ? 'provider' : 'daac',
         provider_id: null,
     });
 
@@ -55,6 +55,14 @@ function SignupPage() {
     const [isUserDataLocked, setIsUserDataLocked] = useState(!!location.state?.name);
 
     const isGoogleAuth = authProvider === 'google';
+    // Backend Launchpad gate: only Launchpad logins may apply for DAAC or ESDIS Security accounts.
+    const hideSecurityGroup = isGoogleAuth || providerOnly;
+
+    useEffect(() => {
+        if (providerOnly) {
+            setFormData(prev => (prev.account_type === 'provider' ? prev : { ...prev, account_type: 'provider' }));
+        }
+    }, [providerOnly]);
 
     const isDaacGroup = (group) => {
         // Safety check to ensure group and short_name exist before comparing
@@ -88,7 +96,7 @@ function SignupPage() {
             try {
                 const groups = await getNgroupsForApplication();
                 const filteredGroups = Array.isArray(groups)
-                    ? (isGoogleAuth ? groups.filter((group) => isDaacGroup(group)) : groups)
+                    ? (hideSecurityGroup ? groups.filter((group) => isDaacGroup(group)) : groups)
                     : [];
                 setNgroupOptions(filteredGroups);
             } catch (error) {
@@ -150,11 +158,16 @@ function SignupPage() {
         if (!isNotEmpty(formData.username)) newErrors.username = 'Username is required';
         if (!isNotEmpty(formData.justification)) newErrors.justification = 'Justification is required';
         if (!isNotEmpty(formData.ngroup_id)) newErrors.ngroup_id = 'Group is required';
-        if (isGoogleAuth) {
+        if (hideSecurityGroup) {
             const selectedGroup = ngroupOptions.find((opt) => opt.id === formData.ngroup_id);
             if (!selectedGroup || !isDaacGroup(selectedGroup)) {
-                newErrors.ngroup_id = 'Google sign-in users may only apply to DAAC groups.';
+                newErrors.ngroup_id = providerOnly
+                    ? 'ESDIS Security accounts require signing in with NASA Launchpad.'
+                    : 'Google sign-in users may only apply to DAAC groups.';
             }
+        }
+        if (providerOnly && formData.account_type !== 'provider') {
+            newErrors.account_type = 'DAAC accounts require signing in with NASA Launchpad.';
         }
         if (formData.account_type === 'provider' && !formData.provider_id) {
             newErrors.provider_id = 'Provider is required';
@@ -242,10 +255,17 @@ function SignupPage() {
                                 value={formData.account_type}
                                 onChange={handleChange}
                                 label="Account Type"
+                                disabled={providerOnly}
+                                SelectDisplayProps={providerOnly ? { 'aria-describedby': 'account-type-help' } : undefined}
                             >
-                                <MenuItem value="daac">DAAC</MenuItem>
+                                <MenuItem value="daac" disabled={providerOnly}>DAAC</MenuItem>
                                 <MenuItem value="provider">Provider</MenuItem>
                             </Select>
+                            {providerOnly && (
+                                <FormHelperText id="account-type-help" error={!!errors.account_type}>
+                                    {errors.account_type || 'You signed in without NASA Launchpad, so you can apply for a Data Provider account. To apply for a DAAC account, sign out and sign in with Launchpad.'}
+                                </FormHelperText>
+                            )}
                         </FormControl>
                         <Autocomplete
                             options={ngroupOptions}

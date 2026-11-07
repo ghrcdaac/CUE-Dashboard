@@ -53,7 +53,8 @@ function useAuth() {
             headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
         });
         if (!statusResponse.ok) throw new Error('Could not verify user status.');
-        const { status } = await statusResponse.json();
+        // provider_only: the backend's Launchpad gate allows this login to apply as a Data Provider only.
+        const { status, provider_only: providerOnly } = await statusResponse.json();
 
         // Derive the auth provider from the token claims so the UI can apply provider-specific restrictions.
         let authProvider = 'launchpad';
@@ -78,6 +79,7 @@ function useAuth() {
             expiresAt: Date.now() + (tokenData.expires_in * 1000),
             status: status, // Always save the status
             authProvider,
+            providerOnly: !!providerOnly,
         };
 
         if (status === 'registered') {
