@@ -137,7 +137,6 @@ export default function Header() {
                                     )}
                                     <IconButton size="large" aria-label={`Account menu for ${user?.username || user?.cueusername || user?.name || 'user'}`} aria-controls={anchorEl ? "menu-appbar" : undefined} aria-haspopup="menu" aria-expanded={Boolean(anchorEl)} onClick={handleMenu} color="inherit" sx={{ padding: 0 }}>
                                         <AccountCircle aria-hidden="true" />
-                                        <Typography sx={{ ml: 1, textTransform: 'none' }}>{user?.username || user?.cueusername}</Typography>
                                         <ArrowDropDownIcon aria-hidden="true" />
                                     </IconButton>
                                     <Menu id="menu-appbar" anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
