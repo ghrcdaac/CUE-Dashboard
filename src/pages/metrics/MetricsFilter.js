@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   Card,
@@ -216,6 +216,28 @@ function MetricsFilter({ onApplyFilters, onClearFilters, isDataLoading }) {
     };
     onApplyFilters(filters);
   };
+
+  // DAAC switch: providers, users and collections belong to one DAAC, so a picked
+  // one would filter the new DAAC down to nothing. Clear them and re-apply the
+  // filter with the same dates.
+  const lastNgroupId = useRef(activeNgroupId);
+  useEffect(() => {
+    if (lastNgroupId.current === activeNgroupId) return;
+    lastNgroupId.current = activeNgroupId;
+    if (!selectedProvider && !selectedUser && !selectedCollection) return;
+    setSelectedProvider(null);
+    setSelectedUser(null);
+    setSelectedCollection(null);
+    onApplyFilters({
+      start_date: startDate ? startDate.format('YYYY-MM-DD') : null,
+      end_date: endDate ? endDate.format('YYYY-MM-DD') : null,
+      provider_id: null,
+      user_id: null,
+      collection_id: null,
+    });
+    // Only on a DAAC change; the other values are read as they are at that moment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNgroupId]);
 
   const handleClearClick = () => {
     setSelectedProvider(null);

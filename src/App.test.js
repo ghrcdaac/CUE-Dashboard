@@ -1,6 +1,6 @@
 // Route protection (plan 24 §2.4 R-5) and an automated accessibility scan (axe) of each page.
 // The API is mocked: every request returns an empty, successful JSON response.
-import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import axe from 'axe-core';
 import App from './App';
@@ -315,5 +315,48 @@ describe('switching DAAC reloads the page data', () => {
 
         const forNewDaac = calls.filter((c) => c.group === 'g2' && (!listUrl || listUrl.test(c.url)));
         expect(forNewDaac.length).toBeGreaterThan(0);
+    });
+});
+
+describe('Metrics filter after a DAAC switch', () => {
+    test('loads the new DAAC\'s providers, users and collections and drops a provider picked in the old DAAC', async () => {
+        const providersBy = { g1: [{ id: 'p1', short_name: 'GHRC_PROV' }], g2: [{ id: 'p2', short_name: 'CUE_PROV' }] };
+        const calls = [];
+        global.fetch = jest.fn(async (url, options = {}) => {
+            const group = (options.headers || {})['X-Active-Ngroup-Id'];
+            calls.push({ url: String(url), group });
+            let body = emptyJson;
+            if (/\/providers\/\?page=/.test(String(url))) body = { providers: providersBy[group] || [], page: 1, page_size: 50, total: 1 };
+            return { ok: true, status: 200, statusText: 'OK', headers: { get: () => 'application/json' }, json: async () => body };
+        });
+        const session = registeredSession();
+        session.user.ngroups = [{ id: 'g1', short_name: 'GHRC' }, { id: 'g2', short_name: 'CUE' }];
+        renderAt('/metrics', session);
+        await screen.findByRole('heading', { level: 1, name: 'Metrics' });
+
+        // pick GHRC_PROV and apply
+        fireEvent.keyDown(await screen.findByRole('combobox', { name: 'Provider' }), { key: 'ArrowDown' });
+        fireEvent.click(await screen.findByRole('option', { name: 'GHRC_PROV' }));
+        const apply = screen.getByRole('button', { name: 'Apply Filters' });
+        await waitFor(() => expect(apply).not.toBeDisabled());
+        fireEvent.click(apply);
+        await waitFor(() => expect(calls.some((c) => /file-metrics/.test(c.url) && /provider_id=p1/.test(c.url))).toBe(true));
+
+        // switch DAAC
+        fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Active DAAC group' }));
+        fireEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: 'CUE' }));
+
+        await waitFor(() => {
+            for (const list of [/\/providers\/\?page=/, /\/cueusers\/\?page=/, /\/collections\/\?page=/]) {
+                expect(calls.some((c) => c.group === 'g2' && list.test(c.url))).toBe(true);
+            }
+        });
+        await waitFor(() => expect(screen.getByRole('combobox', { name: 'Provider' })).toHaveValue(''));
+        const lastMetrics = calls.filter((c) => c.group === 'g2' && /file-metrics/.test(c.url)).pop();
+        expect(lastMetrics.url).not.toMatch(/provider_id=p1/);
+
+        fireEvent.keyDown(screen.getByRole('combobox', { name: 'Provider' }), { key: 'ArrowDown' });
+        expect(await screen.findByRole('option', { name: 'CUE_PROV' })).toBeInTheDocument();
+        expect(screen.queryByRole('option', { name: 'GHRC_PROV' })).not.toBeInTheDocument();
     });
 });
