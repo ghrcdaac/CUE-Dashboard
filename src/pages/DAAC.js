@@ -59,6 +59,17 @@ export default function DAAC() {
     const [prevPage, setPrevPage] = useState(0);
     const wasSearching = useRef(false);
 
+    // DAAC switch: the Header resets the data cache; also drop this page's per-DAAC state
+    // (selected rows, table page, merged dropdown lists) so nothing from the old DAAC is shown or acted on.
+    const lastNgroupId = useRef(activeNgroupId);
+    useEffect(() => {
+        if (lastNgroupId.current === activeNgroupId) return;
+        lastNgroupId.current = activeNgroupId;
+        setSelected([]);
+        setCurrentPage(0);
+        setPrevPage(0);
+    }, [activeNgroupId]);
+
     useEffect(() => {
         const daacMenuItems = [{ text: 'Egress', path: '/daac', icon: <OutputIcon /> }];
         setMenuItems(daacMenuItems);
@@ -67,8 +78,10 @@ export default function DAAC() {
 
     // "Smart" data fetching that uses the cache
     useEffect(() => {
-        if (activeNgroupId && !didMount.current) {
-            if (egresses.status === 'idle' ||  egresses.page !== 1){
+        if (activeNgroupId) {
+            // First visit: load page 1 unless it's already cached. After that, reload whenever
+            // the cache was reset (status 'idle'), e.g. when the user switches DAAC.
+            if (egresses.status === 'idle' || (!didMount.current && egresses.page !== 1)) {
                 dispatch(fetchEgresses({ page: 1, pageSize: 50 }));
             }
             didMount.current = true;

@@ -78,6 +78,19 @@ function Users() {
     const [mergedProviders, setMergedProviders] = useState([]);
     const [providerLoadingPages, setProviderLoadingPages] = useState(new Set());
 
+    // DAAC switch: the Header resets the data cache; also drop this page's per-DAAC state
+    // (selected rows, table page, merged dropdown lists) so nothing from the old DAAC is shown or acted on.
+    const lastNgroupId = useRef(activeNgroupId);
+    useEffect(() => {
+        if (lastNgroupId.current === activeNgroupId) return;
+        lastNgroupId.current = activeNgroupId;
+        setSelected([]);
+        setCurrentPage(0);
+        setPrevPage(0);
+        setMergedProviders([]);
+        setProviderLoadingPages(new Set());
+    }, [activeNgroupId]);
+
     useEffect(() => {
         const page = providers.page;
         // Remove this page from loadingPages when it finishes
@@ -152,12 +165,12 @@ function Users() {
     // "Smart" data fetching that uses the cache
     useEffect(() => {
         if (activeNgroupId) {
-            if (!didMount.current) {
-                if (users.status === 'idle' || users.page !== 1){
-                    dispatch(fetchUsers({ page: 1, pageSize: 50 }));
-                }
-                didMount.current = true;
+            // First visit: load page 1 unless it's already cached. After that, reload whenever
+            // the cache was reset (status 'idle'), e.g. when the user switches DAAC.
+            if (users.status === 'idle' || (!didMount.current && users.page !== 1)) {
+                dispatch(fetchUsers({ page: 1, pageSize: 50 }));
             }
+            didMount.current = true;
             if (roles.status === 'idle') dispatch(fetchRoles());
             if (providers.status === 'idle') dispatch(fetchProviders({ page: 1, pageSize: 50 }));
         }

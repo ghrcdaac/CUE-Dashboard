@@ -1,6 +1,6 @@
 // Route protection (plan 24 §2.4 R-5) and an automated accessibility scan (axe) of each page.
 // The API is mocked: every request returns an empty, successful JSON response.
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import axe from 'axe-core';
 import App from './App';
@@ -249,5 +249,36 @@ describe('signup form and the Launchpad gate (plan 28)', () => {
         expect(accountType).toHaveTextContent('DAAC');
         expect(accountType).not.toHaveAttribute('aria-disabled');
         expect(screen.queryByText(/sign in with Launchpad/)).not.toBeInTheDocument();
+    });
+});
+
+describe('switching DAAC reloads the page data', () => {
+    const byGroup = {
+        g1: [{ id: 'c1', short_name: 'ghrc_collection', active: true, provider: { id: 'p1', name: 'GHRC_PROV' }, egress: { id: 'e1', path: 'ghrc' }, providers: [] }],
+        g2: [{ id: 'c2', short_name: 'cue_collection', active: true, provider: { id: 'p2', name: 'CUE_PROV' }, egress: { id: 'e2', path: 'cue' }, providers: [] }],
+    };
+
+    test('Collections shows the new DAAC collections, not "No collections found"', async () => {
+        const calls = [];
+        global.fetch = jest.fn(async (url, options = {}) => {
+            const group = (options.headers || {})['X-Active-Ngroup-Id'];
+            if (/\/collections\/\?page=/.test(String(url))) calls.push(group);
+            const body = /\/collections\/\?page=/.test(String(url))
+                ? { collections: byGroup[group] || [], page: 1, page_size: 50, total: (byGroup[group] || []).length }
+                : emptyJson;
+            return { ok: true, status: 200, statusText: 'OK', headers: { get: () => 'application/json' }, json: async () => body };
+        });
+        const session = registeredSession();
+        session.user.ngroups = [{ id: 'g1', short_name: 'GHRC' }, { id: 'g2', short_name: 'CUE' }];
+        renderAt('/collections', session);
+        expect(await screen.findByRole('checkbox', { name: 'Select ghrc_collection' })).toBeInTheDocument();
+
+        fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Active DAAC group' }));
+        fireEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: 'CUE' }));
+
+        expect(await screen.findByRole('checkbox', { name: 'Select cue_collection' })).toBeInTheDocument();
+        expect(screen.queryByRole('checkbox', { name: 'Select ghrc_collection' })).not.toBeInTheDocument();
+        expect(screen.queryByText(/No collections found/i)).not.toBeInTheDocument();
+        expect(calls).toEqual(['g1', 'g2']);
     });
 });

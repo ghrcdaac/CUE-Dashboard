@@ -71,6 +71,21 @@ function Collections() {
     const [prevPage, setPrevPage] = useState(0);
     const wasSearching = useRef(false);
 
+    // DAAC switch: the Header resets the data cache; also drop this page's per-DAAC state
+    // (selected rows, table page, merged dropdown lists) so nothing from the old DAAC is shown or acted on.
+    const lastNgroupId = useRef(activeNgroupId);
+    useEffect(() => {
+        if (lastNgroupId.current === activeNgroupId) return;
+        lastNgroupId.current = activeNgroupId;
+        setSelected([]);
+        setCurrentPage(0);
+        setPrevPage(0);
+        setMergedProviders([]);
+        setMergedEgress([]);
+        setProviderLoadingPages(new Set());
+        setEgressLoadingPages(new Set());
+    }, [activeNgroupId]);
+
     const firstSelectedStatus = useMemo(() => {
         if (selected.length === 0) return true;
         return collections.data.find(c => c.id === selected[0])?.active;
@@ -87,12 +102,12 @@ function Collections() {
     // "Smart" data fetching effect that uses the cache
     useEffect(() => {
         if (activeNgroupId) {
-            if (!didMount.current) {
-                if(collections.status === 'idle' || collections.page !== 1){
-                    dispatch(fetchCollections({ page: 1, pageSize: 50 }));
-                }
-                didMount.current = true;
+            // First visit: load page 1 unless it's already cached. After that, reload whenever
+            // the cache was reset (status 'idle'), e.g. when the user switches DAAC.
+            if (collections.status === 'idle' || (!didMount.current && collections.page !== 1)) {
+                dispatch(fetchCollections({ page: 1, pageSize: 50 }));
             }
+            didMount.current = true;
             if (providers.status === 'idle') dispatch(fetchProviders({ page: 1, pageSize: 50 }));
             if (egresses.status === 'idle') dispatch(fetchEgresses({ page: 1, pageSize: 50 }));
         }
