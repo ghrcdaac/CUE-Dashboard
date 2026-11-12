@@ -60,9 +60,11 @@ export const listUserApplications = (status, options = {}) => {
  * Approves a user application. Requires 'approve_user' privilege.
  * @param {string} applicationId - The UUID of the application.
  * @param {string} roleId - The UUID of the role to assign.
+ * @param {string} [providerId] - The UUID of the provider to assign (optional).
  */
-export const approveUserApplication = (applicationId, roleId) => {
-    return apiClient.post(`/user_application/${applicationId}/approve?role_id=${roleId}`);
+export const approveUserApplication = (applicationId, roleId, providerId = null) => {
+    const query = providerId ? `?role_id=${roleId}&provider_id=${providerId}` : `?role_id=${roleId}`;
+    return apiClient.post(`/user_application/${applicationId}/approve${query}`);
 };
 
 /**

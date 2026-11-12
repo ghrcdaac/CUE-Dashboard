@@ -134,6 +134,7 @@ describe('site map (WCAG 2.4.5 Multiple Ways)', () => {
         expect(screen.getByRole('link', { name: 'Files by status' })).toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Users' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Egress paths' })).not.toBeInTheDocument();
+        expect(document.title).toBe('CUE - Site map');
     });
 });
 
