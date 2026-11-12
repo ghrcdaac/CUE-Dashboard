@@ -281,4 +281,39 @@ describe('switching DAAC reloads the page data', () => {
         expect(screen.queryByText(/No collections found/i)).not.toBeInTheDocument();
         expect(calls).toEqual(['g1', 'g2']);
     });
+
+    // Every menu must ask the API for the new DAAC's data after a switch.
+    // [path, h1, the list request that must be repeated for the new DAAC (or null = any request)]
+    test.each([
+        ['/daac', 'DAAC', /\/egress\/\?page=/],
+        ['/providers', 'Providers', /\/providers\/\?page=/],
+        ['/users', 'Users', /\/cueusers\/\?page=/],
+        ['/', 'Home', null],
+        ['/metrics', 'Metrics', null],
+        ['/files-by-status', 'Metrics', null],
+        ['/files-by-cost', 'Metrics', null],
+        ['/users/pending-requests', 'Users', null],
+        ['/profile/api-keys', 'Profile', null],
+    ])('%s requests the new DAAC\'s data after a switch', async (path, h1, listUrl) => {
+        const calls = [];
+        global.fetch = jest.fn(async (url, options = {}) => {
+            calls.push({ url: String(url), group: (options.headers || {})['X-Active-Ngroup-Id'] });
+            return {
+                ok: true, status: 200, statusText: 'OK', headers: { get: () => 'application/json' },
+                json: async () => (/\/roles\/?$|user[-_]application/.test(String(url)) ? [] : emptyJson),
+            };
+        });
+        const session = registeredSession();
+        session.user.ngroups = [{ id: 'g1', short_name: 'GHRC' }, { id: 'g2', short_name: 'CUE' }];
+        renderAt(path, session);
+        await screen.findByRole('heading', { level: 1, name: h1 });
+        await new Promise((r) => setTimeout(r, 50));
+
+        fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Active DAAC group' }));
+        fireEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: 'CUE' }));
+        await new Promise((r) => setTimeout(r, 100));
+
+        const forNewDaac = calls.filter((c) => c.group === 'g2' && (!listUrl || listUrl.test(c.url)));
+        expect(forNewDaac.length).toBeGreaterThan(0);
+    });
 });
