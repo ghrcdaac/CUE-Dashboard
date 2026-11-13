@@ -85,3 +85,54 @@ test('apiClient: five parallel requests with an expiring token trigger one refre
     expect(refreshCalls).toHaveLength(1);
     expect(authHeaders).toEqual(Array(5).fill('Bearer fresh'));
 });
+
+// --- Sign-in service outage (e.g. IDFS blocking the backend): keep the session, don't sign out ---
+
+function status(code) {
+    return { ok: false, status: code, statusText: 'Bad Gateway', headers: { get: () => 'application/json' }, json: async () => ({ detail: 'unavailable' }) };
+}
+
+test('a 502 from /auth/refresh keeps the session and rejects with AUTH_UNAVAILABLE', async () => {
+    saveSession();
+    global.fetch = jest.fn(async () => status(502));
+    await expect(sessionService.refreshAccessToken()).rejects.toMatchObject({ code: 'AUTH_UNAVAILABLE' });
+    expect(JSON.parse(localStorage.getItem(KEY)).refreshToken).toBe('old-refresh');
+});
+
+test('a network error during refresh keeps the session', async () => {
+    saveSession();
+    global.fetch = jest.fn(async () => { throw new TypeError('Failed to fetch'); });
+    await expect(sessionService.refreshAccessToken()).rejects.toMatchObject({ code: 'AUTH_UNAVAILABLE' });
+    expect(localStorage.getItem(KEY)).not.toBeNull();
+});
+
+test('a 400 from /auth/refresh still signs out', async () => {
+    saveSession();
+    global.fetch = jest.fn(async () => status(400));
+    expect(await sessionService.refreshAccessToken()).toBeNull();
+    expect(localStorage.getItem(KEY)).toBeNull();
+});
+
+test('apiClient: outage while the token is still valid keeps using the current token', async () => {
+    saveSession(); // expires in 60 s: inside the refresh window but still valid
+    const authHeaders = [];
+    global.fetch = jest.fn(async (url, opts = {}) => {
+        if (String(url).endsWith('/auth/refresh')) return status(502);
+        authHeaders.push(opts.headers?.Authorization);
+        return json({ ok: true });
+    });
+    await apiClient.get('/a');
+    expect(authHeaders).toEqual(['Bearer old-access']);
+    expect(localStorage.getItem(KEY)).not.toBeNull();
+});
+
+test('apiClient: outage after the token expired shows the error without signing out', async () => {
+    saveSession({ expiresAt: Date.now() - 1000 });
+    global.fetch = jest.fn(async (url) => (String(url).endsWith('/auth/refresh') ? status(502) : json({ ok: true })));
+    await expect(apiClient.get('/a')).rejects.toMatchObject({
+        code: 'AUTH_UNAVAILABLE',
+        response: { detail: "The sign-in service isn't available right now. Please try again later." },
+    });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem(KEY)).not.toBeNull();
+});

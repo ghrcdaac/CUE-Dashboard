@@ -59,7 +59,9 @@ const sessionService = {
      * Requests that find the token expiring at the same moment share ONE refresh call:
      * parallel refreshes with the same refresh token can fail when Keycloak rotates
      * refresh tokens, which would sign the user out.
-     * @returns {Promise<string|null>} The new access token, or null if refresh failed.
+     * @returns {Promise<string|null>} The new access token, or null if the refresh token was
+     *   rejected (session cleared). Throws an AUTH_UNAVAILABLE error when the sign-in service
+     *   is down or blocked (session kept).
      */
     refreshAccessToken() {
         if (!refreshInFlight) {
@@ -86,10 +88,15 @@ const sessionService = {
                 body: JSON.stringify({ refresh_token: session.refreshToken }),
             });
 
-            if (!response.ok) {
+            if (response.status === 400 || response.status === 401) {
+                // The refresh token itself is expired or revoked: sign out.
                 console.error("Token refresh failed, clearing session.");
                 this.clearSession();
                 return null;
+            }
+            if (!response.ok) {
+                // The sign-in service is blocked or down (backend 502): keep the session.
+                throw sessionService.unavailableError(`HTTP ${response.status}`);
             }
 
             const newAccessTokenData = await response.json();
@@ -106,11 +113,26 @@ const sessionService = {
 
             return newAccessTokenData.access_token;
         } catch (error) {
-            console.error('Token refresh network error:', error);
-            this.clearSession();
-            return null;
+            if (error?.code === REFRESH_UNAVAILABLE) throw error;
+            // Network error: the refresh token may still be good, so keep the session.
+            throw sessionService.unavailableError(error?.message || 'network error');
         }
-    }
+    },
+
+    /**
+     * The error thrown when the sign-in service can't refresh right now (outage, not a bad
+     * token). The session is kept; callers show the message instead of signing out.
+     */
+    unavailableError(reason) {
+        console.error(`Token refresh unavailable (${reason}); keeping the session.`);
+        const error = new Error(REFRESH_UNAVAILABLE_MESSAGE);
+        error.code = REFRESH_UNAVAILABLE;
+        error.response = { detail: REFRESH_UNAVAILABLE_MESSAGE };
+        return error;
+    },
 };
+
+export const REFRESH_UNAVAILABLE = 'AUTH_UNAVAILABLE';
+const REFRESH_UNAVAILABLE_MESSAGE = "The sign-in service isn't available right now. Please try again later.";
 
 export default sessionService;

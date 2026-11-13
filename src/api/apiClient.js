@@ -1,4 +1,4 @@
-import sessionService from '../services/sessionService';
+import sessionService, { REFRESH_UNAVAILABLE } from '../services/sessionService';
 import { config } from '../config';
 import store from '../app/store';
 
@@ -24,13 +24,21 @@ const apiClient = async (endpoint, options = {}) => {
 
         if (isTokenExpiring) {
             console.log('Access token is expiring, attempting to refresh...');
-            const newAccessToken = await sessionService.refreshAccessToken();
+            let newAccessToken;
+            try {
+                newAccessToken = await sessionService.refreshAccessToken();
+            } catch (error) {
+                // Sign-in service down or blocked: the session is kept. Use the current
+                // token while it's still valid; after that, show the error (no sign-out).
+                if (error?.code !== REFRESH_UNAVAILABLE || Date.now() >= session.expiresAt) throw error;
+                newAccessToken = accessToken;
+            }
             if (!newAccessToken) {
                 window.location.href = '/login';
                 throw new Error('Session expired. Please log in again.');
             }
             accessToken = newAccessToken;
-            session = sessionService.getSession(); 
+            session = sessionService.getSession();
         }
     }
 
